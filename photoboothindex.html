@@ -101,6 +101,12 @@ button:focus-visible { outline: 3px solid var(--yellow); outline-offset: 2px; }
 .camFrame video { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; transform: scaleX(-1); }
 .camFrame .num { position: absolute; inset: 0; display: grid; place-items: center; font-family: var(--display); font-size: 180px; text-shadow: 0 4px 24px rgba(0,0,0,.5); }
 .camFrame .guide { position: absolute; left: 0; right: 0; bottom: 16px; text-align: center; font-family: var(--display); font-size: 26px; text-shadow: 0 2px 10px rgba(0,0,0,.6); }
+#fxCanvas { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; transform: scaleX(-1); pointer-events: none; }
+.fxBar { display: flex; gap: 10px; padding: 12px 30px 0; overflow-x: auto; -webkit-overflow-scrolling: touch; align-items: center; }
+.fxBar button { flex: none; display: flex; flex-direction: column; align-items: center; gap: 2px; min-width: 76px; padding: 8px 10px; border-radius: 16px; background: rgba(255,255,255,.12); color: #fff; font-size: 15px; border: 3px solid transparent; }
+.fxBar button i { font-style: normal; font-size: 30px; line-height: 1.1; font-family: "Apple Color Emoji", "Segoe UI Emoji", sans-serif; }
+.fxBar button.on { border-color: var(--yellow); background: rgba(255,209,51,.22); }
+.fxBar .fxLoading { color: rgba(255,255,255,.7); font-size: 16px; }
 .thumbs { display: flex; gap: 10px; padding: 14px 30px 18px; overflow-x: auto; min-height: 96px; }
 .thumbs canvas { width: 96px; height: 72px; object-fit: cover; border-radius: 8px; flex: none; }
 #flash { position: fixed; inset: 0; background: #fff; opacity: 0; pointer-events: none; transition: opacity .25s; z-index: 50; }
@@ -272,11 +278,13 @@ button:focus-visible { outline: 3px solid var(--yellow); outline-offset: 2px; }
   <div class="camBox" id="camBox">
     <div class="camFrame" id="camFrame">
       <video id="video" playsinline muted autoplay></video>
+      <canvas id="fxCanvas"></canvas>
       <div class="num" id="countNum"></div>
       <div class="guide" id="camGuide">카메라를 보세요!</div>
       <div class="camErr" id="camErr" hidden></div>
     </div>
   </div>
+  <div class="fxBar" id="fxBar"></div>
   <div class="thumbs" id="shootThumbs"></div>
 </section>
 
@@ -445,6 +453,7 @@ button:focus-visible { outline: 3px solid var(--yellow); outline-offset: 2px; }
     <div class="field"><span>음성 안내 (3, 2, 1 · 안내 말)</span><button class="toggle" id="setVoice" aria-label="음성 안내"></button></div>
     <div class="field"><span>목소리·소리 확인</span><button class="mini" id="voiceTest">들어보기</button></div>
     <div class="field"><span>효과음 (찰칵 · 삐)</span><button class="toggle" id="setSound" aria-label="효과음"></button></div>
+    <div class="field"><span>얼굴 따라다니는 효과 <small>(인터넷 필요)</small></span><button class="toggle" id="setFaceFx" aria-label="얼굴 효과"></button></div>
     <div class="field"><span>자동 보정 기본값</span><div class="seg" id="setRetouch"></div></div>
     <div class="field"><span>인쇄 방법</span><div class="seg" id="setVia"></div></div>
     <div class="field"><span>가장자리 보정 <small>(잘리는 만큼 테두리를 넓힘)</small></span><div class="seg" id="setBleed"></div></div>
@@ -543,7 +552,7 @@ const DPI = 300;
 const EMOJI_FONT = '"Apple Color Emoji","Segoe UI Emoji","Noto Color Emoji",sans-serif';
 const DISPLAY_FONT = '"Jua","Apple SD Gothic Neo",sans-serif';
 
-const DEFAULTS = { paper: "postcard", extra: 2, countdown: 7, zoom: 1, attractTitle: "PHOTO BOOTH", title: "PHOTO BOOTH", showDate: true, timers: true, cassette: true, printerReady: false, printVia: "canon", bleed: 2, retouch: "natural", voice: true, voiceName: "", sound: true, pin: "0000" };
+const DEFAULTS = { paper: "postcard", extra: 2, countdown: 7, zoom: 1, attractTitle: "PHOTO BOOTH", title: "PHOTO BOOTH", showDate: true, timers: true, cassette: true, printerReady: false, printVia: "canon", bleed: 2, retouch: "natural", faceFx: true, voice: true, voiceName: "", sound: true, pin: "0000" };
 let S = loadSettings();
 function loadSettings() {
   try { const raw = localStorage.getItem("booth.settings"); if (raw) { const o = Object.assign({}, DEFAULTS, JSON.parse(raw)); delete o.shots; delete o.maxCopies; return o; } } catch (e) {}
@@ -1026,7 +1035,7 @@ const ENTER = {};
 ENTER.attract = () => { $("attractTitle").textContent = S.attractTitle || "PHOTO BOOTH"; };
 $("s-attract").addEventListener("click", (e) => {
   if (e.target.id === "adminCorner") return;
-  unlockAudio(); keepAwake(); resetSession(); go("frame");
+  unlockAudio(); keepAwake(); resetSession(); FX.cur = "none"; go("frame"); FX.load();
 });
 let cornerTaps = [];
 $("adminCorner").addEventListener("click", (e) => {
@@ -1085,7 +1094,7 @@ async function startCamera() {
   lastFrameAt = performance.now(); watchFrames(); startWatchdog();
   return true;
 }
-function stopCamera() { stopWatchdog(); if (stream) { stream.getTracks().forEach((t) => t.stop()); stream = null; $("video").srcObject = null; } }
+function stopCamera() { if (typeof FX !== "undefined") FX.stop(); stopWatchdog(); if (stream) { stream.getTracks().forEach((t) => t.stop()); stream = null; $("video").srcObject = null; } }
 
 /* ── 라이브 화면 멈춤 방지 ──
    아이패드에서 소리 재생 등으로 카메라 영상이 멈추면(일시정지·프레임 정지) 자동으로 다시 재생하고,
@@ -1140,7 +1149,10 @@ function grabFrame(maxSide) {
   const v = $("video"), vw = v.videoWidth, vh = v.videoHeight; if (!vw || !vh) return null;
   const z = Math.max(1, S.zoom || 1), sw = vw / z, sh = vh / z, sx = (vw - sw) / 2, sy = (vh - sh) / 2;
   const s = Math.min(1, maxSide / Math.max(sw, sh)), c = makeCanvas(sw * s, sh * s), ctx = c.getContext("2d");
-  ctx.translate(c.width, 0); ctx.scale(-1, 1); ctx.drawImage(v, sx, sy, sw, sh, 0, 0, c.width, c.height); return c;
+  ctx.translate(c.width, 0); ctx.scale(-1, 1); ctx.drawImage(v, sx, sy, sw, sh, 0, 0, c.width, c.height);
+  const fx = $("fxCanvas");
+  if (FX.on() && fx.width === vw && fx.height === vh) ctx.drawImage(fx, sx, sy, sw, sh, 0, 0, c.width, c.height);   /* 얼굴 효과도 사진에 그대로 */
+  return c;
 }
 function startLive() { liveFrames = []; clearInterval(liveTimer); liveTimer = setInterval(() => { const f = grabFrame(460); if (f) { liveFrames.push(f); if (liveFrames.length > 12) freeCanvas(liveFrames.shift()); } }, 115); }
 function stopLive() { clearInterval(liveTimer); liveTimer = null; const f = liveFrames; liveFrames = []; return f; }
@@ -1149,7 +1161,151 @@ function layoutCamFrame() {
   const W = box.clientWidth - 60, H = box.clientHeight; let w = W, h = W / a; if (h > H) { h = H; w = H * a; }
   f.style.width = Math.max(0, w) + "px"; f.style.height = Math.max(0, h) + "px";
   $("video").style.transform = "scaleX(-1) scale(" + (S.zoom || 1) + ")";
+  $("fxCanvas").style.transform = "scaleX(-1) scale(" + (S.zoom || 1) + ")";
 }
+/* ───────── 얼굴 따라다니는 효과 (맥 Photo Booth처럼) ─────────
+   구글 MediaPipe 얼굴 인식(브라우저 안에서 실행, 사진은 밖으로 나가지 않음)으로 얼굴 점 478개를 찾고,
+   그 위치에 왕관·토끼 귀·선글라스 등을 실시간으로 그림. 찍을 때 그대로 사진에 합쳐짐. */
+const FX_LIST = [
+  { id: "none", icon: "🚫", name: "없음" },
+  { id: "crown", icon: "👑", name: "왕관" },
+  { id: "bunny", icon: "🐰", name: "토끼" },
+  { id: "cat", icon: "🐱", name: "고양이" },
+  { id: "puppy", icon: "🐶", name: "강아지" },
+  { id: "shades", icon: "🕶️", name: "선글라스" },
+  { id: "hearts", icon: "😍", name: "하트 눈" },
+  { id: "flowers", icon: "🌸", name: "꽃 머리띠" },
+  { id: "blush", icon: "☺️", name: "볼터치" },
+  { id: "clown", icon: "🔴", name: "빨간 코" },
+  { id: "stars", icon: "⭐️", name: "별 빙글" },
+  { id: "party", icon: "🥳", name: "파티 모자" }
+];
+const FX = {
+  lib: null, lm: null, loading: false, failed: false, cur: "none", raf: null, faces: [], lastT: 0,
+  on() { return S.faceFx && this.cur !== "none" && !!this.lm; },
+  async load() {
+    if (this.lm || this.loading || this.failed || !S.faceFx) return;
+    this.loading = true; this.drawBar();
+    try {
+      const base = "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.14";
+      this.lib = await import(base + "/vision_bundle.mjs");
+      const files = await this.lib.FilesetResolver.forVisionTasks(base + "/wasm");
+      const make = (delegate) => this.lib.FaceLandmarker.createFromOptions(files, {
+        baseOptions: { modelAssetPath: "mp/face_landmarker.task", delegate }, runningMode: "VIDEO", numFaces: 4 });
+      try { this.lm = await make("GPU"); } catch (e) { this.lm = await make("CPU"); }
+    } catch (e) { this.failed = true; console.warn("face fx load failed", e); }
+    this.loading = false; this.drawBar();
+    if (current === "shoot") this.start();
+  },
+  drawBar() {
+    const bar = $("fxBar"); if (!bar) return;
+    bar.hidden = !S.faceFx;
+    if (!S.faceFx) return;
+    bar.innerHTML = "";
+    if (this.failed) { bar.appendChild(el("span", "fxLoading", "얼굴 효과를 불러오지 못했어요 (인터넷 연결 확인)")); return; }
+    if (!this.lm) { bar.appendChild(el("span", "fxLoading", "✨ 얼굴 효과 준비 중…")); if (current === "shoot") requestAnimationFrame(layoutCamFrame); return; }
+    FX_LIST.forEach((f) => {
+      const b = el("button", f.id === this.cur ? "on" : ""); b.innerHTML = "<i>" + f.icon + "</i>" + f.name;
+      b.addEventListener("click", () => { this.cur = f.id; bar.querySelectorAll("button").forEach((x) => x.classList.toggle("on", x === b)); if (f.id === "none") this.clear(); });
+      bar.appendChild(b);
+    });
+    if (current === "shoot") requestAnimationFrame(layoutCamFrame);
+  },
+  start() { cancelAnimationFrame(this.raf); const loop = () => { if (current !== "shoot") return; this.detectNow(); this.raf = requestAnimationFrame(loop); }; this.raf = requestAnimationFrame(loop); },
+  stop() { cancelAnimationFrame(this.raf); this.raf = null; this.faces = []; this.clear(); },
+  clear() { const c = $("fxCanvas"); c.getContext("2d").clearRect(0, 0, c.width, c.height); },
+  detectNow() {
+    const v = $("video"), c = $("fxCanvas");
+    if (!this.on() || !v.videoWidth || v.readyState < 2) return;
+    if (c.width !== v.videoWidth || c.height !== v.videoHeight) { c.width = v.videoWidth; c.height = v.videoHeight; }
+    let t = performance.now(); if (t <= this.lastT) t = this.lastT + 1; this.lastT = t;
+    let res; try { res = this.lm.detectForVideo(v, t); } catch (e) { return; }
+    const W = c.width, H = c.height, raw = (res && res.faceLandmarks) || [];
+    /* 떨림 줄이기: 이전 위치와 섞기 */
+    this.faces = raw.map((pts, k) => {
+      const prev = this.faces[k];
+      return pts.map((p, i) => { const x = p.x * W, y = p.y * H; if (prev && prev[i]) return { x: prev[i].x * 0.45 + x * 0.55, y: prev[i].y * 0.45 + y * 0.55 }; return { x, y }; });
+    });
+    const ctx = c.getContext("2d"); ctx.clearRect(0, 0, W, H);
+    for (const f of this.faces) drawFaceFx(ctx, f, this.cur, t);
+  }
+};
+function drawFaceFx(ctx, P, id, t) {
+  const eL = P[33], eR = P[263], ang = Math.atan2(eR.y - eL.y, eR.x - eL.x);
+  const fw = Math.hypot(P[454].x - P[234].x, P[454].y - P[234].y), ed = Math.hypot(eR.x - eL.x, eR.y - eL.y);
+  const up = { x: Math.sin(ang), y: -Math.cos(ang) }, rt = { x: Math.cos(ang), y: Math.sin(ang) };
+  const top = P[10], at = (p, r, u) => ({ x: p.x + rt.x * r + up.x * u, y: p.y + rt.y * r + up.y * u });
+  const emoji = (e, p, size, rot) => {
+    ctx.save(); ctx.translate(p.x, p.y); ctx.rotate(ang + (rot || 0)); ctx.scale(-1, 1);   /* 화면이 좌우 반전이라 글자 그림을 한 번 더 뒤집어 바로 보이게 */
+    ctx.font = size + "px " + EMOJI_FONT; ctx.textAlign = "center"; ctx.textBaseline = "middle"; ctx.fillText(e, 0, 0); ctx.restore();
+  };
+  const ear = (p, len, wid, tilt, outer, inner) => {
+    ctx.save(); ctx.translate(p.x, p.y); ctx.rotate(ang + tilt);
+    ctx.fillStyle = outer; ctx.beginPath(); ctx.ellipse(0, -len / 2, wid / 2, len / 2, 0, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = inner; ctx.beginPath(); ctx.ellipse(0, -len / 2 + len * 0.06, wid / 4, len / 2.6, 0, 0, Math.PI * 2); ctx.fill();
+    ctx.restore();
+  };
+  const tri = (p, h, w, tilt, color, inner) => {
+    ctx.save(); ctx.translate(p.x, p.y); ctx.rotate(ang + tilt);
+    ctx.fillStyle = color; ctx.beginPath(); ctx.moveTo(-w / 2, 0); ctx.lineTo(0, -h); ctx.lineTo(w / 2, 0); ctx.closePath(); ctx.fill();
+    if (inner) { ctx.fillStyle = inner; ctx.beginPath(); ctx.moveTo(-w / 4, -h * 0.1); ctx.lineTo(0, -h * 0.75); ctx.lineTo(w / 4, -h * 0.1); ctx.closePath(); ctx.fill(); }
+    ctx.restore();
+  };
+  const dot = (p, r, color) => { ctx.fillStyle = color; ctx.beginPath(); ctx.arc(p.x, p.y, r, 0, Math.PI * 2); ctx.fill(); };
+  const nose = P[4], headTop = at(top, 0, fw * 0.12);
+  ctx.save(); ctx.shadowColor = "rgba(0,0,0,.25)"; ctx.shadowBlur = fw * 0.03;
+  switch (id) {
+    case "crown": emoji("👑", at(top, 0, fw * 0.32), fw * 0.62); break;
+    case "bunny":
+      ear(at(top, -fw * 0.17, fw * 0.05), fw * 0.85, fw * 0.24, -0.22, "#ffffff", "#ffb6c8");
+      ear(at(top, fw * 0.17, fw * 0.05), fw * 0.85, fw * 0.24, 0.22, "#ffffff", "#ffb6c8");
+      ctx.shadowBlur = 0; dot(nose, fw * 0.045, "#ff8fab"); break;
+    case "cat":
+      tri(at(top, -fw * 0.28, -fw * 0.02), fw * 0.42, fw * 0.32, -0.35, "#3a3a3a", "#ff9fb5");
+      tri(at(top, fw * 0.28, -fw * 0.02), fw * 0.42, fw * 0.32, 0.35, "#3a3a3a", "#ff9fb5");
+      ctx.shadowBlur = 0; ctx.strokeStyle = "rgba(40,40,40,.85)"; ctx.lineWidth = Math.max(2, fw * 0.012); ctx.lineCap = "round";
+      for (const side of [-1, 1]) for (const k of [-1, 0, 1]) {
+        const a = at(nose, side * fw * 0.08, -fw * 0.03 + k * fw * 0.035), b = at(nose, side * fw * 0.36, -fw * 0.02 + k * fw * 0.08);
+        ctx.beginPath(); ctx.moveTo(a.x, a.y); ctx.lineTo(b.x, b.y); ctx.stroke();
+      }
+      dot(nose, fw * 0.035, "#ff7f9f"); break;
+    case "puppy":
+      ear(at(P[127], -fw * 0.02, fw * 0.12), fw * 0.6, fw * 0.26, Math.PI + 0.35, "#8b5a2b", "#b98250");
+      ear(at(P[356], fw * 0.02, fw * 0.12), fw * 0.6, fw * 0.26, Math.PI - 0.35, "#8b5a2b", "#b98250");
+      ctx.shadowBlur = 0; dot(nose, fw * 0.065, "#222"); dot(at(nose, -fw * 0.02, fw * 0.02), fw * 0.018, "#666");
+      { const m = P[17]; ctx.fillStyle = "#ff6f91"; ctx.save(); ctx.translate(m.x, m.y); ctx.rotate(ang); ctx.beginPath(); ctx.ellipse(0, fw * 0.08, fw * 0.08, fw * 0.11, 0, 0, Math.PI * 2); ctx.fill(); ctx.restore(); }
+      break;
+    case "shades": { const mid = { x: (eL.x + eR.x) / 2, y: (eL.y + eR.y) / 2 }; emoji("🕶️", at(mid, 0, -ed * 0.05), ed * 1.9); break; }
+    case "hearts": { const pulse = 1 + 0.12 * Math.sin(t / 160); emoji("❤️", P[468] || eL, ed * 0.62 * pulse); emoji("❤️", P[473] || eR, ed * 0.62 * pulse); break; }
+    case "flowers": {
+      const ids = [127, 162, 21, 54, 103, 67, 109, 10, 338, 297, 332, 284, 251, 389, 356], fl = ["🌸", "🌼", "🌷"];
+      ids.forEach((i, k) => { if (k % 2) return; emoji(fl[k % 3], at(P[i], 0, fw * 0.11), fw * 0.17, (k - 7) * 0.08); });
+      break;
+    }
+    case "blush":
+      ctx.shadowBlur = 0;
+      for (const i of [50, 280]) { const p = P[i], g = ctx.createRadialGradient(p.x, p.y, 0, p.x, p.y, fw * 0.12); g.addColorStop(0, "rgba(255,120,150,.55)"); g.addColorStop(1, "rgba(255,120,150,0)"); ctx.fillStyle = g; ctx.beginPath(); ctx.arc(p.x, p.y, fw * 0.12, 0, Math.PI * 2); ctx.fill(); }
+      emoji("✨", at(P[50], -fw * 0.18, fw * 0.12), fw * 0.12); emoji("✨", at(P[280], fw * 0.18, fw * 0.12), fw * 0.1); break;
+    case "clown": {
+      const r = fw * 0.075, g = ctx.createRadialGradient(nose.x - r * 0.3, nose.y - r * 0.3, r * 0.1, nose.x, nose.y, r);
+      g.addColorStop(0, "#ff8a8a"); g.addColorStop(1, "#d10f1f"); ctx.fillStyle = g; ctx.beginPath(); ctx.arc(nose.x, nose.y, r, 0, Math.PI * 2); ctx.fill(); break;
+    }
+    case "stars":
+      for (let k = 0; k < 5; k++) { const a = t / 600 + k * Math.PI * 2 / 5, p = at(headTop, Math.cos(a) * fw * 0.45, fw * 0.12 + Math.sin(a) * fw * 0.08); emoji(k % 2 ? "✨" : "⭐️", p, fw * (0.13 + 0.04 * Math.sin(a))); }
+      break;
+    case "party": {
+      const base = at(top, fw * 0.08, fw * 0.05), h = fw * 0.75, w = fw * 0.42;
+      ctx.save(); ctx.translate(base.x, base.y); ctx.rotate(ang + 0.18);
+      ctx.beginPath(); ctx.moveTo(-w / 2, 0); ctx.lineTo(0, -h); ctx.lineTo(w / 2, 0); ctx.closePath(); ctx.fillStyle = "#7b4bc0"; ctx.fill(); ctx.clip();
+      ctx.fillStyle = "#ffd133"; for (let k = 0; k < 6; k++) { ctx.save(); ctx.translate(0, -h * k / 5); ctx.rotate(-0.5); ctx.fillRect(-w, -h * 0.04, w * 2, h * 0.07); ctx.restore(); }
+      ctx.restore();
+      { const tip = at(base, Math.sin(0.18) * h * 0, 0); const tp = { x: base.x + Math.sin(ang + 0.18) * h, y: base.y - Math.cos(ang + 0.18) * h }; ctx.shadowBlur = 0; dot(tp, fw * 0.05, "#ff5c8a"); }
+      break;
+    }
+  }
+  ctx.restore();
+}
+
 ENTER.shoot = async () => {
   const run = ++shootRun;
   releaseSession();
@@ -1164,6 +1320,7 @@ ENTER.shoot = async () => {
     return;
   }
   layoutCamFrame();
+  FX.drawBar(); FX.start();
   say("look");
   await sleep(2200); if (run !== shootRun) return;
   $("camGuide").hidden = true;
@@ -1182,6 +1339,7 @@ ENTER.shoot = async () => {
     $("countNum").textContent = "";
     await ensureLive(2500); if (run !== shootRun) { stopLive(); return; }
     $("flash").classList.add("on"); shutterSound();
+    FX.detectNow();
     let still = grabFrame(1400);
     for (let tries = 0; still && looksBlank(still) && tries < 3; tries++) { freeCanvas(still); await ensureLive(1500); still = grabFrame(1400); }   /* 검은 화면이 찍히면 다시 */
     const live = stopLive();
@@ -1668,7 +1826,7 @@ function openAdmin() {
   $("setTitle").value = S.title; $("setAttract").value = S.attractTitle;
   $("setTitle").oninput = drawCaptionPreview; drawCaptionPreview();
   toggle($("setDate"), "showDate"); toggle($("setTimers"), "timers"); toggle($("setCassette"), "cassette");
-  toggle($("setVoice"), "voice"); toggle($("setSound"), "sound");
+  toggle($("setFaceFx"), "faceFx"); toggle($("setVoice"), "voice"); toggle($("setSound"), "sound");
   $("setDate").addEventListener("click", drawCaptionPreview);
   seg($("setRetouch"), Object.keys(RETOUCH), () => S.retouch, (v) => { S.retouch = v; }, (v) => RETOUCH[v].name);
   seg($("setVia"), ["canon", "airprint"], () => S.printVia, (v) => { S.printVia = v; S.printerReady = false; }, (v) => v === "canon" ? "캐논 앱" : "AirPrint");
