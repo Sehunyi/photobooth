@@ -125,8 +125,8 @@ button:focus-visible { outline: 3px solid var(--yellow); outline-offset: 2px; }
 .tabs { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px; }
 .tab { font-size: 20px; padding: 12px 0; border-radius: 999px; background: var(--card); color: var(--purple); }
 .tab.on { background: var(--purple); color: #fff; }
-.retouchSeg { display: grid; grid-template-columns: repeat(3, 1fr); border-radius: 14px; }
-.retouchSeg button { font-family: var(--display); font-size: 20px; padding: 12px 6px; }
+.seg.retouchSeg { display: grid; grid-template-columns: repeat(4, 1fr); border-radius: 14px; }
+.seg.retouchSeg button { font-family: var(--display); font-size: 20px; padding: 12px 6px; }
 .filters { display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 12px; }
 .flt { background: var(--card); border-radius: 14px; padding: 6px; border: 4px solid transparent; display: flex; flex-direction: column; align-items: center; gap: 6px; font-size: 17px; color: var(--ink); }
 .flt canvas { width: 100%; height: 96px; object-fit: cover; border-radius: 8px; }
@@ -343,6 +343,7 @@ button:focus-visible { outline: 3px solid var(--yellow); outline-offset: 2px; }
       <div class="msg" id="printMsg">사진을 만들고 있어요…</div>
       <ol class="steps" id="printSteps"></ol>
       <div class="note" id="printNote"></div>
+      <div class="field copiesPick" id="nativeCopies" hidden><span>몇 장 뽑을까요?</span><div class="seg" id="copySeg"></div></div>
       <button class="big" id="printBtn" disabled>🖨️ 인쇄하기</button>
       <button class="big yellow" id="saveBtn2" disabled>사진 저장 · 보내기</button>
       <div class="err" id="printErr"></div>
@@ -453,9 +454,10 @@ button:focus-visible { outline: 3px solid var(--yellow); outline-offset: 2px; }
     <div class="field"><span>음성 안내 (3, 2, 1 · 안내 말)</span><button class="toggle" id="setVoice" aria-label="음성 안내"></button></div>
     <div class="field"><span>목소리·소리 확인</span><button class="mini" id="voiceTest">들어보기</button></div>
     <div class="field"><span>효과음 (찰칵 · 삐)</span><button class="toggle" id="setSound" aria-label="효과음"></button></div>
-    <div class="field"><span>얼굴 따라다니는 효과 <small>(인터넷 필요)</small></span><button class="toggle" id="setFaceFx" aria-label="얼굴 효과"></button></div>
+    <div class="field"><span>얼굴 따라다니는 효과</span><button class="toggle" id="setFaceFx" aria-label="얼굴 효과"></button></div>
     <div class="field"><span>자동 보정 기본값</span><div class="seg" id="setRetouch"></div></div>
-    <div class="field"><span>인쇄 방법</span><div class="seg" id="setVia"></div></div>
+    <div class="field" id="nativePrinterRow" hidden><span>프린터 <small id="nativePrinterName">(선택 안 됨)</small></span><button class="mini" id="pickPrinterBtn">프린터 선택</button></div>
+    <div class="field" id="viaRow"><span>인쇄 방법</span><div class="seg" id="setVia"></div></div>
     <div class="field"><span>가장자리 보정 <small>(잘리는 만큼 테두리를 넓힘)</small></span><div class="seg" id="setBleed"></div></div>
     <div class="field"><span>가장자리 확인용 인쇄 <small>(보정값 찾기)</small></span><button class="mini" id="calibBtn">인쇄해 보기</button></div>
     <div class="field"><span>프린터 연결 안내 <small>(처음 인쇄할 때 한 번 나옴)</small></span><button class="mini" id="printerReset">다시 보이기</button></div>
@@ -481,6 +483,17 @@ button:focus-visible { outline: 3px solid var(--yellow); outline-offset: 2px; }
 
 <script>
 "use strict";
+/* 아이패드 앱(네컷 포토부스 앱) 안에서 열렸는지: 앱이면 프린터로 바로 인쇄 */
+const NATIVE = !!(window.webkit && window.webkit.messageHandlers && window.webkit.messageHandlers.booth);
+const nativePending = {}; let nativeSeq = 0;
+window.__boothReply = (id, p) => { const f = nativePending[id]; if (!f) return; delete nativePending[id]; if (p && p.error && p.result === undefined) f.rej(new Error(p.error)); else f.res(p ? p.result : undefined); };
+function native(msg) {
+  return new Promise((res, rej) => {
+    const id = ++nativeSeq; nativePending[id] = { res, rej };
+    try { window.webkit.messageHandlers.booth.postMessage(Object.assign({ _id: id }, msg)); } catch (e) { delete nativePending[id]; rej(e); }
+  });
+}
+function blobToB64(blob) { return new Promise((res, rej) => { const r = new FileReader(); r.onload = () => res(String(r.result).split(",")[1]); r.onerror = rej; r.readAsDataURL(blob); }); }
 
 /* ───────── 설정 ───────── */
 const PAPERS = {
@@ -542,8 +555,11 @@ const FRAMES = [
   { cat: "계절·행사", name: "스트레인지", base: "#6b3da8", pattern: "theme", grad: ["#7b4bc0", "#4a2683"], emojis: ["🦁", "🐝", "🔥", "🛡️"], over: ["🦁", "🐝"], ink: "#ffd133" }
 ];
 const FILTERS = [
-  { id: "original", name: "원본" }, { id: "bright", name: "화사하게" }, { id: "warm", name: "따뜻하게" },
-  { id: "cool", name: "시원하게" }, { id: "mono", name: "흑백" }, { id: "vintage", name: "빈티지" }
+  { id: "original", name: "원본" }, { id: "bright", name: "화사하게" }, { id: "milk", name: "우유" },
+  { id: "fresh", name: "청량" }, { id: "peach", name: "복숭아" }, { id: "dream", name: "몽환" },
+  { id: "film", name: "필름" }, { id: "retro", name: "레트로" }, { id: "cinema", name: "시네마" },
+  { id: "vivid", name: "선명하게" }, { id: "warm", name: "따뜻하게" }, { id: "cool", name: "시원하게" },
+  { id: "mono", name: "흑백" }, { id: "monohi", name: "흑백 강하게" }, { id: "vintage", name: "빈티지" }
 ];
 const EMOJIS = "❤️ 💖 💕 ⭐️ 🌟 ✨ 🎉 🎈 🎀 👑 🌈 ☀️ 🌸 🌼 🍀 🦋 🐰 🐻 🐱 🐶 🦁 🐝 🍓 🍭 🍩 🧁 🍦 🎂 😀 😆 😍 🥰 😎 🤪 😜 🥳 👍 ✌️ 🫶 💯 🔥 💎 🎵 📸 🏆 🚀 ⚽️ 🎨".split(" ");
 const PHRASES = ["BEST FRIENDS", "HAPPY DAY", "LOVE", "친구 최고", "사랑해", "행복해", "우리 반 최고", "♡"];
@@ -797,11 +813,60 @@ function baseSpec(extra) {
    1) 자동 노출·대비(어두운/밝은 끝 1%를 기준으로 범위 맞추기) + 자동 화이트밸런스(회색 기준)
    2) 피부 영역만 골라(YCbCr 피부색 범위) 가장자리는 살리고 피부결만 부드럽게 (눈·입·머리카락은 그대로)
    3) 피부 톤을 살짝 밝고 화사하게 + 부드러운 빛번짐(글로우) */
+/* 한국식 보정 기준 (조사 결과)
+   - 한국 셀카앱(SNOW·B612·SODA·Ulike 등)은 '밝고 맑은 피부, 부드러운 피부결, 자연스러운 화사함'이 핵심
+   - 피부의 노란기·칙칙함은 라벤더(보라) 쪽으로, 창백함은 핑크로 보정하는 것이 일반적인 톤 보정 방법
+   - 얼굴형(갸름하게)·눈 크기 조절도 인기 기능이지만, 아이들 사진이라 기본은 꺼 두고 '아이돌'에서만 아주 약하게 */
 const RETOUCH = {
   off:     { name: "끄기" },
-  natural: { name: "자연스럽게", smooth: 0.6, bright: 0.5, glow: 0.10, pink: 0.35 },
-  glow:    { name: "뽀샤시",     smooth: 0.85, bright: 0.85, glow: 0.15, pink: 0.6 }
+  natural: { name: "자연스럽게", smooth: 0.6, bright: 0.55, glow: 0.08, pink: 0.35, ktone: 0.6 },
+  glow:    { name: "뽀샤시",     smooth: 0.85, bright: 0.9, glow: 0.15, pink: 0.55, ktone: 0.85 },
+  idol:    { name: "아이돌",     smooth: 0.85, bright: 0.85, glow: 0.13, pink: 0.55, ktone: 0.85, slim: 0.06, eyes: 0.10 }
 };
+/* 얼굴형 보정: 턱선을 얼굴 가운데로 살짝 당기고(갸름), 눈을 살짝 키움. 얼굴 점이 없으면 건너뜀 */
+function warpFace(c, faces, P) {
+  if (!faces || !faces.length || !(P.slim || P.eyes)) return;
+  const w = c.width, h = c.height, ctx = c.getContext("2d");
+  for (const F of faces) {
+    const pt = (i) => ({ x: F[i].x * w, y: F[i].y * h });
+    if (!F[454] || !F[234]) continue;
+    const fw = Math.hypot(pt(454).x - pt(234).x, pt(454).y - pt(234).y); if (fw < 30) continue;
+    const ops = [];
+    if (P.slim) {
+      const cx = pt(1).x, cy = pt(1).y;
+      for (const i of [132, 58, 172, 136, 150, 361, 288, 397, 365, 379]) {
+        const q = pt(i); ops.push({ type: "move", c: q, r: fw * 0.2, m: { x: (cx - q.x) * P.slim, y: (cy - q.y) * P.slim * 0.25 } });
+      }
+    }
+    if (P.eyes) {
+      for (const [a, b] of [[33, 133], [362, 263]]) {
+        const A = pt(a), B = pt(b), ew = Math.hypot(B.x - A.x, B.y - A.y);
+        ops.push({ type: "scale", c: { x: (A.x + B.x) / 2, y: (A.y + B.y) / 2 }, r: ew * 1.05, a: P.eyes });
+      }
+    }
+    for (const op of ops) {
+      const r = op.r, x0 = Math.max(0, Math.floor(op.c.x - r)), y0 = Math.max(0, Math.floor(op.c.y - r));
+      const x1 = Math.min(w, Math.ceil(op.c.x + r)), y1 = Math.min(h, Math.ceil(op.c.y + r)), bw = x1 - x0, bh = y1 - y0;
+      if (bw < 2 || bh < 2) continue;
+      const src = ctx.getImageData(x0, y0, bw, bh), dst = ctx.createImageData(bw, bh), S0 = src.data, D = dst.data, r2 = r * r;
+      const m2 = op.m ? op.m.x * op.m.x + op.m.y * op.m.y : 0;
+      for (let yy = 0; yy < bh; yy++) for (let xx = 0; xx < bw; xx++) {
+        const X = x0 + xx, Y = y0 + yy, dx = X - op.c.x, dy = Y - op.c.y, d2 = dx * dx + dy * dy;
+        let sxp = X, syp = Y;
+        if (d2 < r2) {
+          if (op.type === "move") { const k = (r2 - d2) / (r2 - d2 + m2); const f = k * k; sxp = X - op.m.x * f; syp = Y - op.m.y * f; }
+          else { const k = 1 - op.a * (1 - d2 / r2); sxp = op.c.x + dx * k; syp = op.c.y + dy * k; }
+        }
+        /* 양선형 보간 */
+        const fx = Math.min(bw - 1.001, Math.max(0, sxp - x0)), fy = Math.min(bh - 1.001, Math.max(0, syp - y0));
+        const ix = fx | 0, iy = fy | 0, tx = fx - ix, ty = fy - iy, o = (yy * bw + xx) * 4;
+        const i00 = (iy * bw + ix) * 4, i10 = i00 + 4, i01 = i00 + bw * 4, i11 = i01 + 4;
+        for (let ch = 0; ch < 4; ch++) D[o + ch] = (S0[i00 + ch] * (1 - tx) + S0[i10 + ch] * tx) * (1 - ty) + (S0[i01 + ch] * (1 - tx) + S0[i11 + ch] * tx) * ty;
+      }
+      ctx.putImageData(dst, x0, y0);
+    }
+  }
+}
 function boxBlurRGB(d, w, h, r) {
   const tmp = new Float32Array(w * h * 3), out = new Float32Array(w * h * 3), src = new Float32Array(w * h * 3);
   for (let i = 0, j = 0; i < d.length; i += 4, j += 3) { src[j] = d[i]; src[j + 1] = d[i + 1]; src[j + 2] = d[i + 2]; }
@@ -821,10 +886,11 @@ function boxBlurRGB(d, w, h, r) {
   for (let it = 0; it < 2; it++) { pass(A, tmp, true); pass(tmp, out, false); A = out.slice(); }
   return out;
 }
-function retouch(src, level) {
+function retouch(src, level, faces) {
   const P = RETOUCH[level]; if (!P || level === "off") return src;
   const w = src.width, h = src.height; if (!w || !h) return src;
   const c = makeCanvas(w, h), ctx = c.getContext("2d"); ctx.drawImage(src, 0, 0);
+  warpFace(c, faces, P);
   const img = ctx.getImageData(0, 0, w, h), d = img.data;
   /* 1) 통계 */
   const hist = new Uint32Array(256); let sr = 0, sg = 0, sb = 0, sn = 0;
@@ -869,8 +935,10 @@ function retouch(src, level) {
       const dy = Y - (0.299 * B[i] + 0.587 * B[i + 1] + 0.114 * B[i + 2]);
       const a = P.smooth * skin * Math.exp(-(dy * dy) / sig2);
       R += a * (B[i] - R); G += a * (B[i + 1] - G); Bl += a * (B[i + 2] - Bl);
-      const lift = P.bright * skin * 7, pk = P.pink * skin;
+      const lift = P.bright * skin * 7, pk = P.pink * skin, kt = (P.ktone || 0) * skin;
       R += lift + pk * 5; G += lift + pk * 1; Bl += lift + pk * 3;
+      /* 한국식 톤: 피부의 노란기를 라벤더 쪽으로(파랑↑ 초록↓) → 맑고 투명한 피부 */
+      R += kt * 1.5; G -= kt * 3.5; Bl += kt * 6;
     }
     if (P.glow) { const g = P.glow; R = R + g * B[i] * (1 - R / 255); G = G + g * B[i + 1] * (1 - G / 255); Bl = Bl + g * B[i + 2] * (1 - Bl / 255); }
     d[i] = R; d[i + 1] = G; d[i + 2] = Bl;
@@ -883,26 +951,50 @@ function shotImg(i, kind) {
   const sh = session.shots[i]; if (!sh) return null;
   const lvl = session.retouch || "off"; if (lvl === "off") return sh[kind];
   sh.rt = sh.rt || {}; const k = lvl + ":" + kind;
-  if (!sh.rt[k]) sh.rt[k] = retouch(sh[kind], lvl);
+  if (!sh.rt[k]) sh.rt[k] = retouch(sh[kind], lvl, sh.faces);
   return sh.rt[k];
 }
 
 /* ───────── 필터 (픽셀 계산) ───────── */
 function applyFilter(src, id) {
-  if (id === "original") return src;
-  const c = makeCanvas(src.width, src.height), ctx = c.getContext("2d");
+  if (id === "original" || !src || !src.width) return src;
+  const W = src.width, H = src.height, c = makeCanvas(W, H), ctx = c.getContext("2d");
   ctx.drawImage(src, 0, 0);
-  const img = ctx.getImageData(0, 0, c.width, c.height), d = img.data;
-  for (let i = 0; i < d.length; i += 4) {
+  const img = ctx.getImageData(0, 0, W, H), d = img.data;
+  /* 몽환: 흐린 사진을 겹쳐 빛번짐 */
+  let B = null;
+  if (id === "dream") {
+    const sw = Math.max(1, Math.round(W / 3)), sh = Math.max(1, Math.round(H / 3)), sm = makeCanvas(sw, sh), sc = sm.getContext("2d");
+    sc.drawImage(c, 0, 0, sw, sh); const sd = sc.getImageData(0, 0, sw, sh), bl = boxBlurRGB(sd.data, sw, sh, Math.max(2, Math.round(sw * 0.02)));
+    for (let i = 0, j = 0; i < sd.data.length; i += 4, j += 3) { sd.data[i] = bl[j]; sd.data[i + 1] = bl[j + 1]; sd.data[i + 2] = bl[j + 2]; }
+    sc.putImageData(sd, 0, 0); const big = makeCanvas(W, H), bc = big.getContext("2d"); bc.drawImage(sm, 0, 0, W, H);
+    B = bc.getImageData(0, 0, W, H).data; freeCanvas(sm); freeCanvas(big);
+  }
+  const grain = id === "film" ? 10 : id === "retro" ? 16 : 0, vig = id === "retro" ? 0.45 : id === "film" ? 0.2 : id === "cinema" ? 0.3 : 0;
+  const cx = W / 2, cy = H / 2, maxd = Math.hypot(cx, cy); let seed = 12345;
+  const sat = (r, g, b, k) => { const m = 0.299 * r + 0.587 * g + 0.114 * b; return [m + (r - m) * k, m + (g - m) * k, m + (b - m) * k]; };
+  for (let i = 0, px = 0; i < d.length; i += 4, px++) {
     let r = d[i], g = d[i + 1], b = d[i + 2];
-    if (id === "bright") { r = r * 1.18 + 14; g = g * 1.18 + 14; b = b * 1.16 + 16; const m = (r + g + b) / 3; r = m + (r - m) * 0.92; g = m + (g - m) * 0.92; b = m + (b - m) * 0.92; }
-    else if (id === "warm") { r *= 1.08; g *= 1.02; b *= 0.88; }
-    else if (id === "cool") { r *= 0.92; b *= 1.1; }
-    else if (id === "mono") { const y = 0.299 * r + 0.587 * g + 0.114 * b; r = g = b = (y - 128) * 1.08 + 128; }
-    else if (id === "vintage") {
-      const sr = 0.393 * r + 0.769 * g + 0.189 * b, sg = 0.349 * r + 0.686 * g + 0.168 * b, sb = 0.272 * r + 0.534 * g + 0.131 * b;
-      r = r * 0.6 + sr * 0.4 + 10; g = g * 0.6 + sg * 0.4 + 8; b = b * 0.6 + sb * 0.4 + 4;
+    switch (id) {
+      case "bright": r = r * 1.18 + 14; g = g * 1.18 + 14; b = b * 1.16 + 16; [r, g, b] = sat(r, g, b, 0.92); break;
+      case "milk": [r, g, b] = sat(r, g, b, 0.82); r = 26 + r * 0.9 + 6; g = 26 + g * 0.9 + 3; b = 26 + b * 0.9; break;
+      case "fresh": [r, g, b] = sat(r, g, b, 1.12); r = r * 0.95 + 6; g = g * 1.02 + 8; b = b * 1.1 + 10; if (r + g + b < 240) { g += 4; b += 8; } break;
+      case "peach": [r, g, b] = sat(r, g, b, 0.95); r = r * 1.06 + 12; g = g * 1.0 + 6; b = b * 0.97 + 8; break;
+      case "dream": { const k = 0.38; r = r + k * B[i] * (1 - r / 255); g = g + k * B[i + 1] * (1 - g / 255); b = b + k * B[i + 2] * (1 - b / 255); [r, g, b] = sat(r, g, b, 0.85); r += 4; b += 8; break; }
+      case "film": { [r, g, b] = sat(r, g, b, 0.9); r = 18 + r * 0.92 * 1.04; g = 16 + g * 0.92; b = 14 + b * 0.92 * 0.92; if (r + g + b < 200) { g += 4; } break; }
+      case "retro": { const sr = 0.393 * r + 0.769 * g + 0.189 * b, sg = 0.349 * r + 0.686 * g + 0.168 * b, sb = 0.272 * r + 0.534 * g + 0.131 * b;
+        r = 20 + (r * 0.5 + sr * 0.5) * 0.88; g = 18 + (g * 0.5 + sg * 0.5) * 0.86; b = 14 + (b * 0.5 + sb * 0.5) * 0.8; break; }
+      case "cinema": { const y = 0.299 * r + 0.587 * g + 0.114 * b, t = y / 255; r = r + (t - 0.5) * 30; b = b - (t - 0.5) * 34 + 6; g = g + 2; [r, g, b] = sat(r, g, b, 1.05); break; }
+      case "vivid": [r, g, b] = sat(r, g, b, 1.28); r = (r - 128) * 1.1 + 128; g = (g - 128) * 1.1 + 128; b = (b - 128) * 1.1 + 128; break;
+      case "warm": r *= 1.08; g *= 1.02; b *= 0.88; break;
+      case "cool": r *= 0.92; b *= 1.1; break;
+      case "mono": { const y = 0.299 * r + 0.587 * g + 0.114 * b; r = g = b = (y - 128) * 1.08 + 128; break; }
+      case "monohi": { const y = 0.299 * r + 0.587 * g + 0.114 * b; r = g = b = (y - 128) * 1.45 + 128; break; }
+      case "vintage": { const sr = 0.393 * r + 0.769 * g + 0.189 * b, sg = 0.349 * r + 0.686 * g + 0.168 * b, sb = 0.272 * r + 0.534 * g + 0.131 * b;
+        r = r * 0.6 + sr * 0.4 + 10; g = g * 0.6 + sg * 0.4 + 8; b = b * 0.6 + sb * 0.4 + 4; break; }
     }
+    if (vig) { const x = px % W, y = (px / W) | 0, dd = Math.hypot(x - cx, y - cy) / maxd, f = 1 - vig * dd * dd; r *= f; g *= f; b *= f; }
+    if (grain) { seed = (seed * 1103515245 + 12345) & 0x7fffffff; const n = ((seed >> 8) % 1000 / 1000 - 0.5) * grain; r += n; g += n; b += n; }
     d[i] = r > 255 ? 255 : r < 0 ? 0 : r; d[i + 1] = g > 255 ? 255 : g < 0 ? 0 : g; d[i + 2] = b > 255 ? 255 : b < 0 ? 0 : b;
   }
   ctx.putImageData(img, 0, 0); return c;
@@ -1184,10 +1276,11 @@ const FX = {
   lib: null, lm: null, loading: false, failed: false, cur: "none", raf: null, faces: [], lastT: 0,
   on() { return S.faceFx && this.cur !== "none" && !!this.lm; },
   async load() {
-    if (this.lm || this.loading || this.failed || !S.faceFx) return;
+    if (this.lm || this.loading || this.failed) return;
     this.loading = true; this.drawBar();
     try {
-      const base = "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.14";
+      /* 라이브러리를 앱 안(mp 폴더)에 넣어 둬서 인터넷 없이도 동작 */
+      const base = new URL("mp/tasks-vision", location.href).href;
       this.lib = await import(base + "/vision_bundle.mjs");
       const files = await this.lib.FilesetResolver.forVisionTasks(base + "/wasm");
       const make = (delegate) => this.lib.FaceLandmarker.createFromOptions(files, {
@@ -1214,20 +1307,27 @@ const FX = {
   start() { cancelAnimationFrame(this.raf); const loop = () => { if (current !== "shoot") return; this.detectNow(); this.raf = requestAnimationFrame(loop); }; this.raf = requestAnimationFrame(loop); },
   stop() { cancelAnimationFrame(this.raf); this.raf = null; this.faces = []; this.clear(); },
   clear() { const c = $("fxCanvas"); c.getContext("2d").clearRect(0, 0, c.width, c.height); },
-  detectNow() {
+  detectNow(force) {
     const v = $("video"), c = $("fxCanvas");
-    if (!this.on() || !v.videoWidth || v.readyState < 2) return;
+    if (!this.lm || !(force || this.on()) || !v.videoWidth || v.readyState < 2) return;
     if (c.width !== v.videoWidth || c.height !== v.videoHeight) { c.width = v.videoWidth; c.height = v.videoHeight; }
     let t = performance.now(); if (t <= this.lastT) t = this.lastT + 1; this.lastT = t;
     let res; try { res = this.lm.detectForVideo(v, t); } catch (e) { return; }
     const W = c.width, H = c.height, raw = (res && res.faceLandmarks) || [];
+    this.raw = raw;
     /* 떨림 줄이기: 이전 위치와 섞기 */
     this.faces = raw.map((pts, k) => {
       const prev = this.faces[k];
       return pts.map((p, i) => { const x = p.x * W, y = p.y * H; if (prev && prev[i]) return { x: prev[i].x * 0.45 + x * 0.55, y: prev[i].y * 0.45 + y * 0.55 }; return { x, y }; });
     });
     const ctx = c.getContext("2d"); ctx.clearRect(0, 0, W, H);
-    for (const f of this.faces) drawFaceFx(ctx, f, this.cur, t);
+    if (this.on()) for (const f of this.faces) drawFaceFx(ctx, f, this.cur, t);
+  },
+  /* 찍은 사진(좌우 반전·확대된 화면) 기준 얼굴 점 → 얼굴형 보정에 사용 */
+  facesForStill() {
+    const v = $("video"), vw = v.videoWidth, vh = v.videoHeight; if (!this.raw || !vw) return [];
+    const z = Math.max(1, S.zoom || 1), sw = vw / z, sh = vh / z, sx = (vw - sw) / 2, sy = (vh - sh) / 2;
+    return this.raw.map((pts) => pts.map((p) => ({ x: 1 - (p.x * vw - sx) / sw, y: (p.y * vh - sy) / sh })));
   }
 };
 function drawFaceFx(ctx, P, id, t) {
@@ -1339,14 +1439,14 @@ ENTER.shoot = async () => {
     $("countNum").textContent = "";
     await ensureLive(2500); if (run !== shootRun) { stopLive(); return; }
     $("flash").classList.add("on"); shutterSound();
-    FX.detectNow();
+    FX.detectNow(true);
     let still = grabFrame(1400);
     for (let tries = 0; still && looksBlank(still) && tries < 3; tries++) { freeCanvas(still); await ensureLive(1500); still = grabFrame(1400); }   /* 검은 화면이 찍히면 다시 */
     const live = stopLive();
     await sleep(160); $("flash").classList.remove("on");
     if (still) {
       const thumb = downscale(still, 700);
-      session.shots.push({ still, thumb, live });
+      session.shots.push({ still, thumb, live, faces: FX.facesForStill() });
       const t = makeCanvas(thumb.width, thumb.height); t.getContext("2d").drawImage(thumb, 0, 0); $("shootThumbs").appendChild(t);
     }
     await sleep(600);
@@ -1586,7 +1686,16 @@ const PRINT_TEXT = {
     note: "처음 한 번 SELPHY를 고르면 다음부터는 자동으로 골라져 있어요.", btn: "프린터 고르러 가기",
     tip: "목록에 SELPHY가 안 보이면: SELPHY를 껐다 켜고, 아이패드 Wi-Fi가 SELPHY와 같은지 확인한 뒤 10초쯤 기다려 주세요. AirPrint로 인쇄가 안 되면 관리자 설정에서 인쇄 방법을 ‘캐논 앱’으로 바꿔 주세요." }
 };
+let nativeCopies = 1;
 function printTexts() {
+  $("nativeCopies").hidden = !NATIVE;
+  if (NATIVE) {
+    $("printSteps").innerHTML = ["몇 장 뽑을지 고르기", "<b>인쇄하기</b>를 누르면 바로 인쇄!", "프린터 앞에서 사진 기다리기"].map((x) => "<li><span>" + x + "</span></li>").join("");
+    $("printNote").textContent = "SELPHY로 바로 보내요. 인쇄 창이 따로 뜨지 않아요.";
+    $("printAlt").hidden = true; $("printerHelpBtn").textContent = "프린터 다시 고르기";
+    nativeCopies = 1; seg($("copySeg"), [1, 2, 3, 4], () => nativeCopies, (v) => { nativeCopies = v; }, (v) => v + "장");
+    return;
+  }
   const t = PRINT_TEXT[S.printVia] || PRINT_TEXT.canon;
   $("printSteps").innerHTML = t.steps.map((x) => "<li><span>" + x + "</span></li>").join("");
   $("printNote").textContent = t.note; $("printerGo").textContent = t.btn; $("printerTip").textContent = t.tip;
@@ -1632,8 +1741,34 @@ $("printAlt").addEventListener("click", printViaSafari);
 $("photoClose").addEventListener("click", () => { $("photoModal").hidden = true; });
 $("photoSent").addEventListener("click", () => { $("photoModal").hidden = true; startPrinting(); });
 /* 인쇄 순서: (카트리지 확인) → (처음이면 프린터 연결 안내) → 공유 창의 프린트 */
-function printFlow() { if (!S.printerReady) openPrinterHelp(); else doPrint(); }
-function openPrinterHelp() { printTexts(); $("printerModal").hidden = false; say("printer"); }
+function printFlow() { if (NATIVE) nativePrint(); else if (!S.printerReady) openPrinterHelp(); else doPrint(); }
+/* 앱: 저장해 둔 SELPHY로 인쇄 창 없이 바로 보냄 (앱이 엽서 용지를 직접 지정) */
+let nativeBusy = false;
+async function nativePrint() {
+  if (!session.finalBlob || nativeBusy) return;
+  nativeBusy = true; $("printBtn").disabled = true; $("saveBtn2").disabled = true;
+  $("printMsg").textContent = "프린터로 보내는 중…"; $("printErr").textContent = "";
+  let r;
+  try { r = await native({ cmd: "print", jpeg: await blobToB64(session.finalBlob), copies: nativeCopies, paper: S.paper }); }
+  catch (e) { r = { ok: false, error: String(e) }; }
+  nativeBusy = false; $("printBtn").disabled = false; $("saveBtn2").disabled = false;
+  if (r && r.ok) { startPrinting(false, nativeCopies); return; }
+  const err = (r && r.error) || "";
+  if (err === "no-printer") {
+    $("printMsg").textContent = "프린터를 먼저 골라 주세요";
+    const p = await native({ cmd: "pickPrinter" }).catch(() => null);
+    if (p && p.name) $("printMsg").textContent = p.name + " 연결! 인쇄하기를 다시 눌러 주세요";
+  } else if (err === "unavailable") {
+    $("printMsg").textContent = "프린터를 찾을 수 없어요";
+    $("printNote").innerHTML = "SELPHY 전원이 켜져 있는지, 아이패드와 <b>같은 Wi-Fi</b>인지 확인하고 다시 눌러 주세요. 용지는 그대로라 낭비되지 않아요.";
+  } else {
+    $("printMsg").textContent = "인쇄를 보내지 못했어요";
+    $("printNote").textContent = err === "cancelled" ? "인쇄가 취소됐어요." : (err || "다시 한 번 눌러 주세요.");
+  }
+}
+function openPrinterHelp() {
+  if (NATIVE) { native({ cmd: "pickPrinter" }).then((p) => { if (p && p.name) $("printMsg").textContent = p.name + " 연결됨"; }).catch(() => {}); return; }
+  printTexts(); $("printerModal").hidden = false; say("printer"); }
 $("printerHelpBtn").addEventListener("click", openPrinterHelp);
 $("printerClose").addEventListener("click", () => { $("printerModal").hidden = true; });
 $("printerGo").addEventListener("click", () => { $("printerModal").hidden = true; S.printerReady = true; saveSettings(); doPrint(); });
@@ -1668,10 +1803,11 @@ function makeLayers() {
   const blank = makeCanvas(w, h); const bx = blank.getContext("2d"); bx.fillStyle = "#fff"; bx.fillRect(0, 0, w, h);
   return { blank, y: mk(false, false), m: mk(false, true), c: src, w, h };
 }
-let pgReturned = false;
-function startPrinting(returned) { pgReturned = !!returned; go("printing"); }
+let pgReturned = false, pgPreset = 0;
+function startPrinting(returned, copies) { pgReturned = !!returned; pgPreset = copies || 0; go("printing"); }
 ENTER.printing = () => {
-  PG.copies = 1; PG.finished = false; clearTimeout(PG.autoTimer);
+  PG.copies = pgPreset || 1; PG.finished = false; clearTimeout(PG.autoTimer);
+  document.querySelector("#s-printing .copiesPick").hidden = !!pgPreset;
   if (PG.layers) ["blank", "y", "m", "c"].forEach((k) => freeCanvas(PG.layers[k]));
   PG.layers = makeLayers();
   const cv = $("pgPaper"); cv.width = PG.layers.w; cv.height = PG.layers.h;
@@ -1781,6 +1917,14 @@ $("shareBtn").addEventListener("click", () => shareSave($("shareErr")));
 async function shareSave(errEl) {
   errEl.textContent = "";
   if (!session.finalBlob) return;
+  if (NATIVE) {
+    try {
+      const files = [{ name: "photobooth.jpg", mime: "image/jpeg", b64: await blobToB64(session.finalBlob) }];
+      if (session.liveBlob) files.push({ name: "photobooth-live." + (session.liveBlob.type.includes("mp4") ? "mp4" : "webm"), mime: session.liveBlob.type, b64: await blobToB64(session.liveBlob) });
+      await native({ cmd: "share", files });
+    } catch (e) { errEl.textContent = "보내지 못했어요."; }
+    return;
+  }
   const files = [new File([session.finalBlob], "photobooth.jpg", { type: "image/jpeg" })];
   if (session.liveBlob) { const ext = session.liveBlob.type.includes("mp4") ? "mp4" : "webm"; files.push(new File([session.liveBlob], "photobooth-live." + ext, { type: session.liveBlob.type })); }
   try {
@@ -1829,6 +1973,8 @@ function openAdmin() {
   toggle($("setFaceFx"), "faceFx"); toggle($("setVoice"), "voice"); toggle($("setSound"), "sound");
   $("setDate").addEventListener("click", drawCaptionPreview);
   seg($("setRetouch"), Object.keys(RETOUCH), () => S.retouch, (v) => { S.retouch = v; }, (v) => RETOUCH[v].name);
+  $("viaRow").hidden = NATIVE; $("nativePrinterRow").hidden = !NATIVE;
+  if (NATIVE) native({ cmd: "info" }).then((i) => { $("nativePrinterName").textContent = (i && i.printer) ? "(" + i.printer + ")" : "(선택 안 됨)"; }).catch(() => {});
   seg($("setVia"), ["canon", "airprint"], () => S.printVia, (v) => { S.printVia = v; S.printerReady = false; }, (v) => v === "canon" ? "캐논 앱" : "AirPrint");
   seg($("setBleed"), [0, 1, 2, 3, 4], () => Number(S.bleed), (v) => { S.bleed = v; }, (v) => v + "mm");
   $("printerReset").onclick = () => { S.printerReady = false; $("printerReset").textContent = "다음 인쇄 때 보여요"; };
@@ -1841,8 +1987,12 @@ function drawCaptionPreview() {
   $("captionPreview").innerHTML = ((t ? escapeHtml(t) : "") + (d ? "<small>" + d + "</small>" : "")) || "<small>(사진 아래 글자 없음)</small>";
 }
 function escapeHtml(t) { return t.replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[c]); }
+$("pickPrinterBtn").addEventListener("click", () => {
+  native({ cmd: "pickPrinter" }).then((p) => { if (p && p.name) $("nativePrinterName").textContent = "(" + p.name + ")"; }).catch(() => {});
+});
 $("calibBtn").addEventListener("click", async () => {
   const c = makeCalibration(), blob = await canvasToBlob(c, "image/jpeg", 0.95), file = new File([blob], "edge-test.jpg", { type: "image/jpeg" });
+  if (NATIVE) { native({ cmd: "print", jpeg: await blobToB64(blob), copies: 1, paper: S.paper }).catch(() => {}); return; }
   try { if (navigator.canShare && navigator.canShare({ files: [file] })) await navigator.share({ files: [file], title: "가장자리 확인" }); } catch (e) {}
 });
 $("voiceTest").addEventListener("click", async () => {
@@ -1857,6 +2007,8 @@ $("adminClose").addEventListener("click", () => {
 });
 
 /* 시작 */
+/* 앱 안에서 카메라를 쓸 수 없는 주소로 열렸으면 인터넷 주소로 바꿔 달라고 앱에 요청 */
+if (NATIVE && !window.isSecureContext) native({ cmd: "useRemote" }).catch(() => {});
 go("attract");
 if (document.fonts && document.fonts.load) { document.fonts.load('40px "Jua"').catch(() => {}); }
 </script>
