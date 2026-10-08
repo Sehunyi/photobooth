@@ -66,17 +66,17 @@ button:focus-visible { outline: 3px solid var(--yellow); outline-offset: 2px; }
 
 /* 1. 대기 */
 /* 시작 화면: 밝고 화사한 파스텔 그라데이션 + 반짝이는 빛 방울 */
-#s-attract { background: linear-gradient(120deg, #ffd3ea, #ffe6c7, #fff6b3, #cdf3e4, #d3e5ff, #ead7ff, #ffd3ea); background-size: 400% 400%; animation: dreamy 18s ease-in-out infinite; color: #fff; align-items: center; justify-content: center; gap: 26px; text-align: center; overflow: hidden; }
-@keyframes dreamy { 0% { background-position: 0% 50%; } 50% { background-position: 100% 50%; } 100% { background-position: 0% 50%; } }
-#s-attract::before { content: ""; position: absolute; inset: -20%; background: radial-gradient(circle at 30% 30%, rgba(255,255,255,.75), transparent 40%), radial-gradient(circle at 75% 70%, rgba(255,255,255,.55), transparent 42%); animation: glowMove 12s ease-in-out infinite alternate; pointer-events: none; }
-@keyframes glowMove { from { transform: translate(-4%, -3%); } to { transform: translate(4%, 3%); } }
+/* (성능) 배경은 고정 그라데이션 2장을 겹쳐 '투명도'만 천천히 바꿈 → 화면을 다시 그리지 않아 가볍다 */
+#s-attract { background: linear-gradient(120deg, #ffd3ea, #ffe6c7 35%, #fff6b3 60%, #d3f3e6); color: #fff; align-items: center; justify-content: center; gap: 26px; text-align: center; overflow: hidden; }
+#s-attract::before { content: ""; position: absolute; inset: 0; background: linear-gradient(300deg, #d3e5ff, #ead7ff 40%, #ffd3ea 75%, #fff1c9); opacity: 0; animation: fadeSwap 14s ease-in-out infinite alternate; pointer-events: none; will-change: opacity; }
+@keyframes fadeSwap { from { opacity: 0; } to { opacity: .85; } }
 #s-attract > * { position: relative; z-index: 1; }
 .bokeh { position: absolute !important; inset: 0; z-index: 0 !important; pointer-events: none; overflow: hidden; }
-.bokeh span { position: absolute; bottom: -80px; border-radius: 50%; animation: rise linear infinite; }
+.bokeh span { position: absolute; bottom: -80px; border-radius: 50%; animation: rise linear infinite; will-change: transform, opacity; }
 .bokeh span.dot { background: radial-gradient(circle at 35% 35%, rgba(255,255,255,.95), rgba(255,255,255,.25) 60%, rgba(255,255,255,0) 72%); }
 .bokeh span.bk-emo { font-family: "Apple Color Emoji", "Segoe UI Emoji", sans-serif; border-radius: 0; line-height: 1; }
 @keyframes rise { 0% { transform: translateY(0) translateX(0) rotate(0); opacity: 0; } 10% { opacity: .95; } 50% { transform: translateY(-55vh) translateX(24px) rotate(12deg); } 90% { opacity: .9; } 100% { transform: translateY(-115vh) translateX(-18px) rotate(-10deg); opacity: 0; } }
-#s-attract .card { background: rgba(255, 240, 250, .35); border: 3px solid rgba(255, 255, 255, .85); border-radius: 36px; padding: 26px 44px 30px; box-shadow: 0 18px 50px rgba(170, 110, 210, .25); backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px); display: flex; flex-direction: column; align-items: center; gap: 14px; }
+#s-attract .card { background: rgba(255, 245, 252, .55); border: 3px solid rgba(255, 255, 255, .85); border-radius: 36px; padding: 26px 44px 30px; box-shadow: 0 18px 50px rgba(170, 110, 210, .25); display: flex; flex-direction: column; align-items: center; gap: 14px; }
 #s-attract h2 { margin: 0; font-family: var(--display); font-weight: 400; font-size: clamp(48px, 8.5vw, 96px); line-height: 1.05; padding: 0 12px; text-wrap: balance; color: #fff;
   text-shadow: 0 3px 0 #ff8fc1, 0 6px 0 #a777ee, 0 10px 0 rgba(120, 70, 190, .35), 0 16px 30px rgba(150, 80, 200, .4); letter-spacing: .02em; -webkit-text-stroke: 1px rgba(160, 100, 220, .35); }
 #s-attract .sub { font-family: var(--display); font-size: 24px; color: #8a5ac8; }
@@ -141,6 +141,9 @@ button:focus-visible { outline: 3px solid var(--yellow); outline-offset: 2px; }
 .tab.on { background: var(--purple); color: #fff; }
 .seg.retouchSeg { display: grid; grid-template-columns: repeat(4, 1fr); border-radius: 14px; }
 .seg.retouchSeg button { font-family: var(--display); font-size: 20px; padding: 12px 6px; }
+.seg.bgSeg { display: grid; grid-template-columns: repeat(4, 1fr); border-radius: 14px; }
+.seg.bgSeg button { font-family: var(--display); font-size: 17px; padding: 10px 4px; }
+#aiState { font-family: var(--body); font-size: 14px; color: var(--muted); }
 .filters { display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 12px; }
 .flt { background: var(--card); border-radius: 14px; padding: 6px; border: 4px solid transparent; display: flex; flex-direction: column; align-items: center; gap: 6px; font-size: 17px; color: var(--ink); }
 .flt canvas { width: 100%; height: 96px; object-fit: cover; border-radius: 8px; }
@@ -331,6 +334,10 @@ button:focus-visible { outline: 3px solid var(--yellow); outline-offset: 2px; }
         <div data-pane="filter">
           <div class="label" style="font-size:19px;margin-bottom:8px">✨ 자동 보정</div>
           <div class="seg retouchSeg" id="retouchSeg"></div>
+          <div class="aiBox" id="aiBox" hidden>
+            <div class="label" style="font-size:19px;margin:14px 0 8px">🎨 배경 바꾸기 <small id="aiState"></small></div>
+            <div class="seg bgSeg" id="bgSeg"></div>
+          </div>
           <div class="label" style="font-size:19px;margin:14px 0 8px">필터</div>
           <div class="filters" id="filterList"></div>
         </div>
@@ -473,6 +480,8 @@ button:focus-visible { outline: 3px solid var(--yellow); outline-offset: 2px; }
     <div class="field"><span>목소리·소리 확인</span><button class="mini" id="voiceTest">들어보기</button></div>
     <div class="field"><span>효과음 (찰칵 · 삐)</span><button class="toggle" id="setSound" aria-label="효과음"></button></div>
     <div class="field"><span>얼굴 따라다니는 효과</span><button class="toggle" id="setFaceFx" aria-label="얼굴 효과"></button></div>
+    <div class="field"><span>배경 바꾸기 <small>(사람만 남기고 배경 교체)</small></span><button class="toggle" id="setAi" aria-label="AI 보정"></button></div>
+    <div class="field"><span>화질 개선 <small>(인쇄 사진을 선명하게)</small></span><button class="toggle" id="setSharpen" aria-label="화질 개선"></button></div>
     <div class="field"><span>자동 보정 기본값</span><div class="seg" id="setRetouch"></div></div>
     <div class="field" id="nativePrinterRow" hidden><span>프린터 <small id="nativePrinterName">(선택 안 됨)</small></span><button class="mini" id="pickPrinterBtn">프린터 선택</button></div>
     <div class="field" id="viaRow"><span>인쇄 방법</span><div class="seg" id="setVia"></div></div>
@@ -588,7 +597,7 @@ const DPI = 300;
 const EMOJI_FONT = '"Apple Color Emoji","Segoe UI Emoji","Noto Color Emoji",sans-serif';
 const DISPLAY_FONT = '"Jua","Apple SD Gothic Neo",sans-serif';
 
-const DEFAULTS = { paper: "postcard", extra: 2, countdown: 7, zoom: 1, attractTitle: "PHOTO BOOTH", title: "PHOTO BOOTH", showDate: true, timers: true, cassette: true, printerReady: false, printVia: "canon", bleed: 2, retouch: "natural", faceFx: true, voice: true, voiceName: "", sound: true, pin: "0000" };
+const DEFAULTS = { paper: "postcard", extra: 2, countdown: 7, zoom: 1, attractTitle: "PHOTO BOOTH", title: "PHOTO BOOTH", showDate: true, timers: true, cassette: true, printerReady: false, printVia: "canon", bleed: 2, retouch: "natural", faceFx: true, aiRetouch: true, sharpen: true, voice: true, voiceName: "", sound: true, pin: "0000" };
 let S = loadSettings();
 function loadSettings() {
   try { const raw = localStorage.getItem("booth.settings"); if (raw) { const o = Object.assign({}, DEFAULTS, JSON.parse(raw)); delete o.shots; delete o.maxCopies; return o; } } catch (e) {}
@@ -599,7 +608,7 @@ function saveSettings() { try { localStorage.setItem("booth.settings", JSON.stri
 /* ───────── 한 팀의 촬영 데이터 ───────── */
 const session = {
   copies: 1, layout: "strip4", frame: 0, shots: [], slots: [null, null, null, null], active: 0,
-  filter: "original", retouch: "natural", stickers: [], finalCanvas: null, finalBlob: null, liveBlob: null, filtered: {}
+  filter: "original", retouch: "natural", bg: "none", stickers: [], finalCanvas: null, finalBlob: null, liveBlob: null, filtered: {}
 };
 /* ── 메모리 관리 ──
    아이패드 Safari는 캔버스 메모리 한도를 넘으면 그림이 '빈 화면'으로 만들어짐 → 백지 인쇄의 원인.
@@ -608,7 +617,7 @@ function freeCanvas(c) { try { if (c && c.getContext) { c.width = 0; c.height = 
 const objectURLs = [];
 function trackURL(u) { objectURLs.push(u); return u; }
 function releaseSession() {
-  (session.shots || []).forEach((sh) => { freeCanvas(sh.still); freeCanvas(sh.thumb); (sh.live || []).forEach(freeCanvas); Object.values(sh.rt || {}).forEach(freeCanvas); });
+  (session.shots || []).forEach((sh) => { freeCanvas(sh.still); freeCanvas(sh.thumb); (sh.live || []).forEach(freeCanvas); Object.values(sh.rt || {}).forEach(freeCanvas); if (sh.ai) { freeCanvas(sh.ai.person); freeCanvas(sh.ai.skin); } });
   Object.values(session.filtered || {}).forEach(freeCanvas);
   freeCanvas(session.finalCanvas);
   if (typeof PG !== "undefined" && PG.layers) { ["blank", "y", "m", "c"].forEach((k) => freeCanvas(PG.layers[k])); PG.layers = null; }
@@ -640,7 +649,7 @@ function resetSession() {
   releaseSession();
   hintShown = false;
   Object.assign(session, { copies: 1, layout: "strip4", frame: 0, shots: [], slots: [null, null, null, null], active: 0,
-    filter: "original", retouch: (RETOUCH[S.retouch] ? S.retouch : "natural"), stickers: [], finalCanvas: null, finalBlob: null, liveBlob: null, filtered: {} });
+    filter: "original", retouch: (RETOUCH[S.retouch] ? S.retouch : "natural"), bg: "none", stickers: [], finalCanvas: null, finalBlob: null, liveBlob: null, filtered: {} });
 }
 
 /* ───────── 도구 ───────── */
@@ -909,7 +918,7 @@ function boxBlurRGB(d, w, h, r) {
   for (let it = 0; it < 2; it++) { pass(A, tmp, true); pass(tmp, out, false); A = out.slice(); }
   return out;
 }
-function retouch(src, level, faces) {
+function retouch(src, level, faces, skinMask) {
   const P = RETOUCH[level]; if (!P || level === "off") return src;
   const w = src.width, h = src.height; if (!w || !h) return src;
   const c = makeCanvas(w, h), ctx = c.getContext("2d"); ctx.drawImage(src, 0, 0);
@@ -953,13 +962,13 @@ function retouch(src, level, faces) {
   const big = makeCanvas(w, h), bctx = big.getContext("2d"); bctx.imageSmoothingQuality = "high"; bctx.drawImage(sm, 0, 0, w, h);
   const B = bctx.getImageData(0, 0, w, h).data;
   freeCanvas(sm); freeCanvas(big);
-  /* 3) 피부만 부드럽게 + 화사하게 + 글로우 */
-  const sig2 = 2 * 22 * 22;
-  for (let i = 0; i < d.length; i += 4) {
+  /* 3) 피부만 부드럽게 + 화사하게 + 글로우 (AI 피부 마스크가 있으면 그것으로 정확하게) */
+  const sig2 = 2 * 22 * 22, SK = skinMask ? maskAt(skinMask, w, h) : null;
+  for (let i = 0, px = 0; i < d.length; i += 4, px++) {
     let R = d[i], G = d[i + 1], Bl = d[i + 2];
     const Y = 0.299 * R + 0.587 * G + 0.114 * Bl, Cb = 128 - 0.1687 * R - 0.3313 * G + 0.5 * Bl, Cr = 128 + 0.5 * R - 0.4187 * G - 0.0813 * Bl;
     const dCb = Cb < 77 ? 77 - Cb : Cb > 127 ? Cb - 127 : 0, dCr = Cr < 133 ? 133 - Cr : Cr > 173 ? Cr - 173 : 0;
-    let skin = Math.max(0, 1 - Math.max(dCb, dCr) / 10) * (Y > 45 ? 1 : Y / 45);
+    let skin = SK ? SK[px] / 255 : Math.max(0, 1 - Math.max(dCb, dCr) / 10) * (Y > 45 ? 1 : Y / 45);
     if (skin > 0) {
       const dy = Y - (0.299 * B[i] + 0.587 * B[i + 1] + 0.114 * B[i + 2]);
       const a = P.smooth * skin * Math.exp(-(dy * dy) / sig2);
@@ -981,9 +990,14 @@ function retouch(src, level, faces) {
 /* 사진 한 장의 보정본 (한 번 만들면 저장해 두고 다시 씀) */
 function shotImg(i, kind) {
   const sh = session.shots[i]; if (!sh) return null;
-  const lvl = session.retouch || "off"; if (lvl === "off") return sh[kind];
-  sh.rt = sh.rt || {}; const k = lvl + ":" + kind;
-  if (!sh.rt[k]) sh.rt[k] = retouch(sh[kind], lvl, sh.faces);
+  const lvl = session.retouch || "off", bg = (sh.ai && session.bg) || "none";
+  if (lvl === "off" && bg === "none") return sh[kind];
+  sh.rt = sh.rt || {}; const k = lvl + ":" + bg + ":" + kind;
+  if (!sh.rt[k]) {
+    let c = retouch(sh[kind], lvl, sh.faces, null);
+    if (bg !== "none") { const b = applyBg(c, bg, sh.ai.person); if (c !== sh[kind]) freeCanvas(c); c = b; }
+    sh.rt[k] = c;
+  }
   return sh.rt[k];
 }
 
@@ -1161,7 +1175,7 @@ const ENTER = {};
 ENTER.attract = () => { $("attractTitle").textContent = S.attractTitle || "PHOTO BOOTH"; };
 $("s-attract").addEventListener("click", (e) => {
   if (e.target.id === "adminCorner") return;
-  unlockAudio(); keepAwake(); resetSession(); FX.cur = "none"; go("frame"); FX.load();
+  unlockAudio(); keepAwake(); resetSession(); FX.cur = "none"; go("frame");
 });
 let cornerTaps = [];
 $("adminCorner").addEventListener("click", (e) => {
@@ -1292,6 +1306,167 @@ function layoutCamFrame() {
 /* ───────── 얼굴 따라다니는 효과 (맥 Photo Booth처럼) ─────────
    구글 MediaPipe 얼굴 인식(브라우저 안에서 실행, 사진은 밖으로 나가지 않음)으로 얼굴 점 478개를 찾고,
    그 위치에 왕관·토끼 귀·선글라스 등을 실시간으로 그림. 찍을 때 그대로 사진에 합쳐짐. */
+/* 라이브러리(MediaPipe)를 앱 안(mp 폴더)에서 한 번만 불러와 얼굴 효과·AI 보정이 같이 씀 → 인터넷 없이 동작 */
+const VISION = { lib: null, files: null, p: null };
+function visionFiles() {
+  if (VISION.files) return Promise.resolve(VISION.files);
+  if (!VISION.p) VISION.p = (async () => {
+    const base = new URL("mp/tasks-vision", location.href).href;
+    VISION.lib = await import(base + "/vision_bundle.mjs");
+    VISION.files = await VISION.lib.FilesetResolver.forVisionTasks(base + "/wasm");
+    return VISION.files;
+  })();
+  return VISION.p;
+}
+
+/* ───────── 배경 바꾸기: 사람을 찾아서 사람만 남기고 뒤 배경을 재미난 장면으로 ─────────
+   MediaPipe 사람 영역 모델(아이패드 안에서 실행, 사진은 밖으로 나가지 않음) */
+const AI_BG = { none: "그대로", space: "🚀 우주", ocean: "🐠 바닷속", beach: "🏖️ 해변", flowers: "🌷 꽃밭", rainbow: "🌈 무지개", party: "🎉 파티",
+  snow: "⛄ 눈 오는 날", halloween: "🎃 핼러윈", candy: "🍭 사탕 나라", dino: "🦖 공룡 정글", blur: "배경 흐림", white: "화이트 스튜디오", pastel: "파스텔" };
+const AI = {
+  seg: null, loading: false, failed: false, busy: false,
+  async load() {
+    if (this.seg || this.failed || !S.aiRetouch) return !!this.seg;
+    if (this.loading) { while (this.loading) await sleep(100); return !!this.seg; }
+    this.loading = true;
+    try {
+      const files = await visionFiles();
+      const make = (delegate) => VISION.lib.ImageSegmenter.createFromOptions(files, {
+        baseOptions: { modelAssetPath: "mp/selfie_multiclass_256x256.tflite", delegate }, runningMode: "IMAGE", outputCategoryMask: false, outputConfidenceMasks: true });
+      try { this.seg = await make("GPU"); } catch (e) { this.seg = await make("CPU"); }
+    } catch (e) { this.failed = true; console.warn("AI load failed", e); }
+    this.loading = false; return !!this.seg;
+  },
+  /* 사진 한 장 분석 → 사람 영역·피부 영역 마스크(작은 캔버스) 저장 */
+  analyze(sh) {
+    if (!this.seg || sh.ai || !sh.thumb || !sh.thumb.width) return;
+    const src = downscale(sh.thumb, 512);
+    let person = null, skin = null;
+    try {
+      this.seg.segment(src, (res) => {
+        const m = res && res.confidenceMasks; if (!m || m.length < 4) return;
+        const w = m[0].width, h = m[0].height, bg = m[0].getAsFloat32Array(), fs = m[3].getAsFloat32Array(), bs = m[2].getAsFloat32Array();
+        const mk = (fn) => { const c = makeCanvas(w, h), x = c.getContext("2d"), im = x.createImageData(w, h), d = im.data;
+          for (let i = 0, j = 0; j < w * h; i += 4, j++) { d[i] = d[i + 1] = d[i + 2] = 255; d[i + 3] = Math.max(0, Math.min(255, fn(j) * 255)); }
+          x.putImageData(im, 0, 0); return c; };
+        person = mk((j) => 1 - bg[j]);
+        skin = mk((j) => Math.min(1, fs[j] + bs[j] * 0.9));
+      });
+    } catch (e) { console.warn("segment failed", e); }
+    freeCanvas(src);
+    if (person && skin) { sh.ai = { person: featherMask(person), skin: featherMask(skin) }; }
+  },
+  /* 고른 사진들을 차례로 분석 (화면이 멈추지 않게 한 장씩 쉬어 가며) */
+  async analyzeSlots(onDone) {
+    if (!S.aiRetouch || this.busy) return;
+    if (!(await this.load())) return;
+    this.busy = true;
+    for (const s0 of session.slots) {
+      const sh = session.shots[s0]; if (!sh || sh.ai) continue;
+      this.analyze(sh); await sleep(30);
+    }
+    this.busy = false;
+    if (onDone) onDone();
+  }
+};
+/* 마스크 가장자리를 살짝 부드럽게 (경계가 칼같이 잘려 보이지 않게) */
+function featherMask(c) {
+  const w = c.width, h = c.height, x = c.getContext("2d"), im = x.getImageData(0, 0, w, h), d = im.data;
+  const a = new Uint8ClampedArray(w * h * 4); for (let i = 0; i < d.length; i += 4) { a[i] = a[i + 1] = a[i + 2] = d[i + 3]; a[i + 3] = 255; }
+  const bl = boxBlurRGB(a, w, h, Math.max(1, Math.round(Math.min(w, h) * 0.006)));
+  for (let i = 0, j = 0; i < d.length; i += 4, j += 3) d[i + 3] = bl[j];
+  x.putImageData(im, 0, 0); return c;
+}
+/* 마스크를 원하는 크기로 늘려서 0~255 값 배열로 */
+function maskAt(c, w, h) {
+  const t = makeCanvas(w, h), x = t.getContext("2d"); x.imageSmoothingQuality = "high"; x.drawImage(c, 0, 0, w, h);
+  const d = x.getImageData(0, 0, w, h).data, out = new Uint8ClampedArray(w * h);
+  for (let i = 0, j = 0; j < w * h; i += 4, j++) out[j] = d[i + 3];
+  freeCanvas(t); return out;
+}
+/* 재미난 배경 장면 그리기 (그림 파일 없이 직접 그림) */
+function drawScene(ctx, mode, w, h) {
+  const U = Math.min(w, h), rnd = seeded(7 + mode.length * 13);
+  const lin = (stops, x0, y0, x1, y1) => { const g = ctx.createLinearGradient(x0, y0, x1, y1); stops.forEach((c, i) => g.addColorStop(i / (stops.length - 1), c)); return g; };
+  const emo = (e, x, y, size, rot) => { ctx.save(); ctx.translate(x, y); ctx.rotate(rot || 0); ctx.font = size + "px " + EMOJI_FONT; ctx.textAlign = "center"; ctx.textBaseline = "middle"; ctx.fillText(e, 0, 0); ctx.restore(); };
+  const scatter = (list, n, minS, maxS, yMin, yMax, alpha) => { ctx.save(); ctx.globalAlpha = alpha || 1; for (let i = 0; i < n; i++) emo(list[i % list.length], rnd() * w, h * (yMin + rnd() * (yMax - yMin)), U * (minS + rnd() * (maxS - minS)), (rnd() - 0.5) * 0.8); ctx.restore(); };
+  const dots = (n, color, rMin, rMax, yMax) => { ctx.fillStyle = color; for (let i = 0; i < n; i++) { ctx.beginPath(); ctx.arc(rnd() * w, rnd() * h * (yMax || 1), U * (rMin + rnd() * (rMax - rMin)), 0, Math.PI * 2); ctx.fill(); } };
+  const ground = (y, color) => { ctx.fillStyle = color; ctx.beginPath(); ctx.moveTo(0, h); ctx.lineTo(0, h * y); ctx.quadraticCurveTo(w * 0.5, h * (y - 0.06), w, h * y); ctx.lineTo(w, h); ctx.fill(); };
+  switch (mode) {
+    case "white": { const g = ctx.createRadialGradient(w / 2, h * 0.38, U * 0.1, w / 2, h * 0.5, Math.max(w, h) * 0.75); g.addColorStop(0, "#ffffff"); g.addColorStop(1, "#e6e6ec"); ctx.fillStyle = g; ctx.fillRect(0, 0, w, h); break; }
+    case "pastel": ctx.fillStyle = lin(["#ffd9ec", "#e6dcff", "#d4ecff"], 0, 0, w, h); ctx.fillRect(0, 0, w, h); dots(18, "rgba(255,255,255,.35)", 0.03, 0.09); break;
+    case "space": {
+      const g = ctx.createRadialGradient(w * 0.7, h * 0.3, U * 0.05, w * 0.5, h * 0.5, Math.max(w, h)); g.addColorStop(0, "#3b2a7a"); g.addColorStop(0.5, "#1a1240"); g.addColorStop(1, "#05030f");
+      ctx.fillStyle = g; ctx.fillRect(0, 0, w, h); dots(140, "rgba(255,255,255,.9)", 0.001, 0.004); dots(20, "rgba(180,200,255,.6)", 0.004, 0.008);
+      emo("🪐", w * 0.82, h * 0.18, U * 0.28, 0.2); emo("🌙", w * 0.14, h * 0.14, U * 0.16); emo("🚀", w * 0.12, h * 0.62, U * 0.18, -0.6); emo("⭐️", w * 0.9, h * 0.62, U * 0.08); emo("🛸", w * 0.55, h * 0.1, U * 0.12, 0.1); break;
+    }
+    case "ocean": {
+      ctx.fillStyle = lin(["#9be7ff", "#2aa3e0", "#0b4f93"], 0, 0, 0, h); ctx.fillRect(0, 0, w, h);
+      ctx.fillStyle = "rgba(255,255,255,.12)"; for (let i = 0; i < 5; i++) { const x = w * (0.1 + i * 0.2); ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x + w * 0.08, 0); ctx.lineTo(x + w * 0.25, h); ctx.lineTo(x + w * 0.12, h); ctx.fill(); }
+      ctx.strokeStyle = "rgba(255,255,255,.7)"; ctx.lineWidth = U * 0.004; for (let i = 0; i < 26; i++) { ctx.beginPath(); ctx.arc(rnd() * w, rnd() * h, U * (0.008 + rnd() * 0.02), 0, Math.PI * 2); ctx.stroke(); }
+      ground(0.9, "#f1d9a0"); scatter(["🐠", "🐟", "🐡", "🐙", "🐢", "🐳"], 8, 0.08, 0.14, 0.08, 0.75); scatter(["🪸", "🐚", "🦀"], 4, 0.08, 0.12, 0.86, 0.95); break;
+    }
+    case "beach": {
+      ctx.fillStyle = lin(["#7fcbff", "#d8f2ff"], 0, 0, 0, h * 0.55); ctx.fillRect(0, 0, w, h * 0.55);
+      ctx.fillStyle = lin(["#2fb3e6", "#1b8fc9"], 0, h * 0.55, 0, h * 0.72); ctx.fillRect(0, h * 0.55, w, h * 0.18);
+      ctx.fillStyle = "#f6e1a8"; ctx.beginPath(); ctx.moveTo(0, h); ctx.lineTo(0, h * 0.74); ctx.quadraticCurveTo(w * 0.5, h * 0.68, w, h * 0.74); ctx.lineTo(w, h); ctx.fill();
+      emo("☀️", w * 0.15, h * 0.13, U * 0.2); emo("☁️", w * 0.6, h * 0.12, U * 0.14); emo("☁️", w * 0.85, h * 0.25, U * 0.1); emo("🌴", w * 0.08, h * 0.6, U * 0.34); emo("🌴", w * 0.93, h * 0.58, U * 0.3); emo("⛵", w * 0.7, h * 0.58, U * 0.09); emo("🐚", w * 0.25, h * 0.92, U * 0.07); emo("🏖️", w * 0.82, h * 0.9, U * 0.1); break;
+    }
+    case "flowers": {
+      ctx.fillStyle = lin(["#9fd8ff", "#e9f7ff"], 0, 0, 0, h * 0.6); ctx.fillRect(0, 0, w, h); ground(0.62, "#8fd36f"); ground(0.75, "#6cbf55");
+      emo("☁️", w * 0.2, h * 0.12, U * 0.14); emo("☁️", w * 0.75, h * 0.2, U * 0.18); emo("🦋", w * 0.85, h * 0.45, U * 0.08, 0.3); emo("🦋", w * 0.12, h * 0.4, U * 0.06, -0.3);
+      for (let r = 0; r < 4; r++) for (let i = 0; i < 9; i++) emo(["🌷", "🌼", "🌸", "🌻"][(i + r) % 4], w * (i / 8) + (r % 2) * w * 0.05, h * (0.68 + r * 0.09), U * (0.07 + r * 0.02));
+      break;
+    }
+    case "rainbow": {
+      ctx.fillStyle = lin(["#bfe6ff", "#f4fbff"], 0, 0, 0, h); ctx.fillRect(0, 0, w, h);
+      const cols = ["#ff8a8a", "#ffc46b", "#fff176", "#9be59b", "#8ccfff", "#b39dff"];
+      cols.forEach((c, i) => { ctx.strokeStyle = c; ctx.lineWidth = U * 0.05; ctx.beginPath(); ctx.arc(w / 2, h * 0.95, Math.max(w, h) * (0.62 - i * 0.05), Math.PI, 0); ctx.stroke(); });
+      ctx.fillStyle = "#fff"; for (const [x, y] of [[0.12, 0.85], [0.88, 0.85], [0.25, 0.2], [0.75, 0.15]]) for (let k = 0; k < 4; k++) { ctx.beginPath(); ctx.arc(w * x + (k - 1.5) * U * 0.07, h * y - (k % 2) * U * 0.04, U * 0.07, 0, Math.PI * 2); ctx.fill(); }
+      scatter(["✨", "⭐️"], 8, 0.04, 0.07, 0.05, 0.6); break;
+    }
+    case "party": {
+      ctx.fillStyle = lin(["#ff9ad5", "#b98bff", "#7fc8ff"], 0, 0, w, h); ctx.fillRect(0, 0, w, h); dots(16, "rgba(255,255,255,.25)", 0.03, 0.1);
+      const cc = ["#ffd133", "#ff5c8a", "#5cd6ff", "#7cff8a", "#ffffff", "#ff9f40"];
+      for (let i = 0; i < 160; i++) { ctx.save(); ctx.translate(rnd() * w, rnd() * h); ctx.rotate(rnd() * 3); ctx.fillStyle = cc[i % cc.length]; ctx.fillRect(0, 0, U * 0.018, U * 0.008); ctx.restore(); }
+      emo("🎈", w * 0.1, h * 0.25, U * 0.2, -0.15); emo("🎈", w * 0.9, h * 0.22, U * 0.18, 0.15); emo("🎉", w * 0.82, h * 0.7, U * 0.16); emo("🎁", w * 0.12, h * 0.82, U * 0.14); emo("🥳", w * 0.5, h * 0.1, U * 0.1); break;
+    }
+    case "snow": {
+      ctx.fillStyle = lin(["#2b3f7a", "#6f8fd1", "#cfe0ff"], 0, 0, 0, h); ctx.fillRect(0, 0, w, h); dots(150, "rgba(255,255,255,.9)", 0.002, 0.007);
+      ground(0.8, "#ffffff"); emo("⛄️", w * 0.12, h * 0.78, U * 0.26); emo("🎄", w * 0.9, h * 0.74, U * 0.3); scatter(["❄️"], 10, 0.04, 0.08, 0.05, 0.6, 0.9); emo("🌙", w * 0.85, h * 0.12, U * 0.12); break;
+    }
+    case "halloween": {
+      ctx.fillStyle = lin(["#2a1340", "#5c2a7a", "#ff8a1f"], 0, 0, 0, h); ctx.fillRect(0, 0, w, h);
+      ctx.fillStyle = "#fff4c2"; ctx.beginPath(); ctx.arc(w * 0.8, h * 0.18, U * 0.12, 0, Math.PI * 2); ctx.fill();
+      scatter(["🦇"], 7, 0.05, 0.09, 0.05, 0.45); ground(0.86, "#1d0f2b"); emo("🎃", w * 0.12, h * 0.85, U * 0.18); emo("🎃", w * 0.88, h * 0.87, U * 0.14); emo("👻", w * 0.15, h * 0.35, U * 0.16, -0.2); emo("🕸️", w * 0.06, h * 0.06, U * 0.14); emo("🍬", w * 0.7, h * 0.92, U * 0.07); break;
+    }
+    case "candy": {
+      ctx.fillStyle = lin(["#ffe0f0", "#ffc2dd", "#ffd8b5"], 0, 0, w, h); ctx.fillRect(0, 0, w, h);
+      dots(40, "rgba(255,255,255,.6)", 0.01, 0.025); scatter(["🍭", "🍬", "🧁", "🍩", "🍪", "🍫", "🍰"], 18, 0.07, 0.12, 0, 1); break;
+    }
+    case "dino": {
+      ctx.fillStyle = lin(["#bff0c9", "#7cc98f"], 0, 0, 0, h); ctx.fillRect(0, 0, w, h); emo("🌋", w * 0.78, h * 0.3, U * 0.3); emo("☀️", w * 0.12, h * 0.1, U * 0.14);
+      ground(0.8, "#4f9c5a"); emo("🦖", w * 0.13, h * 0.75, U * 0.26); emo("🦕", w * 0.88, h * 0.72, U * 0.28); scatter(["🌴", "🌿", "🥚"], 8, 0.08, 0.14, 0.82, 0.98); break;
+    }
+    default: ctx.fillStyle = "#f2f2f2"; ctx.fillRect(0, 0, w, h);
+  }
+}
+/* AI 배경 바꾸기: 사람은 그대로, 배경만 흐리게 또는 스튜디오 배경으로 */
+function applyBg(src, mode, personMask) {
+  const w = src.width, h = src.height, c = makeCanvas(w, h), ctx = c.getContext("2d");
+  if (mode === "blur") {
+    const sw = Math.max(8, Math.round(w / 10)), sh = Math.max(8, Math.round(h / 10)), sm = makeCanvas(sw, sh), sc = sm.getContext("2d");
+    sc.drawImage(src, 0, 0, sw, sh); const sd = sc.getImageData(0, 0, sw, sh), bl = boxBlurRGB(sd.data, sw, sh, 2);
+    for (let i = 0, j = 0; i < sd.data.length; i += 4, j += 3) { sd.data[i] = bl[j]; sd.data[i + 1] = bl[j + 1]; sd.data[i + 2] = bl[j + 2]; }
+    sc.putImageData(sd, 0, 0); ctx.imageSmoothingQuality = "high"; ctx.drawImage(sm, 0, 0, w, h); freeCanvas(sm);
+  } else drawScene(ctx, mode, w, h);
+  const bg = ctx.getImageData(0, 0, w, h), B = bg.data;
+  const sx = makeCanvas(w, h), sxc = sx.getContext("2d"); sxc.drawImage(src, 0, 0); const F = sxc.getImageData(0, 0, w, h).data; freeCanvas(sx);
+  const m = maskAt(personMask, w, h);
+  for (let i = 0, j = 0; j < w * h; i += 4, j++) { let a = (m[j] / 255 - 0.3) / 0.4; a = a < 0 ? 0 : a > 1 ? 1 : a * a * (3 - 2 * a); B[i] = F[i] * a + B[i] * (1 - a); B[i + 1] = F[i + 1] * a + B[i + 1] * (1 - a); B[i + 2] = F[i + 2] * a + B[i + 2] * (1 - a); B[i + 3] = 255; }
+  ctx.putImageData(bg, 0, 0); return c;
+}
+
 const FX_LIST = [
   { id: "none", icon: "🚫", name: "없음" },
   { id: "crown", icon: "👑", name: "왕관" },
@@ -1304,7 +1479,18 @@ const FX_LIST = [
   { id: "blush", icon: "☺️", name: "볼터치" },
   { id: "clown", icon: "🔴", name: "빨간 코" },
   { id: "stars", icon: "⭐️", name: "별 빙글" },
-  { id: "party", icon: "🥳", name: "파티 모자" }
+  { id: "party", icon: "🥳", name: "파티 모자" },
+  { id: "bear", icon: "🐻", name: "곰돌이" },
+  { id: "fox", icon: "🦊", name: "여우" },
+  { id: "angel", icon: "😇", name: "천사" },
+  { id: "devil", icon: "😈", name: "꼬마 악마" },
+  { id: "heartglass", icon: "💗", name: "하트 안경" },
+  { id: "nerd", icon: "🤓", name: "안경·수염" },
+  { id: "frog", icon: "🐸", name: "개구리" },
+  { id: "dinohat", icon: "🦖", name: "공룡 모자" },
+  { id: "butterfly", icon: "🦋", name: "나비" },
+  { id: "rainbow", icon: "🌈", name: "무지개 입" },
+  { id: "sparkle", icon: "✨", name: "반짝반짝" }
 ];
 const FX = {
   lib: null, lm: null, loading: false, failed: false, cur: "none", raf: null, faces: [], lastT: 0,
@@ -1313,10 +1499,8 @@ const FX = {
     if (this.lm || this.loading || this.failed) return;
     this.loading = true; this.drawBar();
     try {
-      /* 라이브러리를 앱 안(mp 폴더)에 넣어 둬서 인터넷 없이도 동작 */
-      const base = new URL("mp/tasks-vision", location.href).href;
-      this.lib = await import(base + "/vision_bundle.mjs");
-      const files = await this.lib.FilesetResolver.forVisionTasks(base + "/wasm");
+      const files = await visionFiles();
+      this.lib = VISION.lib;
       const make = (delegate) => this.lib.FaceLandmarker.createFromOptions(files, {
         baseOptions: { modelAssetPath: "mp/face_landmarker.task", delegate }, runningMode: "VIDEO", numFaces: 4 });
       try { this.lm = await make("GPU"); } catch (e) { this.lm = await make("CPU"); }
@@ -1338,7 +1522,12 @@ const FX = {
     });
     if (current === "shoot") requestAnimationFrame(layoutCamFrame);
   },
-  start() { cancelAnimationFrame(this.raf); const loop = () => { if (current !== "shoot") return; this.detectNow(); this.raf = requestAnimationFrame(loop); }; this.raf = requestAnimationFrame(loop); },
+  start() {
+    cancelAnimationFrame(this.raf); let last = 0;
+    /* (성능) 얼굴 찾기는 1초에 약 20번만 */
+    const loop = (now) => { if (current !== "shoot") return; if (now - last > 48) { last = now; this.detectNow(); } this.raf = requestAnimationFrame(loop); };
+    this.raf = requestAnimationFrame(loop);
+  },
   stop() { cancelAnimationFrame(this.raf); this.raf = null; this.faces = []; this.clear(); },
   clear() { const c = $("fxCanvas"); c.getContext("2d").clearRect(0, 0, c.width, c.height); },
   detectNow(force) {
@@ -1427,6 +1616,65 @@ function drawFaceFx(ctx, P, id, t) {
     case "stars":
       for (let k = 0; k < 5; k++) { const a = t / 600 + k * Math.PI * 2 / 5, p = at(headTop, Math.cos(a) * fw * 0.45, fw * 0.12 + Math.sin(a) * fw * 0.08); emoji(k % 2 ? "✨" : "⭐️", p, fw * (0.13 + 0.04 * Math.sin(a))); }
       break;
+    case "bear":
+      for (const side of [-1, 1]) { const p = at(top, side * fw * 0.34, fw * 0.0); dot(p, fw * 0.15, "#8a5a33"); dot(p, fw * 0.08, "#d9a77a"); }
+      ctx.shadowBlur = 0; { const m = at(nose, 0, -fw * 0.03); ctx.fillStyle = "rgba(240,215,180,.9)"; ctx.beginPath(); ctx.ellipse(m.x, m.y, fw * 0.13, fw * 0.1, ang, 0, Math.PI * 2); ctx.fill(); }
+      dot(nose, fw * 0.05, "#3b2412"); break;
+    case "fox":
+      tri(at(top, -fw * 0.3, -fw * 0.04), fw * 0.46, fw * 0.34, -0.3, "#f08a2c", "#fff1e0");
+      tri(at(top, fw * 0.3, -fw * 0.04), fw * 0.46, fw * 0.34, 0.3, "#f08a2c", "#fff1e0");
+      ctx.shadowBlur = 0; dot(nose, fw * 0.045, "#2b1a10");
+      for (const i of [50, 280]) { const p = P[i]; ctx.fillStyle = "rgba(255,140,80,.35)"; ctx.beginPath(); ctx.arc(p.x, p.y, fw * 0.08, 0, Math.PI * 2); ctx.fill(); }
+      break;
+    case "angel": {
+      const c = at(top, 0, fw * 0.3); ctx.save(); ctx.translate(c.x, c.y); ctx.rotate(ang);
+      ctx.strokeStyle = "#ffd75a"; ctx.lineWidth = fw * 0.06; ctx.shadowColor = "rgba(255,220,90,.9)"; ctx.shadowBlur = fw * 0.12;
+      ctx.beginPath(); ctx.ellipse(0, 0, fw * 0.34, fw * 0.09, 0, 0, Math.PI * 2); ctx.stroke(); ctx.restore();
+      emoji("✨", at(top, -fw * 0.45, fw * 0.25), fw * 0.12); emoji("✨", at(top, fw * 0.45, fw * 0.15), fw * 0.1); break;
+    }
+    case "devil":
+      for (const side of [-1, 1]) {
+        const b = at(top, side * fw * 0.24, fw * 0.12); ctx.save(); ctx.translate(b.x, b.y); ctx.rotate(ang + side * 0.3); ctx.scale(1.3, 1.3);
+        ctx.fillStyle = "#e0262f"; ctx.beginPath(); ctx.moveTo(-fw * 0.07, 0); ctx.quadraticCurveTo(side * fw * 0.02, -fw * 0.2, side * fw * 0.06, -fw * 0.3); ctx.quadraticCurveTo(fw * 0.02, -fw * 0.12, fw * 0.07, 0); ctx.closePath(); ctx.fill(); ctx.restore();
+      }
+      break;
+    case "heartglass": {
+      ctx.shadowBlur = 0;
+      const heart = (c, r) => { ctx.save(); ctx.translate(c.x, c.y); ctx.rotate(ang); ctx.beginPath(); ctx.moveTo(0, r * 0.9); ctx.bezierCurveTo(-r * 1.6, -r * 0.2, -r * 0.8, -r * 1.3, 0, -r * 0.45); ctx.bezierCurveTo(r * 0.8, -r * 1.3, r * 1.6, -r * 0.2, 0, r * 0.9); ctx.closePath();
+        ctx.fillStyle = "rgba(255,70,140,.55)"; ctx.fill(); ctx.lineWidth = r * 0.16; ctx.strokeStyle = "#ff2f86"; ctx.stroke(); ctx.restore(); };
+      const L = P[468] || eL, R = P[473] || eR; heart(L, ed * 0.42); heart(R, ed * 0.42);
+      ctx.strokeStyle = "#ff2f86"; ctx.lineWidth = ed * 0.07; ctx.beginPath(); ctx.moveTo(L.x + (R.x - L.x) * 0.3, L.y + (R.y - L.y) * 0.3 - ed * 0.1); ctx.lineTo(L.x + (R.x - L.x) * 0.7, L.y + (R.y - L.y) * 0.7 - ed * 0.1); ctx.stroke(); break;
+    }
+    case "nerd": {
+      ctx.shadowBlur = 0; const L = P[468] || eL, R = P[473] || eR, r = ed * 0.36;
+      ctx.strokeStyle = "#1d1d1d"; ctx.lineWidth = ed * 0.08;
+      for (const c of [L, R]) { ctx.fillStyle = "rgba(200,230,255,.18)"; ctx.beginPath(); ctx.arc(c.x, c.y, r, 0, Math.PI * 2); ctx.fill(); ctx.stroke(); }
+      ctx.beginPath(); ctx.moveTo(L.x + (R.x - L.x) * 0.35, L.y + (R.y - L.y) * 0.35); ctx.lineTo(L.x + (R.x - L.x) * 0.65, L.y + (R.y - L.y) * 0.65); ctx.stroke();
+      { const m = at(P[0], 0, fw * 0.035); ctx.save(); ctx.translate(m.x, m.y); ctx.rotate(ang); ctx.fillStyle = "#3a2516";
+        for (const sd of [-1, 1]) { ctx.beginPath(); ctx.ellipse(sd * fw * 0.08, 0, fw * 0.09, fw * 0.035, sd * -0.25, 0, Math.PI * 2); ctx.fill(); } ctx.restore(); }
+      break;
+    }
+    case "frog": emoji("🐸", at(top, 0, fw * 0.28), fw * 0.55); break;
+    case "dinohat": emoji("🦖", at(top, -fw * 0.05, fw * 0.35), fw * 0.7, -0.1); break;
+    case "butterfly": {
+      [127, 54, 10, 284, 356].forEach((i, k) => emoji("🦋", at(P[i], 0, fw * (0.14 + 0.04 * Math.sin(t / 300 + k))), fw * 0.15, (k - 2) * 0.25 + 0.15 * Math.sin(t / 250 + k)));
+      break;
+    }
+    case "rainbow": {
+      const lipU = P[13], lipL = P[14], open = Math.hypot(lipL.x - lipU.x, lipL.y - lipU.y) / fw;
+      if (open > 0.05) {
+        const m = { x: (lipU.x + lipL.x) / 2, y: (lipU.y + lipL.y) / 2 }, cols = ["#ff5f5f", "#ffb347", "#ffe95c", "#7be37b", "#5fb8ff", "#9b7bff"];
+        const len = fw * 1.4, wid = fw * Math.min(0.35, open * 3);
+        ctx.shadowBlur = 0; ctx.save(); ctx.translate(m.x, m.y); ctx.rotate(ang);
+        cols.forEach((c, i) => { const x0 = -wid / 2 + (wid / cols.length) * i, x1 = x0 + wid / cols.length; ctx.fillStyle = c;
+          ctx.beginPath(); ctx.moveTo(x0, 0); ctx.lineTo(x1, 0); ctx.lineTo(x1 * 2.2, len); ctx.lineTo(x0 * 2.2, len); ctx.closePath(); ctx.fill(); });
+        ctx.restore();
+      }
+      break;
+    }
+    case "sparkle":
+      for (let k = 0; k < 7; k++) { const a = t / 500 + k * Math.PI * 2 / 7, rr = fw * (0.62 + 0.05 * Math.sin(t / 200 + k)); emoji(k % 2 ? "✨" : "💫", { x: nose.x + Math.cos(a) * rr, y: nose.y + Math.sin(a) * rr * 1.15 }, fw * (0.1 + 0.03 * Math.sin(t / 150 + k))); }
+      break;
     case "party": {
       const base = at(top, fw * 0.08, fw * 0.05), h = fw * 0.75, w = fw * 0.42;
       ctx.save(); ctx.translate(base.x, base.y); ctx.rotate(ang + 0.18);
@@ -1455,6 +1703,7 @@ ENTER.shoot = async () => {
   }
   layoutCamFrame();
   FX.drawBar(); FX.start();
+  if (!FX.lm) setTimeout(() => FX.load(), 300);   /* 얼굴 효과는 촬영 화면에서 처음 한 번만 불러옴 */
   say("look");
   await sleep(2200); if (run !== shootRun) return;
   $("camGuide").hidden = true;
@@ -1474,12 +1723,12 @@ ENTER.shoot = async () => {
     await ensureLive(2500); if (run !== shootRun) { stopLive(); return; }
     $("flash").classList.add("on"); shutterSound();
     FX.detectNow(true);
-    let still = grabFrame(1400);
-    for (let tries = 0; still && looksBlank(still) && tries < 3; tries++) { freeCanvas(still); await ensureLive(1500); still = grabFrame(1400); }   /* 검은 화면이 찍히면 다시 */
+    let still = grabFrame(1600);
+    for (let tries = 0; still && looksBlank(still) && tries < 3; tries++) { freeCanvas(still); await ensureLive(1500); still = grabFrame(1600); }   /* 검은 화면이 찍히면 다시 */
     const live = stopLive();
     await sleep(160); $("flash").classList.remove("on");
     if (still) {
-      const thumb = downscale(still, 700);
+      const thumb = downscale(still, 800);
       session.shots.push({ still, thumb, live, faces: FX.facesForStill() });
       const t = makeCanvas(thumb.width, thumb.height); t.getContext("2d").drawImage(thumb, 0, 0); $("shootThumbs").appendChild(t);
     }
@@ -1495,7 +1744,7 @@ window.addEventListener("resize", () => { if (current === "shoot") layoutCamFram
 function slotPhotos(useFiltered) {
   return session.slots.map((s) => {
     if (s == null || !session.shots[s]) return null;
-    if (useFiltered && session.filter !== "original") { const k = session.retouch + ":" + session.filter + ":" + s; return session.filtered[k] || shotImg(s, "thumb"); }
+    if (useFiltered && session.filter !== "original") { const k = fkey(s, session.filter); return session.filtered[k] || shotImg(s, "thumb"); }
     return shotImg(s, "thumb");
   });
 }
@@ -1540,15 +1789,27 @@ $("selNext").addEventListener("click", () => go("deco"));
 
 /* ───────── 6. 꾸미기 ───────── */
 let selectedSticker = null, textColor = 0, hintShown = false;
+function fkey(s, id) { const sh = session.shots[s]; return [session.retouch, sh && sh.ai ? session.bg : "none", id, s].join(":"); }
 function ensureFiltered(id) {
   if (id === "original") return;
-  session.slots.forEach((s) => { if (s == null) return; const k = session.retouch + ":" + id + ":" + s; if (!session.filtered[k]) session.filtered[k] = applyFilter(shotImg(s, "thumb"), id); });
+  session.slots.forEach((s) => { if (s == null) return; const k = fkey(s, id); if (!session.filtered[k]) session.filtered[k] = applyFilter(shotImg(s, "thumb"), id); });
 }
 function drawDeco() {
   ensureFiltered(session.filter);
   const c = render(baseSpec({ photos: slotPhotos(true) }), 0.5, true);
   fitStage($("decoStage"), $("decoStageWrap"), showCanvasIn($("decoCanvas"), c));
   renderStickers();
+}
+function buildAiBg() {
+  const box = $("aiBox"); box.hidden = !S.aiRetouch;
+  if (!S.aiRetouch) return;
+  const ready = session.slots.some((s0) => session.shots[s0] && session.shots[s0].ai);
+  $("aiState").textContent = AI.failed ? "(이 기기에서는 사용할 수 없어요)" : ready ? "· 사람만 남기고 뒤 배경이 바뀌어요" : "· 사람을 찾는 중…";
+  $("bgSeg").style.opacity = ready ? "" : ".4"; $("bgSeg").style.pointerEvents = ready ? "" : "none";
+  seg($("bgSeg"), Object.keys(AI_BG), () => session.bg, (v) => {
+    session.bg = v; $("decoStage").style.opacity = ".6";
+    setTimeout(() => { buildFilters(); drawDeco(); $("decoStage").style.opacity = ""; }, 30);
+  }, (v) => AI_BG[v]);
 }
 function buildRetouch() {
   seg($("retouchSeg"), Object.keys(RETOUCH), () => session.retouch, (v) => {
@@ -1664,7 +1925,9 @@ $("textAdd").addEventListener("click", addTyped);
 $("textInput").addEventListener("keydown", (e) => { if (e.key === "Enter") addTyped(); });
 ENTER.deco = () => {
   selectedSticker = null; say("deco");
-  buildRetouch(); buildFilters(); buildSwatches($("frameList2"), drawDeco);
+  buildRetouch(); buildAiBg(); buildFilters(); buildSwatches($("frameList2"), drawDeco);
+  /* AI 분석은 화면을 띄운 뒤 천천히 → 끝나면 AI 피부 보정으로 다시 그림 */
+  if (S.aiRetouch) setTimeout(() => AI.analyzeSlots(() => { if (current === "deco") { buildAiBg(); buildFilters(); drawDeco(); } }), 400);
   requestAnimationFrame(drawDeco);
 };
 $("decoNext").addEventListener("click", () => { selectedSticker = null; go("print"); });
@@ -1686,10 +1949,26 @@ ENTER.print = async () => {
   readyToPrint();
   makeLiveVideo(baseSpec({ stickers: session.stickers }), null).catch(() => {});
 };
+/* 사진을 칸 크기에 맞게 가운데 기준으로 잘라 한 번에 줄임 */
+function fitCell(img, w, h) {
+  const c = makeCanvas(w, h), ctx = c.getContext("2d"), iw = img.width, ih = img.height, s = Math.max(w / iw, h / ih);
+  ctx.imageSmoothingEnabled = true; ctx.imageSmoothingQuality = "high";
+  ctx.drawImage(img, (iw - w / s) / 2, (ih - h / s) / 2, w / s, h / s, 0, 0, w, h); return c;
+}
+/* 선명하게: 윤곽을 살짝 또렷하게 (언샤프 효과) */
+function sharpen(c, k) {
+  const w = c.width, h = c.height, ctx = c.getContext("2d"), im = ctx.getImageData(0, 0, w, h), d = im.data, o = new Uint8ClampedArray(d), row = w * 4;
+  for (let y = 1; y < h - 1; y++) for (let x = 1; x < w - 1; x++) {
+    const i = y * row + x * 4;
+    for (let ch = 0; ch < 3; ch++) { const v = o[i + ch]; d[i + ch] = v + k * (4 * v - o[i - 4 + ch] - o[i + 4 + ch] - o[i - row + ch] - o[i + row + ch]); }
+  }
+  ctx.putImageData(im, 0, 0);
+}
 /* 인쇄용 사진 만들기: 만든 뒤 반드시 검사하고, 비어 있으면 메모리를 비우고 다시 만듦(최대 3번).
    검사를 통과한 사진만 인쇄할 수 있음 → 백지 인쇄 방지 */
 async function buildPrintImage() {
   const [W, H] = paperPx(S.paper);
+  for (let k = 0; k < 60 && AI.busy; k++) await sleep(100);   /* AI 분석이 끝나길 잠깐 기다림 */
   for (let attempt = 0; attempt < 3; attempt++) {
     if (attempt > 0) {
       /* 메모리 확보: 필터 미리보기, 움직이는 사진용 장면 버리기 */
@@ -1699,9 +1978,20 @@ async function buildPrintImage() {
     }
     freeCanvas(session.finalCanvas); session.finalCanvas = null;
     const bases = session.slots.map((s) => (s == null || !session.shots[s]) ? null : shotImg(s, "still"));
-    const photos = bases.map((b) => b ? applyFilter(b, session.filter) : null);
+    let photos = bases.map((b) => b ? applyFilter(b, session.filter) : null);
+    /* 화질 개선: 인쇄 칸 크기에 딱 맞게 한 번만 줄이고(여러 번 늘이고 줄이지 않음) 선명하게 */
+    {
+      const [pw, ph] = panelSize(S.paper, session.layout), cell = layoutPanel(session.layout, 0, 0, pw, ph).cells[0];
+      const cw = Math.round(cell.w), chh = Math.round(cell.h);
+      photos = photos.map((ph0, i) => {
+        if (!ph0) return null;
+        const c = fitCell(ph0, cw, chh); if (S.sharpen !== false) sharpen(c, 0.45);
+        if (ph0 !== bases[i]) freeCanvas(ph0);
+        return c;
+      });
+    }
     const final = render(baseSpec({ photos, stickers: session.stickers }), 1, false);
-    photos.forEach((ph, i) => { if (ph && ph !== bases[i]) freeCanvas(ph); });
+    photos.forEach((ph) => { if (ph) freeCanvas(ph); });
     if (final.width !== W || final.height !== H || looksBlank(final)) { freeCanvas(final); continue; }
     const blob = await canvasToBlob(final, "image/jpeg", 0.92);
     if (!(await blobImageOK(blob, W, H))) { freeCanvas(final); continue; }
@@ -1855,6 +2145,9 @@ ENTER.printing = () => {
 };
 function pgTick(now) {
   if (current !== "printing") return;
+  /* (성능) 초당 약 30번만 그림 */
+  if (now - (PG.lastDraw || 0) < 32) { PG.raf = requestAnimationFrame(pgTick); return; }
+  PG.lastDraw = now;
   const per = PRINT_SECS[S.paper] || 47, total = SEND_SECS + per * PG.copies;
   const t = (now - PG.t0) / 1000, L = PG.layers, cv = $("pgPaper"), ctx = cv.getContext("2d");
   let phase = "send", frac = 0, sheet = 1;
@@ -2004,7 +2297,7 @@ function openAdmin() {
   $("setTitle").value = S.title; $("setAttract").value = S.attractTitle;
   $("setTitle").oninput = drawCaptionPreview; drawCaptionPreview();
   toggle($("setDate"), "showDate"); toggle($("setTimers"), "timers"); toggle($("setCassette"), "cassette");
-  toggle($("setFaceFx"), "faceFx"); toggle($("setVoice"), "voice"); toggle($("setSound"), "sound");
+  toggle($("setSharpen"), "sharpen"); toggle($("setAi"), "aiRetouch"); toggle($("setFaceFx"), "faceFx"); toggle($("setVoice"), "voice"); toggle($("setSound"), "sound");
   $("setDate").addEventListener("click", drawCaptionPreview);
   if (!RETOUCH[S.retouch]) S.retouch = "natural";
   seg($("setRetouch"), Object.keys(RETOUCH), () => S.retouch, (v) => { S.retouch = v; }, (v) => RETOUCH[v].name);
@@ -2044,7 +2337,7 @@ $("adminClose").addEventListener("click", () => {
 /* 시작 화면 반짝이 만들기 */
 (function makeBokeh() {
   const box = $("bokeh"), emo = ["✨", "💖", "⭐️", "🌸", "🎀", "📸", "🌈", "💜", "🫧"];
-  for (let i = 0; i < 26; i++) {
+  for (let i = 0; i < 14; i++) {
     const sp = document.createElement("span"), isEmo = i % 3 === 0, size = isEmo ? 26 + Math.random() * 26 : 20 + Math.random() * 90;
     sp.className = isEmo ? "bk-emo" : "dot";
     if (isEmo) { sp.textContent = emo[i % emo.length]; sp.style.fontSize = size + "px"; } else { sp.style.width = sp.style.height = size + "px"; }
