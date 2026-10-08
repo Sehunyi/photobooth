@@ -197,7 +197,7 @@ final class BoothViewController: UIViewController, WKScriptMessageHandler, WKUID
         let picker = UIPrinterPickerController(initiallySelectedPrinter: initial)
         picker.delegate = self
         let rect = CGRect(x: view.bounds.midX - 1, y: view.bounds.midY - 1, width: 2, height: 2)
-        _ = picker.present(from: rect, in: view, animated: true) { [weak self] controller, userDidSelect, _ in
+        let shown = picker.present(from: rect, in: view, animated: true) { [weak self] controller, userDidSelect, _ in
             if userDidSelect, let printer = controller.selectedPrinter {
                 self?.savedPrinterURL = printer.url
                 self?.savedPrinterName = printer.displayName
@@ -205,6 +205,10 @@ final class BoothViewController: UIViewController, WKScriptMessageHandler, WKUID
             } else {
                 done(nil)
             }
+        }
+        // 프린터 고르는 창을 못 띄우면 바로 알려 줌 (화면이 멈추지 않게)
+        if !shown {
+            done(nil)
         }
     }
 
@@ -225,13 +229,27 @@ final class BoothViewController: UIViewController, WKScriptMessageHandler, WKUID
         }
         let printer = UIPrinter(url: url)
         // 먼저 프린터가 켜져 있고 연결되는지 확인 → 안 되면 용지 낭비 없이 바로 알려 줌
+        // 프린터가 대답을 안 하면 8초 뒤 '연결 안 됨'으로 처리 (한 번만 응답)
+        let flag = AnswerFlag()
+        let finish: (Bool, String?) -> Void = { ok, err in
+            if flag.answered { return }
+            flag.answered = true
+            done(ok, err)
+        }
+        DispatchQueue.main.asyncAfter(deadline: .now() + 8.0) {
+            if !flag.answered && !self.printing {
+                finish(false, "unavailable")
+            }
+        }
         printer.contactPrinter { [weak self] available in
             DispatchQueue.main.async {
                 guard let self = self else { return }
+                if flag.answered { return }
                 if !available {
-                    done(false, "unavailable")
+                    finish(false, "unavailable")
                     return
                 }
+                self.printing = true
                 let controller = UIPrintInteractionController.shared
                 let info = UIPrintInfo(dictionary: nil)
                 info.outputType = .photo
@@ -248,16 +266,24 @@ final class BoothViewController: UIViewController, WKScriptMessageHandler, WKUID
                     controller.printingItem = nil
                     controller.printingItems = Array(repeating: data as Any, count: copies)
                 }
-                _ = controller.print(to: printer) { _, completed, error in
+                let started = controller.print(to: printer) { _, completed, error in
+                    self.printing = false
                     if let error = error {
-                        done(false, error.localizedDescription)
+                        finish(false, error.localizedDescription)
                     } else {
-                        done(completed, completed ? nil : "cancelled")
+                        finish(completed, completed ? nil : "cancelled")
                     }
+                }
+                if !started {
+                    self.printing = false
+                    finish(false, "unavailable")
                 }
             }
         }
     }
+
+    /// 인쇄 데이터를 보내는 중인지 (보내는 중에는 8초 제한을 적용하지 않음)
+    private var printing = false
 
     /// 용지를 직접 지정 (엽서 100x148mm 등) — iOS가 엉뚱한 용지를 고르지 않게
     func printInteractionController(_ printInteractionController: UIPrintInteractionController, choosePaper paperList: [UIPrintPaper]) -> UIPrintPaper {
@@ -292,4 +318,9 @@ final class BoothViewController: UIViewController, WKScriptMessageHandler, WKUID
         }
         present(vc, animated: true, completion: nil)
     }
+}
+
+/// 한 번만 대답하기 위한 표시
+final class AnswerFlag {
+    var answered = false
 }
