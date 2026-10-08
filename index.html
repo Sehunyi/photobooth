@@ -119,6 +119,8 @@ button:focus-visible { outline: 3px solid var(--yellow); outline-offset: 2px; }
 .tabs { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px; }
 .tab { font-size: 20px; padding: 12px 0; border-radius: 999px; background: var(--card); color: var(--purple); }
 .tab.on { background: var(--purple); color: #fff; }
+.retouchSeg { display: grid; grid-template-columns: repeat(3, 1fr); border-radius: 14px; }
+.retouchSeg button { font-family: var(--display); font-size: 20px; padding: 12px 6px; }
 .filters { display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 12px; }
 .flt { background: var(--card); border-radius: 14px; padding: 6px; border: 4px solid transparent; display: flex; flex-direction: column; align-items: center; gap: 6px; font-size: 17px; color: var(--ink); }
 .flt canvas { width: 100%; height: 96px; object-fit: cover; border-radius: 8px; }
@@ -300,7 +302,12 @@ button:focus-visible { outline: 3px solid var(--yellow); outline-offset: 2px; }
         <button class="tab on" data-tab="filter">필터</button><button class="tab" data-tab="frame">프레임</button><button class="tab" data-tab="emoji">스티커</button><button class="tab" data-tab="text">글자</button>
       </div>
       <div class="scroll">
-        <div data-pane="filter"><div class="filters" id="filterList"></div></div>
+        <div data-pane="filter">
+          <div class="label" style="font-size:19px;margin-bottom:8px">✨ 자동 보정</div>
+          <div class="seg retouchSeg" id="retouchSeg"></div>
+          <div class="label" style="font-size:19px;margin:14px 0 8px">필터</div>
+          <div class="filters" id="filterList"></div>
+        </div>
         <div data-pane="frame" hidden><div class="swatches" id="frameList2"></div></div>
         <div data-pane="emoji" hidden><div class="emojis" id="emojiList"></div></div>
         <div data-pane="text" hidden>
@@ -438,6 +445,7 @@ button:focus-visible { outline: 3px solid var(--yellow); outline-offset: 2px; }
     <div class="field"><span>음성 안내 (3, 2, 1 · 안내 말)</span><button class="toggle" id="setVoice" aria-label="음성 안내"></button></div>
     <div class="field"><span>목소리·소리 확인</span><button class="mini" id="voiceTest">들어보기</button></div>
     <div class="field"><span>효과음 (찰칵 · 삐)</span><button class="toggle" id="setSound" aria-label="효과음"></button></div>
+    <div class="field"><span>자동 보정 기본값</span><div class="seg" id="setRetouch"></div></div>
     <div class="field"><span>인쇄 방법</span><div class="seg" id="setVia"></div></div>
     <div class="field"><span>가장자리 보정 <small>(잘리는 만큼 테두리를 넓힘)</small></span><div class="seg" id="setBleed"></div></div>
     <div class="field"><span>가장자리 확인용 인쇄 <small>(보정값 찾기)</small></span><button class="mini" id="calibBtn">인쇄해 보기</button></div>
@@ -525,7 +533,7 @@ const FRAMES = [
   { cat: "계절·행사", name: "스트레인지", base: "#6b3da8", pattern: "theme", grad: ["#7b4bc0", "#4a2683"], emojis: ["🦁", "🐝", "🔥", "🛡️"], over: ["🦁", "🐝"], ink: "#ffd133" }
 ];
 const FILTERS = [
-  { id: "original", name: "원본" }, { id: "bright", name: "뽀샤시" }, { id: "warm", name: "따뜻하게" },
+  { id: "original", name: "원본" }, { id: "bright", name: "화사하게" }, { id: "warm", name: "따뜻하게" },
   { id: "cool", name: "시원하게" }, { id: "mono", name: "흑백" }, { id: "vintage", name: "빈티지" }
 ];
 const EMOJIS = "❤️ 💖 💕 ⭐️ 🌟 ✨ 🎉 🎈 🎀 👑 🌈 ☀️ 🌸 🌼 🍀 🦋 🐰 🐻 🐱 🐶 🦁 🐝 🍓 🍭 🍩 🧁 🍦 🎂 😀 😆 😍 🥰 😎 🤪 😜 🥳 👍 ✌️ 🫶 💯 🔥 💎 🎵 📸 🏆 🚀 ⚽️ 🎨".split(" ");
@@ -535,7 +543,7 @@ const DPI = 300;
 const EMOJI_FONT = '"Apple Color Emoji","Segoe UI Emoji","Noto Color Emoji",sans-serif';
 const DISPLAY_FONT = '"Jua","Apple SD Gothic Neo",sans-serif';
 
-const DEFAULTS = { paper: "postcard", extra: 2, countdown: 7, zoom: 1, attractTitle: "PHOTO BOOTH", title: "PHOTO BOOTH", showDate: true, timers: true, cassette: true, printerReady: false, printVia: "canon", bleed: 2, voice: true, voiceName: "", sound: true, pin: "0000" };
+const DEFAULTS = { paper: "postcard", extra: 2, countdown: 7, zoom: 1, attractTitle: "PHOTO BOOTH", title: "PHOTO BOOTH", showDate: true, timers: true, cassette: true, printerReady: false, printVia: "canon", bleed: 2, retouch: "natural", voice: true, voiceName: "", sound: true, pin: "0000" };
 let S = loadSettings();
 function loadSettings() {
   try { const raw = localStorage.getItem("booth.settings"); if (raw) { const o = Object.assign({}, DEFAULTS, JSON.parse(raw)); delete o.shots; delete o.maxCopies; return o; } } catch (e) {}
@@ -546,7 +554,7 @@ function saveSettings() { try { localStorage.setItem("booth.settings", JSON.stri
 /* ───────── 한 팀의 촬영 데이터 ───────── */
 const session = {
   copies: 1, layout: "strip4", frame: 0, shots: [], slots: [null, null, null, null], active: 0,
-  filter: "original", stickers: [], finalCanvas: null, finalBlob: null, liveBlob: null, filtered: {}
+  filter: "original", retouch: "natural", stickers: [], finalCanvas: null, finalBlob: null, liveBlob: null, filtered: {}
 };
 /* ── 메모리 관리 ──
    아이패드 Safari는 캔버스 메모리 한도를 넘으면 그림이 '빈 화면'으로 만들어짐 → 백지 인쇄의 원인.
@@ -555,7 +563,7 @@ function freeCanvas(c) { try { if (c && c.getContext) { c.width = 0; c.height = 
 const objectURLs = [];
 function trackURL(u) { objectURLs.push(u); return u; }
 function releaseSession() {
-  (session.shots || []).forEach((sh) => { freeCanvas(sh.still); freeCanvas(sh.thumb); (sh.live || []).forEach(freeCanvas); });
+  (session.shots || []).forEach((sh) => { freeCanvas(sh.still); freeCanvas(sh.thumb); (sh.live || []).forEach(freeCanvas); Object.values(sh.rt || {}).forEach(freeCanvas); });
   Object.values(session.filtered || {}).forEach(freeCanvas);
   freeCanvas(session.finalCanvas);
   if (typeof PG !== "undefined" && PG.layers) { ["blank", "y", "m", "c"].forEach((k) => freeCanvas(PG.layers[k])); PG.layers = null; }
@@ -587,7 +595,7 @@ function resetSession() {
   releaseSession();
   hintShown = false;
   Object.assign(session, { copies: 1, layout: "strip4", frame: 0, shots: [], slots: [null, null, null, null], active: 0,
-    filter: "original", stickers: [], finalCanvas: null, finalBlob: null, liveBlob: null, filtered: {} });
+    filter: "original", retouch: S.retouch || "natural", stickers: [], finalCanvas: null, finalBlob: null, liveBlob: null, filtered: {} });
 }
 
 /* ───────── 도구 ───────── */
@@ -774,6 +782,100 @@ function makeCalibration() {
 }
 function baseSpec(extra) {
   return Object.assign({ paper: S.paper, layout: session.layout, frame: session.frame, photos: [], stickers: [], title: S.title, showDate: S.showDate, numbers: false, active: null }, extra || {});
+}
+
+/* ───────── 자동 보정 (인생네컷식 '뽀샤시' 보정) ─────────
+   1) 자동 노출·대비(어두운/밝은 끝 1%를 기준으로 범위 맞추기) + 자동 화이트밸런스(회색 기준)
+   2) 피부 영역만 골라(YCbCr 피부색 범위) 가장자리는 살리고 피부결만 부드럽게 (눈·입·머리카락은 그대로)
+   3) 피부 톤을 살짝 밝고 화사하게 + 부드러운 빛번짐(글로우) */
+const RETOUCH = {
+  off:     { name: "끄기" },
+  natural: { name: "자연스럽게", smooth: 0.6, bright: 0.5, glow: 0.10, pink: 0.35 },
+  glow:    { name: "뽀샤시",     smooth: 0.85, bright: 0.85, glow: 0.15, pink: 0.6 }
+};
+function boxBlurRGB(d, w, h, r) {
+  const tmp = new Float32Array(w * h * 3), out = new Float32Array(w * h * 3), src = new Float32Array(w * h * 3);
+  for (let i = 0, j = 0; i < d.length; i += 4, j += 3) { src[j] = d[i]; src[j + 1] = d[i + 1]; src[j + 2] = d[i + 2]; }
+  const pass = (a, b, horiz) => {
+    const len = horiz ? w : h, lines = horiz ? h : w, win = 2 * r + 1;
+    for (let L = 0; L < lines; L++) for (let ch = 0; ch < 3; ch++) {
+      const idx = (k) => (horiz ? (L * w + k) : (k * w + L)) * 3 + ch;
+      let acc = 0;
+      for (let k = -r; k <= r; k++) acc += a[idx(Math.min(len - 1, Math.max(0, k)))];
+      for (let k = 0; k < len; k++) {
+        b[idx(k)] = acc / win;
+        acc += a[idx(Math.min(len - 1, k + r + 1))] - a[idx(Math.max(0, k - r))];
+      }
+    }
+  };
+  let A = src;
+  for (let it = 0; it < 2; it++) { pass(A, tmp, true); pass(tmp, out, false); A = out.slice(); }
+  return out;
+}
+function retouch(src, level) {
+  const P = RETOUCH[level]; if (!P || level === "off") return src;
+  const w = src.width, h = src.height; if (!w || !h) return src;
+  const c = makeCanvas(w, h), ctx = c.getContext("2d"); ctx.drawImage(src, 0, 0);
+  const img = ctx.getImageData(0, 0, w, h), d = img.data;
+  /* 1) 통계 */
+  const hist = new Uint32Array(256); let sr = 0, sg = 0, sb = 0, sn = 0;
+  for (let i = 0; i < d.length; i += 16) {
+    const y = (0.299 * d[i] + 0.587 * d[i + 1] + 0.114 * d[i + 2]) | 0; hist[y]++;
+    if (y > 40 && y < 220) { sr += d[i]; sg += d[i + 1]; sb += d[i + 2]; sn++; }
+  }
+  let tot = 0; for (let v = 0; v < 256; v++) tot += hist[v];
+  let lo = 0, hi = 255, acc = 0;
+  for (let v = 0; v < 256; v++) { acc += hist[v]; if (acc > tot * 0.01) { lo = v; break; } }
+  acc = 0; for (let v = 255; v >= 0; v--) { acc += hist[v]; if (acc > tot * 0.005) { hi = v; break; } }
+  lo = Math.min(lo, 40); hi = Math.max(hi, 200);
+  const avg = sn ? (sr + sg + sb) / (3 * sn) : 128;
+  const gain = (m) => sn ? Math.min(1.15, Math.max(0.88, 1 + ((avg / Math.max(1, m)) - 1) * 0.35)) : 1;
+  const gR = gain(sr / sn), gG = gain(sg / sn), gB = gain(sb / sn);
+  let mean = 0; for (let v = 0; v < 256; v++) mean += hist[v] * Math.min(1, Math.max(0, (v - lo) / (hi - lo)));
+  mean = Math.max(0.05, mean / tot);
+  const target = 0.5 + 0.07 * P.bright, gamma = Math.min(1.4, Math.max(0.55, Math.log(target) / Math.log(mean)));
+  const lut = (g) => { const t = new Uint8ClampedArray(256); for (let v = 0; v < 256; v++) { let x = Math.min(1, Math.max(0, (v * g - lo) / (hi - lo))); x = Math.pow(x, gamma); x = x + 0.06 * P.bright * x * (1 - x) * 2; t[v] = x * 255; } return t; };
+  const LR = lut(gR), LG = lut(gG), LB = lut(gB);
+  for (let i = 0; i < d.length; i += 4) { d[i] = LR[d[i]]; d[i + 1] = LG[d[i + 1]]; d[i + 2] = LB[d[i + 2]]; }
+  /* 2) 반 크기에서 흐리게 만든 사진 (피부결·글로우용) */
+  const sw = Math.max(1, Math.round(w / 2)), sh = Math.max(1, Math.round(h / 2));
+  ctx.putImageData(img, 0, 0);
+  const sm = makeCanvas(sw, sh), sctx = sm.getContext("2d"); sctx.drawImage(c, 0, 0, sw, sh);
+  const sd = sctx.getImageData(0, 0, sw, sh);
+  const r = Math.max(2, Math.round(Math.min(sw, sh) * 0.012));
+  const bl = boxBlurRGB(sd.data, sw, sh, r);
+  for (let i = 0, j = 0; i < sd.data.length; i += 4, j += 3) { sd.data[i] = bl[j]; sd.data[i + 1] = bl[j + 1]; sd.data[i + 2] = bl[j + 2]; }
+  sctx.putImageData(sd, 0, 0);
+  const big = makeCanvas(w, h), bctx = big.getContext("2d"); bctx.imageSmoothingQuality = "high"; bctx.drawImage(sm, 0, 0, w, h);
+  const B = bctx.getImageData(0, 0, w, h).data;
+  freeCanvas(sm); freeCanvas(big);
+  /* 3) 피부만 부드럽게 + 화사하게 + 글로우 */
+  const sig2 = 2 * 22 * 22;
+  for (let i = 0; i < d.length; i += 4) {
+    let R = d[i], G = d[i + 1], Bl = d[i + 2];
+    const Y = 0.299 * R + 0.587 * G + 0.114 * Bl, Cb = 128 - 0.1687 * R - 0.3313 * G + 0.5 * Bl, Cr = 128 + 0.5 * R - 0.4187 * G - 0.0813 * Bl;
+    const dCb = Cb < 77 ? 77 - Cb : Cb > 127 ? Cb - 127 : 0, dCr = Cr < 133 ? 133 - Cr : Cr > 173 ? Cr - 173 : 0;
+    let skin = Math.max(0, 1 - Math.max(dCb, dCr) / 10) * (Y > 45 ? 1 : Y / 45);
+    if (skin > 0) {
+      const dy = Y - (0.299 * B[i] + 0.587 * B[i + 1] + 0.114 * B[i + 2]);
+      const a = P.smooth * skin * Math.exp(-(dy * dy) / sig2);
+      R += a * (B[i] - R); G += a * (B[i + 1] - G); Bl += a * (B[i + 2] - Bl);
+      const lift = P.bright * skin * 7, pk = P.pink * skin;
+      R += lift + pk * 5; G += lift + pk * 1; Bl += lift + pk * 3;
+    }
+    if (P.glow) { const g = P.glow; R = R + g * B[i] * (1 - R / 255); G = G + g * B[i + 1] * (1 - G / 255); Bl = Bl + g * B[i + 2] * (1 - Bl / 255); }
+    d[i] = R; d[i + 1] = G; d[i + 2] = Bl;
+  }
+  ctx.putImageData(img, 0, 0);
+  return c;
+}
+/* 사진 한 장의 보정본 (한 번 만들면 저장해 두고 다시 씀) */
+function shotImg(i, kind) {
+  const sh = session.shots[i]; if (!sh) return null;
+  const lvl = session.retouch || "off"; if (lvl === "off") return sh[kind];
+  sh.rt = sh.rt || {}; const k = lvl + ":" + kind;
+  if (!sh.rt[k]) sh.rt[k] = retouch(sh[kind], lvl);
+  return sh.rt[k];
 }
 
 /* ───────── 필터 (픽셀 계산) ───────── */
@@ -1101,8 +1203,8 @@ window.addEventListener("resize", () => { if (current === "shoot") layoutCamFram
 function slotPhotos(useFiltered) {
   return session.slots.map((s) => {
     if (s == null || !session.shots[s]) return null;
-    if (useFiltered && session.filter !== "original") { const k = session.filter + ":" + s; return session.filtered[k] || session.shots[s].thumb; }
-    return session.shots[s].thumb;
+    if (useFiltered && session.filter !== "original") { const k = session.retouch + ":" + session.filter + ":" + s; return session.filtered[k] || shotImg(s, "thumb"); }
+    return shotImg(s, "thumb");
   });
 }
 function drawSelect() {
@@ -1148,13 +1250,19 @@ $("selNext").addEventListener("click", () => go("deco"));
 let selectedSticker = null, textColor = 0, hintShown = false;
 function ensureFiltered(id) {
   if (id === "original") return;
-  session.slots.forEach((s) => { if (s == null) return; const k = id + ":" + s; if (!session.filtered[k]) session.filtered[k] = applyFilter(session.shots[s].thumb, id); });
+  session.slots.forEach((s) => { if (s == null) return; const k = session.retouch + ":" + id + ":" + s; if (!session.filtered[k]) session.filtered[k] = applyFilter(shotImg(s, "thumb"), id); });
 }
 function drawDeco() {
   ensureFiltered(session.filter);
   const c = render(baseSpec({ photos: slotPhotos(true) }), 0.5, true);
   fitStage($("decoStage"), $("decoStageWrap"), showCanvasIn($("decoCanvas"), c));
   renderStickers();
+}
+function buildRetouch() {
+  seg($("retouchSeg"), Object.keys(RETOUCH), () => session.retouch, (v) => {
+    session.retouch = v; $("decoStage").style.opacity = ".6";
+    setTimeout(() => { buildFilters(); drawDeco(); $("decoStage").style.opacity = ""; }, 30);
+  }, (v) => RETOUCH[v].name);
 }
 function buildFilters() {
   const list = $("filterList"); list.innerHTML = "";
@@ -1264,7 +1372,7 @@ $("textAdd").addEventListener("click", addTyped);
 $("textInput").addEventListener("keydown", (e) => { if (e.key === "Enter") addTyped(); });
 ENTER.deco = () => {
   selectedSticker = null; say("deco");
-  buildFilters(); buildSwatches($("frameList2"), drawDeco);
+  buildRetouch(); buildFilters(); buildSwatches($("frameList2"), drawDeco);
   requestAnimationFrame(drawDeco);
 };
 $("decoNext").addEventListener("click", () => { selectedSticker = null; go("print"); });
@@ -1298,9 +1406,10 @@ async function buildPrintImage() {
       await sleep(400);
     }
     freeCanvas(session.finalCanvas); session.finalCanvas = null;
-    const photos = session.slots.map((s) => (s == null || !session.shots[s]) ? null : applyFilter(session.shots[s].still, session.filter));
+    const bases = session.slots.map((s) => (s == null || !session.shots[s]) ? null : shotImg(s, "still"));
+    const photos = bases.map((b) => b ? applyFilter(b, session.filter) : null);
     const final = render(baseSpec({ photos, stickers: session.stickers }), 1, false);
-    photos.forEach((ph, i) => { const s0 = session.slots[i]; if (ph && session.shots[s0] && ph !== session.shots[s0].still) freeCanvas(ph); });
+    photos.forEach((ph, i) => { if (ph && ph !== bases[i]) freeCanvas(ph); });
     if (final.width !== W || final.height !== H || looksBlank(final)) { freeCanvas(final); continue; }
     const blob = await canvasToBlob(final, "image/jpeg", 0.92);
     if (!(await blobImageOK(blob, W, H))) { freeCanvas(final); continue; }
@@ -1561,6 +1670,7 @@ function openAdmin() {
   toggle($("setDate"), "showDate"); toggle($("setTimers"), "timers"); toggle($("setCassette"), "cassette");
   toggle($("setVoice"), "voice"); toggle($("setSound"), "sound");
   $("setDate").addEventListener("click", drawCaptionPreview);
+  seg($("setRetouch"), Object.keys(RETOUCH), () => S.retouch, (v) => { S.retouch = v; }, (v) => RETOUCH[v].name);
   seg($("setVia"), ["canon", "airprint"], () => S.printVia, (v) => { S.printVia = v; S.printerReady = false; }, (v) => v === "canon" ? "캐논 앱" : "AirPrint");
   seg($("setBleed"), [0, 1, 2, 3, 4], () => Number(S.bleed), (v) => { S.bleed = v; }, (v) => v + "mm");
   $("printerReset").onclick = () => { S.printerReady = false; $("printerReset").textContent = "다음 인쇄 때 보여요"; };
