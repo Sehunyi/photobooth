@@ -16,6 +16,18 @@ sunflower.jpg — Sunflowers Garden / Skitter Photo / CC0 / https://stocksnap.io
 wood.jpg — Light wooden floor background / None / CC0 / https://www.rawpixel.com/image/5921222/photo-image-background-texture-light
 lights.jpg — Abstract Blurry / Patryk Dziejma / CC0 / https://stocksnap.io/photo/abstract-blurry-0QL2M00PL6
 gold.jpg — Shiny Lights / HD Wallpapers / CC0 / https://stocksnap.io/photo/shiny-lights-GH2NJO5K7Q
+balloons.jpg — Balloons Party / Fernando Arcos / CC0 / https://stocksnap.io/photo/balloons-party-DNWA3H3LCU
+confetti.jpg — Birthday Confetti / Altered Reality / CC0 / https://stocksnap.io/photo/birthday-confetti-GKYCLSYDLH
+candy.jpg — Heart Candy / Macro Mama / CC0 / https://stocksnap.io/photo/heart-candy-IHIHHZJODB
+pencils.jpg — Colorful Pencils / Artsy Crafty / CC0 / https://stocksnap.io/photo/colorful-pencils-Z8EF7IZ8OR
+holo.jpg — Silky Background / Altered Reality / CC0 / https://stocksnap.io/photo/silky-background-QO7AHBYWQE
+watercolor.jpg — Free ombre watercolor texture image / None / CC0 / https://www.rawpixel.com/image/5924272/photo-image-texture-watercolour-public-domain
+tulips.jpg — Tulips Background / Nature's Beauty / CC0 / https://stocksnap.io/photo/tulips-background-SYPQOHVYRI
+pastelpaper.jpg — Pastel Paper / Birch Landing Home / CC0 / https://stocksnap.io/photo/pastel-paper-H1M8ZLHCEJ
+ranunculus.jpg — Flower Background / Floral Portrait Backgrounds / CC0 / https://stocksnap.io/photo/flower-background-FGW3XGA04R
+
+3D 스티커 (stickers 폴더) — Microsoft Fluent Emoji 3D / MIT License / https://github.com/microsoft/fluentui-emoji
+  Copyright (c) Microsoft Corporation. MIT 라이선스: 무료로 사용·수정·배포 가능 (이 저작권 표시를 함께 둠)
 
 폰트 (모두 SIL Open Font License 1.1 — 무료, 앱에 넣어 배포 가능). 원본: github.com/google/fonts
 Jua, Gowun Dodum, Gaegu, Gamja Flower, Nanum Pen Script, Do Hyeon, Black Han Sans, Dongle, Yeon Sung, Single Day, Cute Font, Pacifico, Bebas Neue

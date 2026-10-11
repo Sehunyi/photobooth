@@ -119,6 +119,11 @@ final class LocalServer {
         case "png": return "image/png"
         case "jpg", "jpeg": return "image/jpeg"
         case "mp3": return "audio/mpeg"
+        case "webp": return "image/webp"
+        case "woff2": return "font/woff2"
+        case "svg": return "image/svg+xml"
+        case "mp4": return "video/mp4"
+        case "txt": return "text/plain; charset=utf-8"
         default: return "application/octet-stream"
         }
     }

@@ -82,7 +82,8 @@ button:focus-visible { outline: 3px solid var(--yellow); outline-offset: 2px; }
 .bokeh { position: absolute !important; inset: 0; z-index: 0 !important; pointer-events: none; overflow: hidden; }
 .bokeh span { position: absolute; bottom: -80px; border-radius: 50%; animation: rise linear infinite; will-change: transform, opacity; }
 .bokeh span.dot { background: radial-gradient(circle at 35% 35%, rgba(255,255,255,.95), rgba(255,255,255,.25) 60%, rgba(255,255,255,0) 72%); }
-.bokeh span.bk-emo { font-family: "Apple Color Emoji", "Segoe UI Emoji", sans-serif; border-radius: 0; line-height: 1; }
+.bokeh span.bk-emo { border-radius: 0; line-height: 1; }
+.bokeh span.bk-emo img { width: 100%; height: 100%; display: block; filter: drop-shadow(0 6px 10px rgba(150, 80, 200, .25)); }
 @keyframes rise { 0% { transform: translateY(0) translateX(0) rotate(0); opacity: 0; } 10% { opacity: .95; } 50% { transform: translateY(-55vh) translateX(24px) rotate(12deg); } 90% { opacity: .9; } 100% { transform: translateY(-115vh) translateX(-18px) rotate(-10deg); opacity: 0; } }
 #s-attract .card { background: rgba(255, 245, 252, .55); border: 3px solid rgba(255, 255, 255, .85); border-radius: 36px; padding: 26px 44px 30px; box-shadow: 0 18px 50px rgba(170, 110, 210, .25); display: flex; flex-direction: column; align-items: center; gap: 14px; }
 #s-attract h2 { margin: 0; font-family: var(--display); font-weight: 400; font-size: clamp(48px, 8.5vw, 96px); line-height: 1.05; padding: 0 12px; text-wrap: balance; color: #fff;
@@ -152,6 +153,8 @@ button:focus-visible { outline: 3px solid var(--yellow); outline-offset: 2px; }
 .tab { font-size: 20px; padding: 12px 0; border-radius: 999px; background: var(--card); color: var(--purple); }
 .tab.on { background: var(--purple); color: #fff; }
 .seg.retouchSeg { display: grid; grid-template-columns: repeat(4, 1fr); border-radius: 14px; }
+.seg.badgeSeg { display: grid; grid-template-columns: repeat(5, 1fr); border-radius: 14px; }
+.seg.badgeSeg button { font-size: 16px; padding: 10px 2px; }
 .seg.retouchSeg button { font-family: var(--display); font-size: 20px; padding: 12px 6px; }
 .filters { display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 12px; }
 .flt { background: var(--card); border-radius: 14px; padding: 6px; border: 4px solid transparent; display: flex; flex-direction: column; align-items: center; gap: 6px; font-size: 17px; color: var(--ink); }
@@ -168,6 +171,16 @@ button:focus-visible { outline: 3px solid var(--yellow); outline-offset: 2px; }
 .phrases button { font-size: 17px; padding: 12px 6px; border-radius: 12px; background: var(--card); color: var(--purple); }
 .stk { position: absolute; transform-origin: center; white-space: nowrap; line-height: 1; padding: 4px; touch-action: none; cursor: grab; }
 .stk.emoji { font-family: "Apple Color Emoji", "Segoe UI Emoji", sans-serif; }
+.stk.img, .stk.badge { padding: 0; }
+.stk.img img { width: 100%; height: 100%; display: block; pointer-events: none; -webkit-user-drag: none; filter: drop-shadow(0 2px 3px rgba(0,0,0,.18)); }
+.stk.badge canvas { display: block; pointer-events: none; }
+.stkCats { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 10px; }
+.stkCats button { padding: 8px 13px; border-radius: 999px; background: var(--card); color: var(--purple); font-size: 16px; }
+.stkCats button.on { background: var(--purple); color: #fff; }
+.emojis.img3d .emo { display: grid; place-items: center; padding: 6px; }
+.emojis.img3d .emo img { width: 50px; height: 50px; pointer-events: none; }
+.emojis.badges { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.emojis.badges .emo { height: 76px; display: grid; place-items: center; padding: 4px; }
 .stk.txt { font-family: var(--display); }
 .stk.sel { outline: 2px dashed #fff; box-shadow: 0 0 0 1px rgba(0,0,0,.4); }
 .stkTools { display: flex; gap: 8px; justify-content: center; }
@@ -302,6 +315,24 @@ button:focus-visible { outline: 3px solid var(--yellow); outline-offset: 2px; }
 button { transition: transform .08s ease; }
 button:active:not(:disabled) { transform: scale(.96); }
 .big:active:not(:disabled) { transform: translateY(2px) scale(.98); }
+/* 휴대폰 QR 받기 */
+.qrBox { display: flex; align-items: center; gap: 14px; background: #fff; border-radius: 18px; padding: 12px 16px; box-shadow: 0 6px 18px rgba(107, 61, 168, .15); text-align: left; animation: slotIn .4s ease both; }
+.qrBox[hidden] { display: none; }
+.qrBox img { width: 150px; height: 150px; image-rendering: pixelated; flex: none; background: #fff; padding: 6px; border-radius: 8px; border: 2px solid var(--line); }
+.qrBox.small img { width: 112px; height: 112px; }
+.qrBox b { display: block; font-family: var(--display); font-weight: 400; font-size: 22px; color: var(--purple-deep); margin-bottom: 4px; }
+.qrBox.small b { font-size: 19px; }
+.qrBox span { font-size: 15px; color: var(--muted); line-height: 1.45; }
+details.guide { text-align: left; background: var(--paper); border-radius: 12px; padding: 10px 14px; margin: 4px 0 10px; font-size: 15px; flex: none; }
+details.guide summary { font-size: 17px; color: var(--purple-deep); cursor: pointer; }
+details.guide ol { padding-left: 20px; margin: 8px 0; line-height: 1.55; }
+details.guide p { margin: 4px 0; color: var(--muted); }
+/* 촬영 중 완성 모양 미리보기 (오른쪽 아래 작게) */
+.shootMini { position: absolute; right: 14px; bottom: 14px; height: 30%; width: auto; border-radius: 8px; box-shadow: 0 6px 18px rgba(0,0,0,.45); border: 3px solid #fff; transition: opacity .3s ease, transform .3s ease; }
+.shootMini.dim { opacity: .35; }
+.shootMini.bump { animation: miniBump .45s ease; }
+@keyframes miniBump { 40% { transform: scale(1.08); } }
+.shot .redo { position: absolute; right: 6px; bottom: 6px; padding: 6px 10px; border-radius: 999px; background: rgba(0,0,0,.6); color: #fff; font-size: 15px; line-height: 1; }
 #confetti { position: fixed; inset: 0; pointer-events: none; z-index: 45; }
 @media (prefers-reduced-motion: reduce) { * { animation: none !important; transition: none !important; } }
 </style>
@@ -351,6 +382,7 @@ button:active:not(:disabled) { transform: scale(.96); }
       <div class="poseTip" id="poseTip" hidden></div>
       <button class="quickShot" id="quickShot" hidden>⚡ 바로 찍기</button>
       <div class="guide" id="camGuide">카메라를 보세요!</div>
+      <canvas class="shootMini" id="shootMini" hidden></canvas>
       <div class="camErr" id="camErr" hidden></div>
     </div>
   </div>
@@ -387,10 +419,12 @@ button:active:not(:disabled) { transform: scale(.96); }
           <div class="filters" id="filterList"></div>
         </div>
         <div data-pane="frame" hidden><div class="swatches" id="frameList2"></div></div>
-        <div data-pane="emoji" hidden><div class="emojis" id="emojiList"></div></div>
+        <div data-pane="emoji" hidden><div class="stkCats" id="stkCats"></div><div class="emojis" id="emojiList"></div></div>
         <div data-pane="text" hidden>
           <div class="label" style="font-size:18px;margin-bottom:8px">글자 모양 <small style="font-family:var(--body);font-size:14px;color:var(--muted)">(사진 아래 글자와 넣는 글자에 적용)</small></div>
           <div class="fonts" id="fontList"></div>
+          <div class="label" style="font-size:18px;margin:12px 0 8px">꾸밈 모양</div>
+          <div class="seg badgeSeg" id="badgeSeg"></div>
           <div class="textIn"><input id="textInput" type="text" maxlength="20" placeholder="글자를 입력하세요" autocomplete="off"><button id="textAdd">넣기</button></div>
           <div class="colors" id="colorList"></div>
           <div class="label" style="font-size:18px;margin-bottom:8px">추천 문구</div>
@@ -399,6 +433,7 @@ button:active:not(:disabled) { transform: scale(.96); }
       </div>
       <div class="stkTools" id="stkTools" hidden>
         <span class="pinchHint">✌️ 두 손가락으로 <b>벌리면 커지고</b>, <b>돌리면 돌아가요</b></span>
+        <button data-act="dup">복사</button>
         <button data-act="del" class="del">지우기</button>
       </div>
       <div class="row"><button class="big" id="decoNext">출력하기</button></div>
@@ -446,6 +481,7 @@ button:active:not(:disabled) { transform: scale(.96); }
       </div>
       <div class="bar"><i id="pgBar"></i></div>
       <div class="msg" id="pgLeft">약 1분 남았어요</div>
+      <div class="qrBox small" data-qr hidden></div>
       <div class="field copiesPick"><span>인쇄한 장 수</span><div class="seg" id="pgCopies"></div></div>
       <button class="big" id="pgDone" hidden>사진 받으러 가기</button>
       <div class="row small">
@@ -463,7 +499,8 @@ button:active:not(:disabled) { transform: scale(.96); }
     <div class="resultImg"><video id="liveVideo" playsinline muted loop autoplay hidden></video><img id="doneImg" alt="완성된 네컷 사진"></div>
     <div class="side">
       <div class="msg">휴대폰으로 받기</div>
-      <div class="note">아래 버튼을 누르고 <b>AirDrop</b>으로 보내거나<br>사진 앱에 저장할 수 있어요</div>
+      <div class="qrBox" data-qr hidden></div>
+      <div class="note" id="doneNote">아래 버튼을 누르고 <b>AirDrop</b>으로 보내거나<br>사진 앱에 저장할 수 있어요</div>
       <button class="big yellow" id="shareBtn">사진 보내기 · 저장</button>
       <div class="err" id="shareErr"></div>
       <button class="big" id="homeBtn">처음으로</button>
@@ -549,9 +586,20 @@ button:active:not(:disabled) { transform: scale(.96); }
     <div class="field"><span>가장자리 보정 <small>(잘리는 만큼 테두리를 넓힘)</small></span><div class="seg" id="setBleed"></div></div>
     <div class="field"><span>가장자리 확인용 인쇄 <small>(보정값 찾기)</small></span><button class="mini" id="calibBtn">인쇄해 보기</button></div>
     <div class="field"><span>프린터 연결 안내 <small>(처음 인쇄할 때 한 번 나옴)</small></span><button class="mini" id="printerReset">다시 보이기</button></div>
+    <div class="field" id="qrRow" hidden><span>휴대폰 QR 받기 <small>(같은 와이파이의 휴대폰이 QR을 찍으면 사진 저장)</small></span><button class="toggle" id="setQr" aria-label="QR 받기"></button></div>
+    <div class="field" id="wifiRow" hidden><span>와이파이 이름 <small>(QR 아래 안내, 비워도 됨)</small></span><input type="text" id="setWifi" maxlength="32" placeholder="예: StrangeEnglish_5G"></div>
     <div class="field"><span>인쇄 전 카트리지 확인 창</span><button class="toggle" id="setCassette" aria-label="카트리지 확인"></button></div>
     <div class="field"><span>새 비밀번호 (숫자 4자리)</span><input type="password" id="setPin" inputmode="numeric" maxlength="4"></div>
     <p class="note" style="font-size:15px;color:var(--muted);text-align:left">· 공유기(같은 Wi-Fi)가 있으면 ‘인쇄 창’, 셀피 다이렉트 연결이면 ‘캐논 앱’이 가장 안정적이에요.<br>· 인쇄 창에서 SELPHY를 한 번 고르면 다음부터 기억해요.<br>· 소리가 안 나면 아이패드 무음 모드(제어 센터의 종 아이콘)와 볼륨을 확인해 주세요.</p>
+    <details class="guide"><summary>🔒 아이들이 앱 밖으로 못 나가게 하기 (사용법 유도)</summary>
+      <ol>
+        <li>아이패드 <b>설정 → 손쉬운 사용 → 사용법 유도</b>를 켜고, <b>암호 설정</b>에서 선생님만 아는 암호를 정해요.</li>
+        <li>같은 화면에서 <b>디스플레이 자동 잠금</b>은 ‘안 함’으로 (행사 중 화면이 꺼지지 않게).</li>
+        <li>포토부스 앱을 켜고 <b>위쪽(전원) 버튼을 세 번</b> 빠르게 누름 → 오른쪽 위 <b>시작</b>.</li>
+        <li>끝낼 때: 위쪽 버튼 세 번 → 암호 → 왼쪽 위 <b>종료</b>.</li>
+      </ol>
+      <p>※ ‘캐논 앱’ 인쇄 방법은 다른 앱으로 넘어가야 해서 사용법 유도와 함께 쓸 수 없어요. ‘인쇄 창’ 방법을 쓰세요.</p>
+    </details>
     <div class="row"><button class="big" id="adminClose">저장하고 닫기</button></div>
   </div>
 </div>
@@ -659,7 +707,27 @@ const FRAMES = [
   { cat: "사진 테마", name: "골드 조명", img: "gold", base: "#6b4a1f", pattern: "photo", cellBorder: "#fff4d6", capBox: "rgba(30,18,0,.5)", ink: "#ffe39a" },
   { cat: "사진 테마", name: "알록달록 조명", img: "lights", base: "#b44d40", pattern: "photo", cellBorder: "#ffffff", capBox: "rgba(255,255,255,.85)", ink: "#b0303a" },
   { cat: "사진 테마", name: "크라프트지", img: "kraft", base: "#c9ab84", pattern: "photo", cellBorder: "#fffaf0", capBox: "rgba(255,250,240,.75)", ink: "#5a3b1a" },
-  { cat: "사진 테마", name: "원목", img: "wood", base: "#a77b4d", pattern: "photo", cellBorder: "#ffffff", capBox: "rgba(255,255,255,.82)", ink: "#5a3815" }
+  { cat: "사진 테마", name: "원목", img: "wood", base: "#a77b4d", pattern: "photo", cellBorder: "#ffffff", capBox: "rgba(255,255,255,.82)", ink: "#5a3815" },
+  { cat: "사진 테마", name: "풍선 파티", img: "balloons", base: "#e86aa6", pattern: "photo", cellBorder: "#ffffff", capBox: "rgba(255,255,255,.86)", ink: "#c2307a", overStk: ["party_popper", "balloon"] },
+  { cat: "사진 테마", name: "색종이", img: "confetti", base: "#8fd3d6", pattern: "photo", cellBorder: "#ffffff", capBox: "rgba(255,255,255,.86)", ink: "#1f7f86", overStk: ["confetti_ball", "sparkles"] },
+  { cat: "사진 테마", name: "하트 사탕", img: "candy", base: "#e8b9c9", pattern: "photo", cellBorder: "#ffffff", capBox: "rgba(255,255,255,.86)", ink: "#a8406a", overStk: ["sparkling_heart", "two_hearts"] },
+  { cat: "사진 테마", name: "색연필", img: "pencils", base: "#f6ec8a", pattern: "photo", cellBorder: "#ffffff", capBox: "rgba(255,255,255,.88)", ink: "#6b3da8", overStk: ["artist_palette", "star"] },
+  { cat: "사진 테마", name: "오로라", img: "holo", base: "#b9c7f0", pattern: "photo", cellBorder: "#ffffff", capBox: "rgba(255,255,255,.8)", ink: "#6a4fb0" },
+  { cat: "사진 테마", name: "수채화", img: "watercolor", base: "#f1b6cf", pattern: "photo", cellBorder: "#ffffff", capBox: "rgba(255,255,255,.82)", ink: "#a3407a" },
+  { cat: "사진 테마", name: "튤립", img: "tulips", base: "#b25a7a", pattern: "photo", cellBorder: "#ffffff", capBox: "rgba(255,255,255,.86)", ink: "#8a2d55", overStk: ["tulip", "butterfly"] },
+  { cat: "사진 테마", name: "파스텔 종이", img: "pastelpaper", base: "#f1c9bd", pattern: "photo", cellBorder: "#ffffff", capBox: "rgba(255,255,255,.75)", ink: "#b0506a" },
+  { cat: "사진 테마", name: "라넌큘러스", img: "ranunculus", base: "#d9cbbd", pattern: "photo", cellBorder: "#ffffff", capBox: "rgba(255,255,255,.85)", ink: "#a05530" },
+  /* 3D 캐릭터 테마: 3D 스티커 그림을 배경에 흩뿌리고 모서리에 크게 얹음 */
+  { cat: "3D 캐릭터", name: "곰돌이", base: "#f3e3cc", pattern: "theme", grad: ["#fbf0e0", "#e8cfac"], stk: ["teddy_bear", "red_heart", "bear", "honeybee"], overStk: ["teddy_bear", "heart_with_ribbon"] },
+  { cat: "3D 캐릭터", name: "토끼", base: "#fde9f1", pattern: "theme", grad: ["#fff4f9", "#f8cfe0"], stk: ["rabbit_face", "strawberry", "cherry_blossom"], overStk: ["rabbit_face", "ribbon"] },
+  { cat: "3D 캐릭터", name: "공룡", base: "#d6f0c0", pattern: "theme", grad: ["#ecf9df", "#b4e192"], stk: ["t_rex", "sauropod", "four_leaf_clover"], overStk: ["t_rex", "sauropod"] },
+  { cat: "3D 캐릭터", name: "유니콘", base: "#efe4ff", pattern: "theme", grad: ["#fff0fa", "#d6c9ff"], stk: ["unicorn", "rainbow", "sparkles", "gem_stone"], overStk: ["unicorn", "rainbow"] },
+  { cat: "3D 캐릭터", name: "멍냥", base: "#e6f1ff", pattern: "theme", grad: ["#f2f8ff", "#cadffb"], stk: ["dog_face", "cat_face", "red_heart"], overStk: ["dog_face", "cat_face"] },
+  { cat: "3D 캐릭터", name: "파티", base: "#fff2c4", pattern: "theme", grad: ["#fff8dc", "#ffd3e6"], stk: ["party_popper", "balloon", "confetti_ball", "wrapped_gift"], overStk: ["partying_face", "birthday_cake"] },
+  { cat: "3D 캐릭터", name: "디저트", base: "#ffe4ec", pattern: "theme", grad: ["#fff3f6", "#f9cad8"], stk: ["cupcake", "doughnut", "lollipop", "soft_ice_cream"], overStk: ["cupcake", "lollipop"] },
+  { cat: "3D 캐릭터", name: "우주", base: "#14173d", pattern: "theme", grad: ["#0d1030", "#352368"], stk: ["ringed_planet", "rocket", "glowing_star", "crescent_moon"], overStk: ["rocket", "ringed_planet"], ink: "#ffffff" },
+  { cat: "3D 캐릭터", name: "판다", base: "#eef6ea", pattern: "theme", grad: ["#f7fbf4", "#d3ead0"], stk: ["panda", "four_leaf_clover", "sparkles"], overStk: ["panda", "blossom"] },
+  { cat: "3D 캐릭터", name: "스트레인지", base: "#6b3da8", pattern: "theme", grad: ["#7b4bc0", "#4a2683"], stk: ["lion", "honeybee", "crown", "star"], overStk: ["lion", "trophy"], ink: "#ffd133" }
 ];
 /* 사진 테마 배경 그림 불러오기 (앱 안 frames 폴더) — 다 불러오면 보이는 화면을 다시 그림 */
 const FRAME_IMG = {};
@@ -682,6 +750,39 @@ const FILTERS = [
   { id: "vintage", name: "빈티지" }, { id: "cinema", name: "시네마" }
 ];
 const EMOJIS = "❤️ 💖 💕 ⭐️ 🌟 ✨ 🎉 🎈 🎀 👑 🌈 ☀️ 🌸 🌼 🍀 🦋 🐰 🐻 🐱 🐶 🦁 🐝 🍓 🍭 🍩 🧁 🍦 🎂 😀 😆 😍 🥰 😎 🤪 😜 🥳 👍 ✌️ 🫶 💯 🔥 💎 🎵 📸 🏆 🚀 ⚽️ 🎨".split(" ");
+/* 3D 스티커: Microsoft Fluent Emoji 3D (MIT 라이선스, 무료) → stickers 폴더. 기기와 상관없이 인쇄에 똑같이 나옴 */
+const STK_CATS = [
+  ["하트·반짝", "red_heart sparkling_heart two_hearts heart_with_ribbon growing_heart love_letter kiss_mark heart_hands sparkles glowing_star star dizzy collision gem_stone crown ribbon"],
+  ["표정·손", "heart_eyes smiling_face_with_hearts star_struck partying_face smiling_face_with_sunglasses zany_face winking_face_with_tongue grinning_squinting_face face_blowing_a_kiss sun_with_face thumbs_up victory_hand love_you waving_hand hundred_points fire"],
+  ["동물", "bear teddy_bear rabbit_face cat_face dog_face panda lion unicorn frog penguin hatching_chick honeybee butterfly t_rex sauropod"],
+  ["간식", "strawberry watermelon lollipop doughnut cupcake soft_ice_cream cookie birthday_cake"],
+  ["파티·학교", "party_popper confetti_ball balloon wrapped_gift trophy graduation_cap camera_with_flash musical_notes artist_palette magic_wand rocket soccer_ball sunglasses rainbow"],
+  ["자연·계절", "cherry_blossom blossom tulip sunflower rose bouquet four_leaf_clover crescent_moon ringed_planet snowflake snowman_without_snow christmas_tree jack_o_lantern ghost"]
+].map(([name, list]) => ({ name, keys: list.split(" ") }));
+const STK_IMG = {};
+let stkRedraw = null;
+/* 스티커 그림 불러오기 (한 번 불러오면 계속 씀). 프레임에 쓰인 그림이 늦게 오면 보이는 화면을 다시 그림 */
+function stkImg(key) {
+  let im = STK_IMG[key];
+  if (!im) {
+    im = new Image(); im.decoding = "async";
+    im.onload = () => { clearTimeout(stkRedraw); stkRedraw = setTimeout(() => { if (typeof current === "undefined") return; if (current === "frame") { buildSwatches($("frameList"), () => { buildLayouts(); drawFramePreview(); }); drawFramePreview(); } else if (current === "deco") { buildSwatches($("frameList2"), drawDeco); drawDeco(); } }, 150); };
+    im.src = "stickers/" + key + ".webp"; STK_IMG[key] = im;
+  }
+  return im;
+}
+function stkReady(key) { const im = stkImg(key); return !!(im.complete && im.naturalWidth); }
+FRAMES.forEach((f) => (f.stk || []).concat(f.overStk || []).forEach(stkImg));
+function frameAssetImgs(f) { return f ? [].concat(f.img ? [FRAME_IMG[f.img]] : [], (f.stk || []).concat(f.overStk || []).map(stkImg)).filter(Boolean) : []; }
+function waitImgs(ims, ms) {
+  return Promise.all(ims.map((im) => (im.complete ? Promise.resolve() : new Promise((res) => { const t = setTimeout(res, ms); const ok = () => { clearTimeout(t); res(); }; im.addEventListener("load", ok, { once: true }); im.addEventListener("error", ok, { once: true }); }))));
+}
+/* 말풍선·라벨 스티커 모양 */
+const BADGES = [{ id: "plain", name: "그냥 글자" }, { id: "pill", name: "알약" }, { id: "bubble", name: "말풍선" }, { id: "ribbon", name: "리본" }, { id: "stamp", name: "도장" }];
+const BADGE_PRESETS = [
+  ["BEST FRIENDS", 3, 2], ["HAPPY DAY", 1, 4], ["LOVE", 4, 4], ["최고!", 2, 2], ["사랑해", 1, 6], ["우정 뿜뿜", 2, 5],
+  ["오늘 맑음 ☀", 1, 5], ["행복해", 3, 3], ["우리 반 최고", 3, 2], ["WOW", 4, 6], ["YAY!", 2, 4], ["찰칵 📸", 1, 2]
+];
 const PHRASES = ["BEST FRIENDS", "HAPPY DAY", "LOVE", "친구 최고", "사랑해", "행복해", "우리 반 최고", "♡"];
 const TEXT_COLORS = ["#ffffff", "#191919", "#6b3da8", "#ffd133", "#ff78a0", "#46a0e6", "#e63c3c", "#3caa64"];
 const DPI = 300;
@@ -717,7 +818,7 @@ function loadFont(id) {
   return fontLoaded[f.id];
 }
 
-const DEFAULTS = { paper: "postcard", extra: 2, countdown: 7, zoom: 1, attractTitle: "PHOTO BOOTH", title: "PHOTO BOOTH", showDate: true, timers: true, cassette: true, printerReady: false, printVia: "canon", printMode: "sheet", bleed: 2, retouch: "natural", faceFx: true, poses: true, font: "jua", sharpen: true, voice: true, voiceName: "", sound: true, pin: "0000" };
+const DEFAULTS = { paper: "postcard", extra: 2, countdown: 7, zoom: 1, attractTitle: "PHOTO BOOTH", title: "PHOTO BOOTH", showDate: true, timers: true, cassette: true, printerReady: false, printVia: "canon", printMode: "sheet", bleed: 2, retouch: "natural", faceFx: true, poses: true, font: "jua", sharpen: true, voice: true, voiceName: "", sound: true, pin: "0000", qr: true, wifiName: "" };
 let S = loadSettings();
 function loadSettings() {
   try { const raw = localStorage.getItem("booth.settings"); if (raw) { const o = Object.assign({}, DEFAULTS, JSON.parse(raw)); delete o.shots; delete o.maxCopies; return o; } } catch (e) {}
@@ -768,8 +869,9 @@ function blobImageOK(blob, w, h) {
   });
 }
 let sessionId = 0;
+let retakeOf = null, retakeDone = false;   /* 고르기 화면에서 '이 사진만 다시 찍기' 중인 사진 번호 */
 function resetSession() {
-  sessionId++;
+  sessionId++; session.retake = null; session.share = null; session.shareErr = null; retakeOf = null;
   releaseSession();
   hintShown = false;
   Object.assign(session, { copies: 1, layout: "strip4", frame: 0, font: (FONT_BY[S.font] ? S.font : "jua"), shots: [], slots: [null, null, null, null], active: 0,
@@ -839,14 +941,17 @@ function drawBackground(ctx, f, x, y, w, h, panel) {
       const r = hw * 0.25;
       [P.x + (m - hw) / 2, P.x + P.w - (m + hw) / 2].forEach((xx) => { ctx.beginPath(); ctx.roundRect ? ctx.roundRect(xx, yy, hw, hh, r) : ctx.rect(xx, yy, hw, hh); ctx.fill(); });
     }
-  } else if (f.pattern === "emoji" || (f.pattern === "theme" && f.emojis && f.emojis.length)) {
-    const list = f.emojis || [f.emoji], step = w * 0.17, rnd = seeded(42 + list.length);
+  } else if (f.pattern === "emoji" || (f.pattern === "theme" && ((f.emojis && f.emojis.length) || (f.stk && f.stk.length)))) {
+    const imgs = f.stk && f.stk.length ? f.stk : null, list = imgs || f.emojis || [f.emoji], step = w * 0.17, rnd = seeded(42 + list.length);
     ctx.font = (step * 0.42) + "px " + EMOJI_FONT; ctx.textAlign = "center"; ctx.textBaseline = "middle";
     let k = 0;
     for (let row = 0, yy = y + step * 0.4; yy < y + h + step; yy += step * 0.85, row++) {
       for (let xx = x + (row % 2 ? step / 2 : 0) + step * 0.3; xx < x + w + step; xx += step) {
         ctx.save(); ctx.translate(xx + (rnd() - 0.5) * step * 0.35, yy + (rnd() - 0.5) * step * 0.35); ctx.rotate((rnd() - 0.5) * 0.7);
-        ctx.globalAlpha = 0.85; ctx.fillText(list[k++ % list.length], 0, 0); ctx.restore();
+        const item = list[k++ % list.length];
+        if (imgs) { const s0 = step * 0.5; ctx.globalAlpha = 0.9; if (stkReady(item)) ctx.drawImage(STK_IMG[item], -s0 / 2, -s0 / 2, s0, s0); }
+        else { ctx.globalAlpha = 0.85; ctx.fillText(item, 0, 0); }
+        ctx.restore();
       }
     }
   }
@@ -854,12 +959,17 @@ function drawBackground(ctx, f, x, y, w, h, panel) {
 }
 /* 테마 프레임: 사진 모서리에 큰 장식 얹기 (인생네컷 테마 프레임처럼) */
 function drawOverlay(ctx, f, p, lay) {
-  if (!f.over || !f.over.length || !lay.cells.length) return;
-  const first = lay.cells[0], last = lay.cells[lay.cells.length - 1], size = Math.min(p.w, p.h) * (p.w < p.h * 0.6 ? 0.2 : 0.13);
-  const spots = [{ x: first.x + size * 0.15, y: first.y + size * 0.1, r: -0.25, e: f.over[0] }, { x: last.x + last.w - size * 0.15, y: last.y + last.h - size * 0.05, r: 0.2, e: f.over[1] || f.over[0] }];
+  const imgs = f.overStk && f.overStk.length ? f.overStk : null, list = imgs || f.over;
+  if (!list || !list.length || !lay.cells.length) return;
+  const first = lay.cells[0], last = lay.cells[lay.cells.length - 1], size = Math.min(p.w, p.h) * (p.w < p.h * 0.6 ? 0.2 : 0.13) * (imgs ? 1.15 : 1);
+  const spots = [{ x: first.x + size * 0.15, y: first.y + size * 0.1, r: -0.25, e: list[0] }, { x: last.x + last.w - size * 0.15, y: last.y + last.h - size * 0.05, r: 0.2, e: list[1] || list[0] }];
   ctx.save(); ctx.font = size + "px " + EMOJI_FONT; ctx.textAlign = "center"; ctx.textBaseline = "middle";
   ctx.shadowColor = "rgba(0,0,0,.25)"; ctx.shadowBlur = size * 0.08; ctx.shadowOffsetY = size * 0.03;
-  for (const s0 of spots) { ctx.save(); ctx.translate(s0.x, s0.y); ctx.rotate(s0.r); ctx.fillText(s0.e, 0, 0); ctx.restore(); }
+  for (const s0 of spots) {
+    ctx.save(); ctx.translate(s0.x, s0.y); ctx.rotate(s0.r);
+    if (imgs) { if (stkReady(s0.e)) ctx.drawImage(STK_IMG[s0.e], -size / 2, -size / 2, size, size); } else ctx.fillText(s0.e, 0, 0);
+    ctx.restore();
+  }
   ctx.restore();
 }
 function drawCover(ctx, img, r) {
@@ -901,11 +1011,59 @@ function drawCaption(ctx, spec, r) {
     y += l.size * 1.2;
   }
 }
+/* 말풍선·라벨 스티커: (0,0)을 가운데로 그림. F = 글자 크기(px). 그린 크기 {w,h}를 돌려줌 */
+const measureCtx = document.createElement("canvas").getContext("2d");
+function badgeBox(st, F) {
+  measureCtx.font = (F * fontScale(st.font)) + "px " + fontCss(st.font);
+  const tw = measureCtx.measureText(st.text).width, kind = (BADGES[st.badge] || BADGES[0]).id;
+  if (kind === "pill") return { w: tw + F * 1.1, h: F * 1.55, tw };
+  if (kind === "bubble") return { w: tw + F * 1.3, h: F * 2.15, tw };
+  if (kind === "ribbon") return { w: tw + F * 2.9, h: F * 1.6, tw };
+  if (kind === "stamp") { const d = Math.max(tw + F * 1.1, F * 2.7); return { w: d, h: d, tw }; }
+  return { w: tw + F * 0.4, h: F * 1.3, tw };
+}
+function rrect(ctx, x, y, w, h, r) { ctx.beginPath(); if (ctx.roundRect) ctx.roundRect(x, y, w, h, r); else { ctx.moveTo(x + r, y); ctx.arcTo(x + w, y, x + w, y + h, r); ctx.arcTo(x + w, y + h, x, y + h, r); ctx.arcTo(x, y + h, x, y, r); ctx.arcTo(x, y, x + w, y, r); ctx.closePath(); } }
+function drawBadge(ctx, st, F) {
+  const b = badgeBox(st, F), kind = (BADGES[st.badge] || BADGES[0]).id;
+  const C = TEXT_COLORS[st.color] || "#6b3da8", strong = luminance(C) > 0.85 ? "#6b3da8" : C, onC = luminance(strong) > 0.6 ? "#191919" : "#ffffff";
+  ctx.save(); ctx.textAlign = "center"; ctx.textBaseline = "middle"; ctx.lineJoin = "round";
+  ctx.font = (F * fontScale(st.font)) + "px " + fontCss(st.font);
+  const shadow = () => { ctx.shadowColor = "rgba(0,0,0,.22)"; ctx.shadowBlur = F * 0.18; ctx.shadowOffsetY = F * 0.07; }, noShadow = () => { ctx.shadowColor = "transparent"; ctx.shadowBlur = 0; ctx.shadowOffsetY = 0; };
+  let ty = F * 0.04, ink = onC;
+  if (kind === "pill") {
+    shadow(); ctx.fillStyle = "#ffffff"; rrect(ctx, -b.w / 2 - F * 0.12, -b.h / 2 - F * 0.12, b.w + F * 0.24, b.h + F * 0.24, (b.h + F * 0.24) / 2); ctx.fill(); noShadow();
+    ctx.fillStyle = strong; rrect(ctx, -b.w / 2, -b.h / 2, b.w, b.h, b.h / 2); ctx.fill();
+  } else if (kind === "bubble") {
+    const bh = b.h * 0.78, top = -b.h / 2, tail = b.h - bh;
+    shadow(); ctx.fillStyle = "#ffffff"; ctx.strokeStyle = strong; ctx.lineWidth = F * 0.16;
+    ctx.beginPath(); if (ctx.ellipse) ctx.ellipse(0, top + bh / 2, b.w / 2, bh / 2, 0, 0, Math.PI * 2); else rrect(ctx, -b.w / 2, top, b.w, bh, bh / 2);
+    ctx.moveTo(-b.w * 0.18, top + bh * 0.9); ctx.lineTo(-b.w * 0.3, top + bh + tail); ctx.lineTo(-b.w * 0.02, top + bh * 0.96); ctx.fill(); noShadow(); ctx.stroke();
+    ctx.beginPath(); if (ctx.ellipse) ctx.ellipse(0, top + bh / 2, b.w / 2 - ctx.lineWidth / 2, bh / 2 - ctx.lineWidth / 2, 0, 0, Math.PI * 2); ctx.fill();
+    ty = top + bh / 2 + F * 0.04; ink = strong;
+  } else if (kind === "ribbon") {
+    const bw = b.w - F * 1.5, h = b.h, tailW = F * 1.0, dark = shade(strong, -0.28);
+    ctx.fillStyle = dark;
+    for (const sd of [-1, 1]) { ctx.beginPath(); const x0 = sd * (bw / 2 - F * 0.2), x1 = sd * (bw / 2 + tailW); ctx.moveTo(x0, -h * 0.3); ctx.lineTo(x1, -h * 0.3); ctx.lineTo(x1 - sd * F * 0.42, h * 0.1); ctx.lineTo(x1, h * 0.5); ctx.lineTo(x0, h * 0.5); ctx.closePath(); ctx.fill(); }
+    shadow(); ctx.fillStyle = strong; ctx.fillRect(-bw / 2, -h / 2, bw, h * 0.86); noShadow();
+    ctx.strokeStyle = "rgba(255,255,255,.75)"; ctx.lineWidth = F * 0.06; ctx.setLineDash([F * 0.18, F * 0.12]); ctx.strokeRect(-bw / 2 + F * 0.16, -h / 2 + F * 0.16, bw - F * 0.32, h * 0.86 - F * 0.32); ctx.setLineDash([]);
+    ty = -h / 2 + h * 0.43 + F * 0.04;
+  } else if (kind === "stamp") {
+    const r = b.w / 2; shadow(); ctx.fillStyle = strong; ctx.beginPath(); ctx.arc(0, 0, r, 0, Math.PI * 2); ctx.fill(); noShadow();
+    ctx.strokeStyle = onC; ctx.globalAlpha = 0.8; ctx.lineWidth = F * 0.08; ctx.setLineDash([F * 0.2, F * 0.14]); ctx.beginPath(); ctx.arc(0, 0, r - F * 0.28, 0, Math.PI * 2); ctx.stroke(); ctx.setLineDash([]); ctx.globalAlpha = 1;
+  } else {
+    ctx.lineWidth = F * 0.16; ctx.strokeStyle = luminance(C) > 0.6 ? "#191919" : "#ffffff"; ctx.strokeText(st.text, 0, ty); ink = C;
+  }
+  ctx.fillStyle = ink; ctx.fillText(st.text, 0, ty);
+  ctx.restore(); return b;
+}
+function shade(hex, k) { const n = parseInt(hex.slice(1), 16), f = (v) => Math.max(0, Math.min(255, Math.round(v + (k < 0 ? v * k : (255 - v) * k)))); return "rgb(" + f((n >> 16) & 255) + "," + f((n >> 8) & 255) + "," + f(n & 255) + ")"; }
 function drawSticker(ctx, st, p) {
   const size = Math.max(4, st.scale * p.w);
   ctx.save(); ctx.translate(p.x + st.x * p.w, p.y + st.y * p.h); ctx.rotate(st.rot);
   ctx.textAlign = "center"; ctx.textBaseline = "middle";
-  if (st.emoji) { ctx.font = size + "px " + EMOJI_FONT; ctx.fillText(st.text, 0, 0); }
+  if (st.img) { if (stkReady(st.img)) ctx.drawImage(STK_IMG[st.img], -size / 2, -size / 2, size, size); }
+  else if (st.badge) drawBadge(ctx, st, size);
+  else if (st.emoji) { ctx.font = size + "px " + EMOJI_FONT; ctx.fillText(st.text, 0, 0); }
   else {
     const color = TEXT_COLORS[st.color] || "#ffffff", outline = luminance(color) > 0.6 ? "#191919" : "#ffffff";
     ctx.font = (size * fontScale(st.font)) + "px " + fontCss(st.font); ctx.lineJoin = "round"; ctx.lineWidth = size * 0.16; ctx.strokeStyle = outline;
@@ -1130,21 +1288,9 @@ function boxBlurRGB(d, w, h, r) {
   for (let it = 0; it < 2; it++) { pass(A, tmp, true); pass(tmp, out, false); A = out.slice(); }
   return out;
 }
-/* ───────── 필터 (픽셀 계산) ───────── */
-function applyFilter(src, id) {
-  if (id === "original" || !src || !src.width) return src;
-  const W = src.width, H = src.height, c = makeCanvas(W, H), ctx = c.getContext("2d");
-  ctx.drawImage(src, 0, 0);
-  const img = ctx.getImageData(0, 0, W, H), d = img.data;
-  /* 몽환: 흐린 사진을 겹쳐 빛번짐 */
-  let B = null;
-  if (id === "dream" || id === "golden" || id === "soft") {
-    const sw = Math.max(1, Math.round(W / 3)), sh = Math.max(1, Math.round(H / 3)), sm = makeCanvas(sw, sh), sc = sm.getContext("2d");
-    sc.drawImage(c, 0, 0, sw, sh); const sd = sc.getImageData(0, 0, sw, sh), bl = boxBlurRGB(sd.data, sw, sh, Math.max(2, Math.round(sw * 0.02)));
-    for (let i = 0, j = 0; i < sd.data.length; i += 4, j += 3) { sd.data[i] = bl[j]; sd.data[i + 1] = bl[j + 1]; sd.data[i + 2] = bl[j + 2]; }
-    sc.putImageData(sd, 0, 0); const big = makeCanvas(W, H), bc = big.getContext("2d"); bc.drawImage(sm, 0, 0, W, H);
-    B = bc.getImageData(0, 0, W, H).data; freeCanvas(sm); freeCanvas(big);
-  }
+/* ───────── 필터 (픽셀 계산) ─────────
+   계산 부분(filterPixels)은 따로 떼어 '일꾼(Web Worker)'에서도 돌림 → 인쇄용 큰 사진을 만들 때 화면이 멈추지 않음 */
+function filterPixels(d, B, W, H, id) {
   const grain = { film: 10, retro: 16, golden: 9, flash: 13, digicam: 5 }[id] || 0, vig = { retro: 0.45, film: 0.2, cinema: 0.3, flash: 0.42, golden: 0.18 }[id] || 0;
   const cx = W / 2, cy = H / 2, maxd = Math.hypot(cx, cy); let seed = 12345;
   const sat = (r, g, b, k) => { const m = 0.299 * r + 0.587 * g + 0.114 * b; return [m + (r - m) * k, m + (g - m) * k, m + (b - m) * k]; };
@@ -1180,7 +1326,68 @@ function applyFilter(src, id) {
     if (grain) { seed = (seed * 1103515245 + 12345) & 0x7fffffff; const n = ((seed >> 8) % 1000 / 1000 - 0.5) * grain; r += n; g += n; b += n; }
     d[i] = r > 255 ? 255 : r < 0 ? 0 : r; d[i + 1] = g > 255 ? 255 : g < 0 ? 0 : g; d[i + 2] = b > 255 ? 255 : b < 0 ? 0 : b;
   }
+}
+function needsGlow(id) { return id === "dream" || id === "golden" || id === "soft"; }
+/* 빛번짐용 흐린 사진 (1/3 크기로 흐리게 → 다시 키움) */
+function glowPrep(c, W, H) {
+  const sw = Math.max(1, Math.round(W / 3)), sh = Math.max(1, Math.round(H / 3)), sm = makeCanvas(sw, sh), sc = sm.getContext("2d");
+  sc.drawImage(c, 0, 0, sw, sh); return { sm, sc, sw, sh, sd: sc.getImageData(0, 0, sw, sh), r: Math.max(2, Math.round(sw * 0.02)) };
+}
+function glowFinish(g, bl, W, H) {
+  const sd = g.sd;
+  for (let i = 0, j = 0; i < sd.data.length; i += 4, j += 3) { sd.data[i] = bl[j]; sd.data[i + 1] = bl[j + 1]; sd.data[i + 2] = bl[j + 2]; }
+  g.sc.putImageData(sd, 0, 0); const big = makeCanvas(W, H), bc = big.getContext("2d"); bc.drawImage(g.sm, 0, 0, W, H);
+  const B = bc.getImageData(0, 0, W, H).data; freeCanvas(g.sm); freeCanvas(big); return B;
+}
+/* 바로 계산 (작은 미리보기용) */
+function applyFilter(src, id) {
+  if (id === "original" || !src || !src.width) return src;
+  const W = src.width, H = src.height, c = makeCanvas(W, H), ctx = c.getContext("2d");
+  ctx.drawImage(src, 0, 0);
+  const img = ctx.getImageData(0, 0, W, H);
+  let B = null;
+  if (needsGlow(id)) { const g = glowPrep(c, W, H); B = glowFinish(g, boxBlurRGB(g.sd.data, g.sw, g.sh, g.r), W, H); }
+  filterPixels(img.data, B, W, H, id);
   ctx.putImageData(img, 0, 0); return c;
+}
+/* 일꾼(Web Worker): 안 되면 그냥 바로 계산 */
+const FW = { w: null, seq: 0, wait: {}, broken: false };
+function filterWorker() {
+  if (FW.w || FW.broken) return FW.w;
+  try {
+    const src = boxBlurRGB.toString() + "\n" + filterPixels.toString() +
+      "\nonmessage=function(e){var m=e.data;try{if(m.op==='blur'){var o=boxBlurRGB(new Uint8ClampedArray(m.buf),m.w,m.h,m.r);postMessage({id:m.id,buf:o.buffer},[o.buffer]);}else{var d=new Uint8ClampedArray(m.buf);filterPixels(d,m.B?new Uint8ClampedArray(m.B):null,m.w,m.h,m.f);postMessage({id:m.id,buf:d.buffer},[d.buffer]);}}catch(err){postMessage({id:m.id,err:String(err)});}};";
+    const url = URL.createObjectURL(new Blob([src], { type: "text/javascript" }));
+    FW.w = new Worker(url);
+    FW.w.onmessage = (e) => { const cb = FW.wait[e.data.id]; delete FW.wait[e.data.id]; if (cb) cb(e.data); };
+    FW.w.onerror = () => { FW.broken = true; const all = FW.wait; FW.wait = {}; Object.values(all).forEach((cb) => cb({ err: "worker" })); try { FW.w.terminate(); } catch (e) {} FW.w = null; };
+  } catch (e) { FW.broken = true; FW.w = null; }
+  return FW.w;
+}
+function fwCall(msg, transfer) {
+  const w = filterWorker(); if (!w) return Promise.reject(new Error("no worker"));
+  return new Promise((res, rej) => {
+    const id = ++FW.seq; msg.id = id;
+    const t = setTimeout(() => { if (FW.wait[id]) { delete FW.wait[id]; rej(new Error("timeout")); } }, 20000);
+    FW.wait[id] = (r) => { clearTimeout(t); if (r.err) rej(new Error(r.err)); else res(r.buf); };
+    w.postMessage(msg, transfer);
+  });
+}
+/* 큰 사진용: 일꾼에서 계산 (화면 안 멈춤). 실패하면 바로 계산 */
+async function applyFilterAsync(src, id) {
+  if (id === "original" || !src || !src.width) return src;
+  if (!filterWorker()) return applyFilter(src, id);
+  let c = null, g = null;
+  try {
+    const W = src.width, H = src.height; c = makeCanvas(W, H); const ctx = c.getContext("2d");
+    ctx.drawImage(src, 0, 0);
+    const img = ctx.getImageData(0, 0, W, H);
+    let B = null;
+    if (needsGlow(id)) { g = glowPrep(c, W, H); const copy = new Uint8ClampedArray(g.sd.data); B = glowFinish(g, new Float32Array(await fwCall({ op: "blur", buf: copy.buffer, w: g.sw, h: g.sh, r: g.r }, [copy.buffer])), W, H); g = null; }
+    const buf = img.data.buffer.slice(0), Bb = B ? B.buffer.slice(0) : null;
+    const out = await fwCall({ op: "px", buf, B: Bb, w: W, h: H, f: id }, Bb ? [buf, Bb] : [buf]);
+    img.data.set(new Uint8ClampedArray(out)); ctx.putImageData(img, 0, 0); return c;
+  } catch (e) { freeCanvas(c); if (g) freeCanvas(g.sm); return applyFilter(src, id); }
 }
 
 /* ───────── 소리 ───────── */
@@ -1754,7 +1961,8 @@ function showCamError(msg) {
   box.appendChild(el("div", null, escapeHtml(msg)));
   const row = el("div", "row"); row.style.marginTop = "18px"; row.style.justifyContent = "center";
   const again = el("button", "big", "다시 시도"), home = el("button", "big gray", "처음으로");
-  again.onclick = () => { clearTimeout(camErrTimer); go("shoot"); }; home.onclick = () => { clearTimeout(camErrTimer); goHome(); };
+  const r = retakeOf;
+  again.onclick = () => { clearTimeout(camErrTimer); if (r != null) session.retake = r; go("shoot"); }; home.onclick = () => { clearTimeout(camErrTimer); goHome(); };
   row.appendChild(home); row.appendChild(again); box.appendChild(row);
   clearTimeout(camErrTimer); camErrTimer = setTimeout(() => { if (current === "shoot" && !$("camErr").hidden) goHome(); }, 90000);
 }
@@ -1767,15 +1975,30 @@ const POSES = ["브이 ✌️", "손하트 🫶", "볼 하트 🥰", "꽃받침 
   "토끼 귀 🐰", "멋진 척 😎", "머리 위 하트 💕", "서로 바라보기 👀", "볼 콕 ☝️", "주먹 꽉 화이팅 💪", "턱 괴기 🤔", "만세 🙌", "얼굴 가리고 빼꼼 🙈", "제일 웃긴 표정 🤪"];
 let poseBag = [];
 function nextPose() { if (!poseBag.length) poseBag = POSES.slice().sort(() => Math.random() - 0.5); return poseBag.pop(); }
+/* 촬영 중 완성 모양 미리보기: 찍은 순서대로 칸을 채워 보여 줌 */
+function drawShootMini(bump) {
+  const cv = $("shootMini"); if (retakeOf != null) { cv.hidden = true; return; }
+  const n = LAYOUTS[session.layout].slots, photos = [];
+  for (let i = 0; i < n; i++) photos.push(session.shots[i] ? shotPrev(i) : null);
+  const [, ph] = panelSize(S.paper, session.layout), c = render(baseSpec({ photos, numbers: true }), 260 / ph, true);
+  showCanvasIn(cv, c); freeCanvas(c); cv.hidden = false;
+  if (bump) { cv.classList.remove("bump"); void cv.offsetWidth; cv.classList.add("bump"); }
+}
 ENTER.shoot = async () => {
   const run = ++shootRun;
-  releaseSession();
-  session.shots = []; session.slots = new Array(LAYOUTS[session.layout].slots).fill(null); session.active = 0; session.filtered = {};
+  /* 고르기 화면에서 '이 사진만 다시 찍기'로 온 경우: 다른 사진은 그대로 두고 한 장만 */
+  retakeOf = (session.retake != null && session.shots[session.retake]) ? session.retake : null; session.retake = null; retakeDone = false;
+  if (retakeOf == null) {
+    releaseSession();
+    session.shots = []; session.slots = new Array(LAYOUTS[session.layout].slots).fill(null); session.active = 0; session.filtered = {};
+  }
+  $("shootThumbs").querySelectorAll("canvas").forEach(freeCanvas);
   $("shootThumbs").innerHTML = ""; $("countNum").textContent = ""; $("cdRing").hidden = true; $("camErr").hidden = true; $("camGuide").hidden = false;
-  const total = shotsNeeded();
-  $("shotCount").textContent = "1 / " + total;
+  const total = retakeOf != null ? 1 : shotsNeeded();
+  $("shotCount").textContent = retakeOf != null ? (retakeOf + 1) + "번 다시 찍기" : "1 / " + total;
+  drawShootMini(false);
   /* 아래 줄에 찍을 칸을 미리 보여 주고 하나씩 채움 (몇 장 남았는지 한눈에) */
-  for (let k = 0; k < total; k++) { const d = el("div", "slot"); d.textContent = k + 1; $("shootThumbs").appendChild(d); }
+  for (let k = 0; k < total; k++) { const d = el("div", "slot"); d.textContent = retakeOf != null ? retakeOf + 1 : k + 1; $("shootThumbs").appendChild(d); }
   requestAnimationFrame(layoutCamFrame);
   let camOk = false;
   try { camOk = await startCamera(); } catch (e) {
@@ -1794,7 +2017,7 @@ ENTER.shoot = async () => {
   $("camGuide").hidden = true;
   const cd = Math.max(1, S.countdown);
   for (let i = 0; i < total; i++) {
-    $("shotCount").textContent = (i + 1) + " / " + total;
+    if (retakeOf == null) $("shotCount").textContent = (i + 1) + " / " + total;
     const pose = S.poses ? nextPose() : ""; $("poseTip").textContent = pose ? "💡 " + pose : ""; $("poseTip").hidden = !pose;
     if (cd <= 2) startLive();
     cdJump = false;
@@ -1803,7 +2026,7 @@ ENTER.shoot = async () => {
       /* ⚡ 바로 찍기: 남은 시간을 3초로 줄임 */
       if (cdJump && n > 3) n = 3;
       cdJump = false;
-      $("quickShot").hidden = n <= 3;
+      $("quickShot").hidden = n <= 3; $("shootMini").classList.toggle("dim", n <= 3);
       setCount(n); if (n === 2 && cd > 2) startLive();
       if (n <= 3 && S.voice) say(COUNT_KEYS[n]);
       else beep(n <= 3);
@@ -1821,25 +2044,41 @@ ENTER.shoot = async () => {
     const live = stopLive();
     await sleep(160); $("flash").classList.remove("on");
     if (run !== shootRun) { freeCanvas(still); freeCanvas(fx); (live || []).forEach(freeCanvas); return; }
+    $("shootMini").classList.remove("dim");
     if (still) {
-      const thumb = downscale(still, 800), fxThumb = fx ? downscale(fx, 800) : null;
-      session.shots.push({ still, thumb, fx, fxThumb, live });
-      const sm = shotImg(session.shots.length - 1, "thumb");
+      const thumb = downscale(still, 800), fxThumb = fx ? downscale(fx, 800) : null, shot = { still, thumb, fx, fxThumb, live };
+      let idx;
+      if (retakeOf != null) {
+        /* 예전 사진 지우고 그 자리에 새 사진 (필터 저장본도 새로) */
+        const old = session.shots[retakeOf];
+        if (old) { freeCanvas(old.still); freeCanvas(old.thumb); freeCanvas(old.fx); freeCanvas(old.fxThumb); (old.live || []).forEach(freeCanvas); Object.values(old.rt || {}).forEach(freeCanvas); }
+        Object.values(session.filtered).forEach(freeCanvas); session.filtered = {};
+        session.shots[retakeOf] = shot; idx = retakeOf; retakeDone = true;
+      } else { session.shots.push(shot); idx = session.shots.length - 1; }
+      const sm = shotImg(idx, "thumb");
       const t = makeCanvas(sm.width, sm.height); t.getContext("2d").drawImage(sm, 0, 0);
-      const slot = $("shootThumbs").children[session.shots.length - 1];
+      const slot = $("shootThumbs").children[retakeOf != null ? 0 : idx];
       await flyShot(sm, slot);
       if (slot) { slot.textContent = ""; slot.classList.add("filled"); slot.appendChild(t); slot.scrollIntoView({ inline: "nearest", block: "nearest" }); }
+      if (run === shootRun) drawShootMini(true);
     }
     await sleep(250);
   }
   $("quickShot").hidden = true; $("poseTip").hidden = true;
   if (run !== shootRun) return;
   stopCamera();
+  if (retakeOf != null) { retakeOf = null; go("select"); return; }
   if (!session.shots.length) { showCamError("사진이 찍히지 않았어요. 카메라를 확인하고 다시 시도해 주세요."); return; }   /* 빈 사진으로 인쇄되지 않게 */
   go("select");
 };
 $("stopShoot").addEventListener("click", async () => {
   shootRun++; stopLive(); stopCamera(); $("quickShot").hidden = true; $("poseTip").hidden = true;
+  if (retakeOf != null && retakeDone) { retakeOf = null; go("select"); return; }   /* 새 사진이 이미 찍혔으면 그대로 고르기로 */
+  if (retakeOf != null) {   /* 한 장 다시 찍기 중이면: 예전 사진 그대로 두고 고르기로 */
+    const r = retakeOf, v = await ask("다시 찍기를 멈췄어요", "예전 사진을 그대로 쓸까요?", [{ t: "처음으로", v: "home", cls: "gray" }, { t: "다시 찍기", v: "again", cls: "gray" }, { t: "예전 사진 쓰기", v: "select" }], 60, "select");
+    if (v === "home") goHome(); else if (v === "again") { session.retake = r; go("shoot"); } else { retakeOf = null; go("select"); }
+    return;
+  }
   const v = await ask("촬영을 멈췄어요", "어떻게 할까요?", [{ t: "처음으로", v: "home", cls: "gray" }, { t: "프레임 다시 고르기", v: "frame", cls: "gray" }, { t: "처음부터 다시 찍기", v: "shoot" }], 60, "home");
   if (v === "home") goHome(); else go(v);
 });
@@ -1872,6 +2111,13 @@ function drawSelect() {
     const b = el("button", "shot" + (used >= 0 ? " used" : "")); b.style.aspectRatio = String(a);
     const im = shotPrev(i), t = makeCanvas(im.width, im.height); t.getContext("2d").drawImage(im, 0, 0); b.appendChild(t);
     if (used >= 0) b.appendChild(el("b", null, String(used + 1)));
+    const redo = el("span", "redo", "↻ 다시"); redo.setAttribute("role", "button");
+    redo.addEventListener("click", async (e) => {
+      e.stopPropagation();
+      const ok = await ask("이 사진만 다시 찍을까요?", "다른 사진은 그대로 두고 이 한 장만 새로 찍어요.", [{ t: "아니요", v: false, cls: "gray" }, { t: "다시 찍기", v: true }], 45, false);
+      if (ok && current === "select") { session.retake = i; go("shoot"); }
+    });
+    b.appendChild(redo);
     b.addEventListener("click", () => tapShot(i)); list.appendChild(b);
   });
   const filled = session.slots.filter((s) => s != null).length;
@@ -1944,26 +2190,44 @@ async function buildFilters() {
   }
   freeCanvas(small);
 }
-function addSticker(text, emoji) {
-  const st = { id: Math.random().toString(36).slice(2), text, emoji, font: session.font, color: textColor, x: 0.5 + (Math.random() - 0.5) * 0.3, y: 0.45 + (Math.random() - 0.5) * 0.4, scale: emoji ? 0.16 : 0.09, rot: 0 };
+/* 스티커 붙이기. extra: {img} 3D 스티커, {badge, color} 말풍선·라벨 */
+function addSticker(text, emoji, extra) {
+  const st = Object.assign({ id: Math.random().toString(36).slice(2), text, emoji, font: session.font, color: textColor, x: 0.5 + (Math.random() - 0.5) * 0.3, y: 0.45 + (Math.random() - 0.5) * 0.4, scale: emoji ? 0.16 : 0.09, rot: (Math.random() - 0.5) * 0.3 }, extra || {});
+  if (st.img) st.scale = 0.2; else if (st.badge) st.scale = 0.075;
   session.stickers.push(st); selectedSticker = st.id; renderStickers();
+  if (st.img) stkImg(st.img);
   if (!hintShown) { hintShown = true; say("pinch"); }
+}
+/* 말풍선 스티커 화면 그림: 한 번 크게 그려 두고 크기는 CSS로만 바꿈 (끌 때 가볍게) */
+const BADGE_BASE = 60;
+function badgeCanvas(st) {
+  const dpr = Math.min(2, window.devicePixelRatio || 1), F = BADGE_BASE * dpr, b = badgeBox(st, F), pad = F * 0.4;
+  const c = makeCanvas(b.w + pad * 2, b.h + pad * 2), ctx = c.getContext("2d"); ctx.translate(c.width / 2, c.height / 2); drawBadge(ctx, st, F);
+  c.dataset.w = c.width / F; return c;
 }
 function renderStickers() {
   const layer = $("stkLayer"), W = layer.clientWidth || $("decoStage").clientWidth;
-  layer.innerHTML = "";
+  layer.querySelectorAll("canvas").forEach(freeCanvas); layer.innerHTML = "";
   for (const st of session.stickers) {
-    const d = el("div", "stk " + (st.emoji ? "emoji" : "txt") + (st.id === selectedSticker ? " sel" : ""));
-    d.dataset.id = st.id; d.textContent = st.text;
-    if (!st.emoji) { const color = TEXT_COLORS[st.color], o = luminance(color) > 0.6 ? "#191919" : "#ffffff"; d.style.color = color; d.style.paintOrder = "stroke fill"; d.dataset.outline = o; }
+    const kind = st.img ? "img" : st.badge ? "badge" : st.emoji ? "emoji" : "txt";
+    const d = el("div", "stk " + kind + (st.id === selectedSticker ? " sel" : ""));
+    d.dataset.id = st.id;
+    if (st.img) { const im = new Image(); im.src = stkImg(st.img).src; im.draggable = false; im.alt = ""; d.appendChild(im); }
+    else if (st.badge) d.appendChild(badgeCanvas(st));
+    else d.textContent = st.text;
+    if (kind === "txt") { const color = TEXT_COLORS[st.color], o = luminance(color) > 0.6 ? "#191919" : "#ffffff"; d.style.color = color; d.style.paintOrder = "stroke fill"; d.dataset.outline = o; }
     placeSticker(d, st, W); layer.appendChild(d);
   }
   $("stkTools").hidden = !session.stickers.some((s) => s.id === selectedSticker);
 }
 function placeSticker(d, st, W) {
-  d.style.fontSize = Math.max(4, st.scale * W * (st.emoji ? 1 : fontScale(st.font))) + "px";
-  if (!st.emoji) d.style.fontFamily = fontCss(st.font);
-  if (!st.emoji) d.style.webkitTextStroke = Math.max(1, st.scale * W * 0.08) + "px " + d.dataset.outline;
+  const size = Math.max(4, st.scale * W);
+  if (st.img) { d.style.width = d.style.height = size + "px"; }
+  else if (st.badge) { const c = d.firstChild; if (c) c.style.width = (Number(c.dataset.w) * size) + "px"; }
+  else {
+    d.style.fontSize = size * (st.emoji ? 1 : fontScale(st.font)) + "px";
+    if (!st.emoji) { d.style.fontFamily = fontCss(st.font); d.style.webkitTextStroke = Math.max(1, size * 0.08) + "px " + d.dataset.outline; }
+  }
   d.style.left = st.x * 100 + "%"; d.style.top = st.y * 100 + "%";
   d.style.transform = "translate(-50%,-50%) rotate(" + st.rot + "rad)";
 }
@@ -2027,16 +2291,38 @@ document.addEventListener("gesturestart", (e) => e.preventDefault());
 $("stkTools").addEventListener("click", (e) => {
   const btn = e.target.closest("button"); const st = session.stickers.find((s) => s.id === selectedSticker); if (!btn || !st) return;
   if (btn.dataset.act === "del") { session.stickers = session.stickers.filter((s) => s !== st); selectedSticker = null; renderStickers(); }
+  if (btn.dataset.act === "dup") { const c = Object.assign({}, st, { id: Math.random().toString(36).slice(2), x: Math.min(0.95, st.x + 0.06), y: Math.min(0.95, st.y + 0.05) }); session.stickers.push(c); selectedSticker = c.id; renderStickers(); }
 });
 $("tabs").addEventListener("click", (e) => {
   const b = e.target.closest(".tab"); if (!b) return;
   $("tabs").querySelectorAll(".tab").forEach((x) => x.classList.toggle("on", x === b));
   document.querySelectorAll("[data-pane]").forEach((p) => { p.hidden = p.dataset.pane !== b.dataset.tab; });
 });
-EMOJIS.forEach((e) => { const b = el("button", "emo"); b.textContent = e; b.addEventListener("click", () => addSticker(e, true)); $("emojiList").appendChild(b); });
-PHRASES.forEach((p) => { const b = el("button"); b.textContent = p; b.addEventListener("click", () => addSticker(p, false)); $("phraseList").appendChild(b); });
+/* 스티커 칸: 3D 스티커 묶음 + 말풍선 + 이모지 */
+let stkCat = 0;
+function buildStickerPane() {
+  const cats = $("stkCats"), list = $("emojiList"), names = STK_CATS.map((c) => c.name).concat(["말풍선", "이모지"]);
+  cats.innerHTML = "";
+  names.forEach((n, i) => { const b = el("button", i === stkCat ? "on" : "", n); b.addEventListener("click", () => { stkCat = i; buildStickerPane(); }); cats.appendChild(b); });
+  list.querySelectorAll("canvas").forEach(freeCanvas); list.innerHTML = ""; list.className = "emojis";
+  if (stkCat < STK_CATS.length) {
+    list.classList.add("img3d");
+    STK_CATS[stkCat].keys.forEach((k) => { const b = el("button", "emo"), im = new Image(); im.src = stkImg(k).src; im.alt = ""; im.draggable = false; b.appendChild(im); b.addEventListener("click", () => addSticker("", false, { img: k })); list.appendChild(b); });
+  } else if (stkCat === STK_CATS.length) {
+    list.classList.add("badges");
+    if (!fontLoaded[session.font] || !buildStickerPane.fontOk) { const f0 = session.font; loadFont(f0).then(() => { buildStickerPane.fontOk = true; if (current === "deco" && stkCat === STK_CATS.length && session.font === f0) buildStickerPane(); }); }
+    BADGE_PRESETS.forEach(([t, kind, color]) => {
+      const st = { text: t, badge: kind, color, font: session.font }, b = el("button", "emo"), c = badgeCanvas(st);
+      c.style.maxWidth = "100%"; c.style.maxHeight = "64px"; b.appendChild(c);
+      b.addEventListener("click", () => addSticker(t, false, { badge: kind, color })); list.appendChild(b);
+    });
+  } else EMOJIS.forEach((e) => { const b = el("button", "emo"); b.textContent = e; b.addEventListener("click", () => addSticker(e, true)); list.appendChild(b); });
+}
+let badgeKind = 0;
+seg($("badgeSeg"), BADGES.map((b, i) => i), () => badgeKind, (v) => { badgeKind = v; }, (v) => BADGES[v].name);
+PHRASES.forEach((p) => { const b = el("button"); b.textContent = p; b.addEventListener("click", () => addSticker(p, false, badgeKind ? { badge: badgeKind } : null)); $("phraseList").appendChild(b); });
 TEXT_COLORS.forEach((c, i) => { const b = el("button", i === 0 ? "on" : ""); b.style.background = c; b.setAttribute("aria-label", "글자 색 " + (i + 1)); b.addEventListener("click", () => { textColor = i; $("colorList").querySelectorAll("button").forEach((x, j) => x.classList.toggle("on", j === i)); }); $("colorList").appendChild(b); });
-function addTyped() { const t = $("textInput").value.trim(); if (t) addSticker(t, false); $("textInput").value = ""; $("textInput").blur(); }
+function addTyped() { const t = $("textInput").value.trim(); if (t) addSticker(t, false, badgeKind ? { badge: badgeKind } : null); $("textInput").value = ""; $("textInput").blur(); }
 $("textAdd").addEventListener("click", addTyped);
 $("textInput").addEventListener("keydown", (e) => { if (e.key === "Enter") addTyped(); });
 function buildFonts() {
@@ -2046,17 +2332,17 @@ function buildFonts() {
     const b = el("button", session.font === f.id ? "on" : ""); b.innerHTML = '<b style="font-family:' + fontCss(f.id).replace(/"/g, "'") + '">' + (f.latin ? "Happy" : "가나다") + "</b><small>" + f.name + "</small>";
     b.addEventListener("click", async () => {
       session.font = f.id; list.querySelectorAll("button").forEach((x) => x.classList.toggle("on", x === b));
-      const st = session.stickers.find((x) => x.id === selectedSticker); if (st && !st.emoji) st.font = f.id;
-      await loadFont(f.id); drawDeco();
+      const st = session.stickers.find((x) => x.id === selectedSticker); if (st && !st.emoji && !st.img) st.font = f.id;
+      await loadFont(f.id); drawDeco(); if (stkCat === STK_CATS.length) buildStickerPane();
     });
     list.appendChild(b);
   });
 }
 ENTER.deco = () => {
   G.pts.clear(); G.start = null; G.drag = false;
-  selectedSticker = null; say("deco"); buildFonts();
+  selectedSticker = null; say("deco"); buildFonts(); buildStickerPane();
   /* 꾸미기를 다시 하면 인쇄용 사진도 새로 만들어야 함 */
-  printTok++; freeCanvas(session.finalCanvas); session.finalCanvas = null; session.finalBlob = null; session.printFile = null; session.liveBlob = null;
+  printTok++; freeCanvas(session.finalCanvas); session.finalCanvas = null; session.finalBlob = null; session.printFile = null; session.liveBlob = null; session.share = null;
   buildRetouch(); buildFilters(); buildSwatches($("frameList2"), drawDeco);
   requestAnimationFrame(drawDeco);
 };
@@ -2065,11 +2351,10 @@ $("decoNext").addEventListener("click", () => { selectedSticker = null; go("prin
 /* ───────── 7. 출력 ───────── */
 function canvasToBlob(c, type, q) { return new Promise((res) => c.toBlob((b) => res(b), type, q)); }
 let printTok = 0;
+/* 인쇄 전에 프레임 배경 사진·3D 장식·붙인 3D 스티커 그림이 다 불러와졌는지 기다림 */
 function waitFrameImg(ms) {
-  const f = FRAMES[session.frame]; if (!f || !f.img || frameImgReady(f)) return Promise.resolve();
-  const im = FRAME_IMG[f.img];
-  if (im.complete) return Promise.resolve();
-  return new Promise((res) => { const t = setTimeout(res, ms); im.addEventListener("load", () => { clearTimeout(t); res(); }, { once: true }); im.addEventListener("error", () => { clearTimeout(t); res(); }, { once: true }); });
+  const ims = frameAssetImgs(FRAMES[session.frame]).concat(session.stickers.filter((x) => x.img).map((x) => stkImg(x.img)));
+  return waitImgs(ims, ms);
 }
 ENTER.print = async () => {
   const tok = ++printTok;
@@ -2078,7 +2363,7 @@ ENTER.print = async () => {
   if (tok !== printTok || current !== "print") return;
   $("printBtn").disabled = true; $("printAlt").disabled = true; $("saveBtn2").disabled = true; $("printAltBtn").disabled = true; $("printMsg").textContent = "사진을 만들고 있어요…"; $("printPreview").removeAttribute("src");
   printTexts();
-  if (session.finalBlob) { readyToPrint(); return; }   /* '인쇄가 안 됐어요'로 돌아온 경우 */
+  if (session.finalBlob) { readyToPrint(); lanShare(false); return; }   /* '인쇄가 안 됐어요'로 돌아온 경우 */
   await sleep(50);
   let ok = false;
   try { ok = await buildPrintImage(tok); } catch (e) { console.warn("build", e); ok = false; }
@@ -2090,8 +2375,46 @@ ENTER.print = async () => {
     return;
   }
   readyToPrint();
+  lanShare(false);
   setTimeout(() => { if (tok === printTok) makeLiveVideo(baseSpec({ stickers: session.stickers }), tok).catch(() => {}); }, 1500);
 };
+/* ── 휴대폰 QR 받기 (앱 전용): 아이패드 안 작은 서버에 사진을 올리고 QR을 보여 줌 ──
+   차례대로 처리(사진 → 움직이는 사진 추가)해서 주소가 하나로 유지됨 */
+let shareChain = Promise.resolve();
+function lanShare(withVideo) {
+  if (!NATIVE || !S.qr || !session.finalBlob) return shareChain;
+  const sid = sessionId, blob = session.finalBlob;
+  shareChain = shareChain.then(async () => {
+    if (sid !== sessionId || session.finalBlob !== blob) return;
+    if (withVideo && (!session.liveBlob || (session.share && session.share.video))) return;
+    if (!withVideo && session.share && session.share.token) return;
+    try {
+      const msg = { cmd: "lanShare", jpeg: await blobToB64(blob), title: S.title || "" };
+      if (session.share && session.share.token) msg.token = session.share.token;
+      if (withVideo) { msg.video = await blobToB64(session.liveBlob); msg.videoType = session.liveBlob.type; }
+      const r = await native(msg, 20000);
+      if (sid !== sessionId || session.finalBlob !== blob) return;
+      if (r && r.ok && r.qr) { session.share = { token: r.token, url: r.url, qr: r.qr, video: !!msg.video }; session.shareErr = null; }
+      else { session.share = session.share || null; printLog("QR 받기 실패: " + ((r && r.error) || "?")); if (r && r.error === "no-wifi") session.shareErr = "no-wifi"; }
+    } catch (e) { printLog("QR 받기 오류: " + (e && e.message)); }
+    renderQR();
+  }).catch(() => {});
+  return shareChain;
+}
+function renderQR() {
+  const sh = session.share, on = !!(sh && sh.qr) && (current === "printing" || current === "done");
+  const noWifi = !on && session.shareErr === "no-wifi" && current === "done";
+  document.querySelectorAll("[data-qr]").forEach((box) => {
+    if (noWifi && box.closest("#s-done")) { box.dataset.tok = ""; box.innerHTML = "<span>📶 아이패드가 와이파이에 연결되어 있지 않아 QR 받기를 쓸 수 없어요. 아래 ‘사진 보내기’를 이용해 주세요.</span>"; box.hidden = false; return; }
+    if (!on) { box.hidden = true; box.innerHTML = ""; box.dataset.tok = ""; return; }
+    if (box.dataset.tok === sh.token && !box.hidden) return;
+    box.dataset.tok = sh.token; box.innerHTML = "";
+    const im = new Image(); im.src = "data:image/png;base64," + sh.qr; im.alt = "사진 받기 QR 코드";
+    const t = el("div"); t.appendChild(el("b", null, "📱 QR 찍고 사진 받기"));
+    t.appendChild(el("span", null, "휴대폰 카메라로 찍으면 사진을 저장할 수 있어요" + (S.wifiName ? "<br>와이파이 <b style='display:inline;font-family:inherit;font-size:inherit;color:var(--purple)'>" + escapeHtml(S.wifiName) + "</b>에 연결" : "<br>(포토부스와 같은 와이파이)")));
+    box.appendChild(im); box.appendChild(t); box.hidden = false;
+  });
+}
 /* 사진을 칸 크기에 맞게 가운데 기준으로 잘라 한 번에 줄임 */
 function fitCell(img, w, h) {
   const c = makeCanvas(w, h), ctx = c.getContext("2d"), iw = img.width, ih = img.height, s = Math.max(w / iw, h / ih);
@@ -2128,7 +2451,7 @@ async function buildPrintImage(tok) {
       photos = [];
       for (const b0 of bases) {
         if (!b0) { photos.push(null); continue; }
-        const fit = fitCell(b0, cw, chh), g = applyFilter(fit, session.filter);
+        const fit = fitCell(b0, cw, chh), g = await applyFilterAsync(fit, session.filter);   /* 일꾼에서 계산 → 화면 안 멈춤 */
         if (g !== fit) freeCanvas(fit);
         if (S.sharpen !== false) sharpen(g, 0.45);
         photos.push(g); await sleep(0);
@@ -2332,6 +2655,7 @@ function makeLayers() {
 let pgReturned = false, pgPreset = 0;
 function startPrinting(returned, copies) { if (!session.finalCanvas) return; pgReturned = !!returned; pgPreset = copies || 0; go("printing"); }
 ENTER.printing = () => {
+  renderQR();
   PG.copies = pgPreset || 1; PG.finished = false; clearTimeout(PG.autoTimer);
   document.querySelector("#s-printing .copiesPick").hidden = !!pgPreset;
   if (PG.layers) ["blank", "y", "m", "c"].forEach((k) => freeCanvas(PG.layers[k]));
@@ -2404,7 +2728,9 @@ async function makeLiveVideo(spec, tok) {
   for (const s of session.slots) {
     if (s == null || !session.shots[s]) { lives.push([]); continue; }
     const arr = session.shots[s].live.length ? session.shots[s].live : [shotPrev(s)];
-    lives.push(arr.map((f) => { const g = applyFilter(f, session.filter); if (g !== f) fresh.push(g); return g; }));
+    const out = [];
+    for (const f of arr) { const g = await applyFilterAsync(f, session.filter); if (g !== f) fresh.push(g); out.push(g); }
+    lives.push(out);
     await sleep(0);   /* 화면이 멈추지 않게 한 칸씩 */
     if (tok !== printTok) { fresh.forEach(freeCanvas); return; }
   }
@@ -2429,6 +2755,7 @@ async function makeLiveVideo(spec, tok) {
   if (tok !== printTok) return;
   session.liveBlob = new Blob(chunks, { type: type.split(";")[0] });
   if (current === "done") showLive();
+  lanShare(true);   /* QR 페이지에 움직이는 사진도 추가 (사진 올리기가 끝난 뒤 차례로) */
 }
 
 /* ───────── 8. 완료 ───────── */
@@ -2456,7 +2783,8 @@ ENTER.done = () => {
   $("shareErr").textContent = "";
   $("doneImg").hidden = false; $("liveVideo").hidden = true;
   if (session.finalBlob) $("doneImg").src = trackURL(URL.createObjectURL(session.finalBlob)); else $("doneImg").removeAttribute("src");
-  showLive(); confetti();
+  showLive(); confetti(); renderQR();
+  lanShare(false); lanShare(true);   /* 앞에서 실패했으면 다시 시도 (이미 올렸으면 아무 일 안 함) */
 };
 $("shareBtn").addEventListener("click", () => shareSave($("shareErr")));
 /* 사진 저장·보내기: 공유 창(사진 앱 저장, AirDrop, 메시지 등)으로 사진 + 움직이는 영상 */
@@ -2516,7 +2844,8 @@ function openAdmin() {
   $("setTitle").value = S.title; $("setAttract").value = S.attractTitle;
   $("setTitle").oninput = drawCaptionPreview; drawCaptionPreview();
   toggle($("setDate"), "showDate"); toggle($("setTimers"), "timers"); toggle($("setCassette"), "cassette");
-  toggle($("setSharpen"), "sharpen"); toggle($("setFaceFx"), "faceFx"); toggle($("setPoses"), "poses");
+  toggle($("setSharpen"), "sharpen"); toggle($("setFaceFx"), "faceFx"); toggle($("setPoses"), "poses"); toggle($("setQr"), "qr");
+  $("qrRow").hidden = !NATIVE; $("wifiRow").hidden = !NATIVE; $("setWifi").value = S.wifiName || "";
   { const sf = $("setFont"); sf.innerHTML = ""; FONTS.forEach((f) => { const o = el("option"); o.value = f.id; o.textContent = f.name; if ((S.font || "jua") === f.id) o.selected = true; sf.appendChild(o); }); sf.onchange = () => { S.font = sf.value; session.font = sf.value; }; } toggle($("setVoice"), "voice"); toggle($("setSound"), "sound");
   if (!openAdmin.bound) { $("setDate").addEventListener("click", drawCaptionPreview); openAdmin.bound = true; }
   if (!RETOUCH[S.retouch]) S.retouch = "natural";
@@ -2561,6 +2890,7 @@ $("voiceTest").addEventListener("click", async () => {
   playSfx("shutter"); S.voice = was;
 });
 $("adminClose").addEventListener("click", () => {
+  S.wifiName = $("setWifi").value.trim();
   S.title = $("setTitle").value.trim(); S.attractTitle = $("setAttract").value.trim() || "PHOTO BOOTH";
   const np = $("setPin").value.trim(); if (/^\d{4}$/.test(np)) S.pin = np;
   saveSettings(); $("adminModal").hidden = true; go("attract");
@@ -2568,11 +2898,12 @@ $("adminClose").addEventListener("click", () => {
 
 /* 시작 화면 반짝이 만들기 */
 (function makeBokeh() {
-  const box = $("bokeh"), emo = ["✨", "💖", "⭐️", "🌸", "🎀", "📸", "🌈", "💜", "🫧"];
-  for (let i = 0; i < 14; i++) {
-    const sp = document.createElement("span"), isEmo = i % 3 === 0, size = isEmo ? 26 + Math.random() * 26 : 20 + Math.random() * 90;
+  /* 비눗방울 + 둥실 떠오르는 3D 스티커 */
+  const box = $("bokeh"), emo = ["sparkling_heart", "camera_with_flash", "glowing_star", "rainbow", "teddy_bear", "balloon", "rabbit_face", "party_popper", "unicorn", "ribbon", "lollipop", "star_struck"];
+  for (let i = 0; i < 18; i++) {
+    const sp = document.createElement("span"), isEmo = i % 3 !== 2, size = isEmo ? 44 + Math.random() * 46 : 20 + Math.random() * 90;
     sp.className = isEmo ? "bk-emo" : "dot";
-    if (isEmo) { sp.textContent = emo[i % emo.length]; sp.style.fontSize = size + "px"; } else { sp.style.width = sp.style.height = size + "px"; }
+    if (isEmo) { const im = new Image(); im.src = "stickers/" + emo[i % emo.length] + ".webp"; im.alt = ""; im.decoding = "async"; sp.appendChild(im); sp.style.width = sp.style.height = size + "px"; } else { sp.style.width = sp.style.height = size + "px"; }
     sp.style.left = (Math.random() * 100) + "%";
     sp.style.animationDuration = (10 + Math.random() * 12) + "s";
     sp.style.animationDelay = (-Math.random() * 20) + "s";

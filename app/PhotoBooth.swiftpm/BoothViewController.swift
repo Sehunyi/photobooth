@@ -8,6 +8,9 @@ final class BoothViewController: UIViewController, WKScriptMessageHandler, WKUID
     private var webView: WKWebView!
     private var server: LocalServer?
     private let port: UInt16 = 8723
+    /// 휴대폰 QR 받기용 서버 (같은 와이파이)
+    private let sharePort: UInt16 = 8724
+    private lazy var shareServer = ShareServer(port: sharePort)
     /// 앱 안의 화면을 못 찾을 때만 쓰는 인터넷 주소
     private let remoteURL = URL(string: "https://sehunyi.github.io/photobooth/")!
     /// 인쇄할 용지 크기(포인트). 기본: 엽서 100 x 148 mm
@@ -29,6 +32,10 @@ final class BoothViewController: UIViewController, WKScriptMessageHandler, WKUID
         }
         // 화면이 꺼지지 않게
         UIApplication.shared.isIdleTimerDisabled = true
+        // 앱으로 돌아오면 QR 받기 서버가 꺼졌을 수 있어 다시 켬 (켜져 있으면 그대로)
+        NotificationCenter.default.addObserver(forName: UIApplication.willEnterForegroundNotification, object: nil, queue: .main) { [weak self] _ in
+            self?.shareServer.resume()
+        }
 
         let config = WKWebViewConfiguration()
         config.allowsInlineMediaPlayback = true
@@ -193,6 +200,41 @@ final class BoothViewController: UIViewController, WKScriptMessageHandler, WKUID
                     if flag.answered { return }
                     flag.answered = true
                     replyHandler(["ok": available, "error": available ? "" : "unavailable"] as [String: Any], nil)
+                }
+            }
+
+        case "lanShare":
+            // 완성 사진을 같은 와이파이의 휴대폰이 QR로 받아 갈 수 있게 올려 두고, 주소와 QR 그림을 돌려줌
+            guard let b64 = body["jpeg"] as? String, let data = Data(base64Encoded: b64) else {
+                replyHandler(["ok": false, "error": "bad-image"] as [String: Any], nil)
+                return
+            }
+            guard let ip = ShareServer.lanAddress() else {
+                replyHandler(["ok": false, "error": "no-wifi"] as [String: Any], nil)
+                return
+            }
+            var video: Data? = nil
+            if let v = body["video"] as? String {
+                video = Data(base64Encoded: v)
+            }
+            let videoType = body["videoType"] as? String ?? ""
+            let ext = videoType.contains("webm") ? "webm" : "mp4"
+            let title = body["title"] as? String ?? ""
+            let token = body["token"] as? String
+            let portNumber = sharePort
+            shareServer.start()
+            shareServer.add(photo: data, video: video, videoExt: ext, title: title, token: token) { tok in
+                // QR 그림은 다른 일꾼 줄에서 만들고, 대답은 화면 줄(main)에서
+                DispatchQueue.global(qos: .userInitiated).async {
+                    var result: [String: Any] = ["ok": false, "error": "server-down"]
+                    if let tok = tok {
+                        let url = "http://\(ip):\(portNumber)/p/\(tok)"
+                        let qr = ShareServer.qrPNG(url)?.base64EncodedString() ?? ""
+                        result = ["ok": !qr.isEmpty, "url": url, "token": tok, "qr": qr, "error": qr.isEmpty ? "qr-failed" : ""]
+                    }
+                    DispatchQueue.main.async {
+                        replyHandler(result, nil)
+                    }
                 }
             }
 
