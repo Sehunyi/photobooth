@@ -115,7 +115,11 @@ button:focus-visible { outline: 3px solid var(--yellow); outline-offset: 2px; }
 .camFrame video { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; transform: scaleX(-1); }
 .camFrame .num { position: absolute; inset: 0; display: grid; place-items: center; font-family: var(--display); font-size: 180px; text-shadow: 0 4px 24px rgba(0,0,0,.5); }
 .camFrame .guide { position: absolute; left: 0; right: 0; bottom: 16px; text-align: center; font-family: var(--display); font-size: 26px; text-shadow: 0 2px 10px rgba(0,0,0,.6); }
-#fxCanvas { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; transform: scaleX(-1); pointer-events: none; }
+#fxCanvas, #beautyView { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; transform: scaleX(-1); pointer-events: none; }
+#s-shoot .top .count { flex: 1; text-align: center; }
+.seg.beautySeg { background: rgba(255,255,255,.1); border-color: rgba(255,255,255,.35); }
+.seg.beautySeg button { background: transparent; color: #fff; font-size: 17px; padding: 8px 12px; border: 0; }
+.seg.beautySeg button.on { background: var(--yellow); color: #3a2a00; }
 .fxBar { display: flex; gap: 10px; padding: 12px 30px 0; overflow-x: auto; -webkit-overflow-scrolling: touch; align-items: center; }
 .fxBar button { flex: none; display: flex; flex-direction: column; align-items: center; gap: 2px; min-width: 76px; padding: 8px 10px; border-radius: 16px; background: rgba(255,255,255,.12); color: #fff; font-size: 15px; border: 3px solid transparent; }
 .fxBar button i { font-style: normal; font-size: 30px; line-height: 1.1; font-family: "Apple Color Emoji", "Segoe UI Emoji", sans-serif; }
@@ -141,9 +145,6 @@ button:focus-visible { outline: 3px solid var(--yellow); outline-offset: 2px; }
 .tab.on { background: var(--purple); color: #fff; }
 .seg.retouchSeg { display: grid; grid-template-columns: repeat(4, 1fr); border-radius: 14px; }
 .seg.retouchSeg button { font-family: var(--display); font-size: 20px; padding: 12px 6px; }
-.seg.bgSeg { display: grid; grid-template-columns: repeat(4, 1fr); border-radius: 14px; }
-.seg.bgSeg button { font-family: var(--display); font-size: 17px; padding: 10px 4px; }
-#aiState { font-family: var(--body); font-size: 14px; color: var(--muted); }
 .filters { display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 12px; }
 .flt { background: var(--card); border-radius: 14px; padding: 6px; border: 4px solid transparent; display: flex; flex-direction: column; align-items: center; gap: 6px; font-size: 17px; color: var(--ink); }
 .flt canvas { width: 100%; height: 96px; object-fit: cover; border-radius: 8px; }
@@ -295,10 +296,11 @@ button:focus-visible { outline: 3px solid var(--yellow); outline-offset: 2px; }
 
 <!-- 4. 촬영 -->
 <section class="screen" id="s-shoot" hidden>
-  <div class="top"><button class="stop" id="stopShoot">그만하기</button><div class="count" id="shotCount">1 / 8</div><div style="width:110px"></div></div>
+  <div class="top"><button class="stop" id="stopShoot">그만하기</button><div class="count" id="shotCount">1 / 8</div><div class="seg beautySeg" id="beautySeg"></div></div>
   <div class="camBox" id="camBox">
     <div class="camFrame" id="camFrame">
       <video id="video" playsinline muted autoplay></video>
+      <canvas id="beautyView" hidden></canvas>
       <canvas id="fxCanvas"></canvas>
       <div class="num" id="countNum"></div>
       <div class="guide" id="camGuide">카메라를 보세요!</div>
@@ -332,12 +334,8 @@ button:focus-visible { outline: 3px solid var(--yellow); outline-offset: 2px; }
       </div>
       <div class="scroll">
         <div data-pane="filter">
-          <div class="label" style="font-size:19px;margin-bottom:8px">✨ 자동 보정</div>
+          <div class="label" style="font-size:19px;margin-bottom:8px">✨ 뽀샤시 보정</div>
           <div class="seg retouchSeg" id="retouchSeg"></div>
-          <div class="aiBox" id="aiBox" hidden>
-            <div class="label" style="font-size:19px;margin:14px 0 8px">🎨 배경 바꾸기 <small id="aiState"></small></div>
-            <div class="seg bgSeg" id="bgSeg"></div>
-          </div>
           <div class="label" style="font-size:19px;margin:14px 0 8px">필터</div>
           <div class="filters" id="filterList"></div>
         </div>
@@ -370,6 +368,7 @@ button:focus-visible { outline: 3px solid var(--yellow); outline-offset: 2px; }
       <div class="note" id="printNote"></div>
       <div class="field copiesPick" id="nativeCopies" hidden><span>몇 장 뽑을까요?</span><div class="seg" id="copySeg"></div></div>
       <button class="big" id="printBtn" disabled>🖨️ 인쇄하기</button>
+      <button class="big gray" id="printAltBtn" hidden disabled>캐논 앱으로 인쇄</button>
       <button class="big yellow" id="saveBtn2" disabled>사진 저장 · 보내기</button>
       <div class="err" id="printErr"></div>
       <div class="row small">
@@ -480,17 +479,19 @@ button:focus-visible { outline: 3px solid var(--yellow); outline-offset: 2px; }
     <div class="field"><span>목소리·소리 확인</span><button class="mini" id="voiceTest">들어보기</button></div>
     <div class="field"><span>효과음 (찰칵 · 삐)</span><button class="toggle" id="setSound" aria-label="효과음"></button></div>
     <div class="field"><span>얼굴 따라다니는 효과</span><button class="toggle" id="setFaceFx" aria-label="얼굴 효과"></button></div>
-    <div class="field"><span>배경 바꾸기 <small>(사람만 남기고 배경 교체)</small></span><button class="toggle" id="setAi" aria-label="AI 보정"></button></div>
     <div class="field"><span>화질 개선 <small>(인쇄 사진을 선명하게)</small></span><button class="toggle" id="setSharpen" aria-label="화질 개선"></button></div>
-    <div class="field"><span>자동 보정 기본값</span><div class="seg" id="setRetouch"></div></div>
-    <div class="field" id="nativePrinterRow" hidden><span>프린터 <small id="nativePrinterName">(선택 안 됨)</small></span><button class="mini" id="pickPrinterBtn">프린터 선택</button></div>
+    <div class="field"><span>뽀샤시 보정 기본값 <small>(촬영 화면에서 바꿀 수 있음)</small></span><div class="seg" id="setRetouch"></div></div>
+    <div class="field" id="modeRow" hidden><span>인쇄 방법</span><div class="seg" id="setMode"></div></div>
+    <div class="field" id="nativePrinterRow" hidden><span>프린터 <small id="nativePrinterName">(선택 안 됨)</small></span><span style="display:flex;gap:8px"><button class="mini" id="checkPrinterBtn">연결 확인</button><button class="mini" id="pickPrinterBtn">프린터 선택</button></span></div>
+    <div class="field" id="logRow" hidden><span>최근 인쇄 기록 <small>(문제 찾기용)</small></span><button class="mini" id="logBtn">보기</button></div>
+    <pre id="printLogBox" hidden style="flex:none;white-space:pre-wrap;font-size:14px;background:var(--paper);border-radius:10px;padding:10px;margin:0 0 8px;max-height:180px;overflow:auto"></pre>
     <div class="field" id="viaRow"><span>인쇄 방법</span><div class="seg" id="setVia"></div></div>
     <div class="field"><span>가장자리 보정 <small>(잘리는 만큼 테두리를 넓힘)</small></span><div class="seg" id="setBleed"></div></div>
     <div class="field"><span>가장자리 확인용 인쇄 <small>(보정값 찾기)</small></span><button class="mini" id="calibBtn">인쇄해 보기</button></div>
     <div class="field"><span>프린터 연결 안내 <small>(처음 인쇄할 때 한 번 나옴)</small></span><button class="mini" id="printerReset">다시 보이기</button></div>
     <div class="field"><span>인쇄 전 카트리지 확인 창</span><button class="toggle" id="setCassette" aria-label="카트리지 확인"></button></div>
     <div class="field"><span>새 비밀번호 (숫자 4자리)</span><input type="password" id="setPin" inputmode="numeric" maxlength="4"></div>
-    <p class="note" style="font-size:15px;color:var(--muted);text-align:left">· 인쇄할 때 iOS 인쇄 창에서 프린터(SELPHY)를 한 번 고르면 다음부터 기억해요.<br>· 소리가 안 나면 아이패드 무음 모드(제어 센터의 종 아이콘)와 볼륨을 확인해 주세요.</p>
+    <p class="note" style="font-size:15px;color:var(--muted);text-align:left">· 공유기(같은 Wi-Fi)가 있으면 ‘인쇄 창’, 셀피 다이렉트 연결이면 ‘캐논 앱’이 가장 안정적이에요.<br>· 인쇄 창에서 SELPHY를 한 번 고르면 다음부터 기억해요.<br>· 소리가 안 나면 아이패드 무음 모드(제어 센터의 종 아이콘)와 볼륨을 확인해 주세요.</p>
     <div class="row"><button class="big" id="adminClose">저장하고 닫기</button></div>
   </div>
 </div>
@@ -583,12 +584,15 @@ const FRAMES = [
   { cat: "계절·행사", name: "졸업·축하", base: "#1f2a4d", pattern: "theme", grad: ["#24325c", "#141c38"], emojis: ["🎓", "🌟", "🎊", "💐"], over: ["🎓", "💐"], ink: "#ffd76a" },
   { cat: "계절·행사", name: "스트레인지", base: "#6b3da8", pattern: "theme", grad: ["#7b4bc0", "#4a2683"], emojis: ["🦁", "🐝", "🔥", "🛡️"], over: ["🦁", "🐝"], ink: "#ffd133" }
 ];
+/* 필터: 한국 포토부스·my4cut에서 많이 쓰는 느낌 (소프트·핑크·필름 카메라·일회용 플래시·2000년대 디카·흑백) */
 const FILTERS = [
-  { id: "original", name: "원본" }, { id: "bright", name: "화사하게" }, { id: "milk", name: "우유" },
-  { id: "fresh", name: "청량" }, { id: "peach", name: "복숭아" }, { id: "dream", name: "몽환" },
-  { id: "film", name: "필름" }, { id: "retro", name: "레트로" }, { id: "cinema", name: "시네마" },
-  { id: "vivid", name: "선명하게" }, { id: "warm", name: "따뜻하게" }, { id: "cool", name: "시원하게" },
-  { id: "mono", name: "흑백" }, { id: "monohi", name: "흑백 강하게" }, { id: "vintage", name: "빈티지" }
+  { id: "original", name: "원본" }, { id: "soft", name: "소프트" }, { id: "pink", name: "핑크" },
+  { id: "bright", name: "화사하게" }, { id: "milk", name: "우유" }, { id: "golden", name: "골든 필름" },
+  { id: "flash", name: "일회용 플래시" }, { id: "digicam", name: "2000 디카" }, { id: "fresh", name: "청량" },
+  { id: "peach", name: "복숭아" }, { id: "dream", name: "몽환" }, { id: "film", name: "필름" },
+  { id: "retro", name: "레트로" }, { id: "vivid", name: "선명하게" }, { id: "warm", name: "따뜻하게" },
+  { id: "cool", name: "시원하게" }, { id: "mono", name: "흑백" }, { id: "monohi", name: "흑백 강하게" },
+  { id: "vintage", name: "빈티지" }, { id: "cinema", name: "시네마" }
 ];
 const EMOJIS = "❤️ 💖 💕 ⭐️ 🌟 ✨ 🎉 🎈 🎀 👑 🌈 ☀️ 🌸 🌼 🍀 🦋 🐰 🐻 🐱 🐶 🦁 🐝 🍓 🍭 🍩 🧁 🍦 🎂 😀 😆 😍 🥰 😎 🤪 😜 🥳 👍 ✌️ 🫶 💯 🔥 💎 🎵 📸 🏆 🚀 ⚽️ 🎨".split(" ");
 const PHRASES = ["BEST FRIENDS", "HAPPY DAY", "LOVE", "친구 최고", "사랑해", "행복해", "우리 반 최고", "♡"];
@@ -597,7 +601,7 @@ const DPI = 300;
 const EMOJI_FONT = '"Apple Color Emoji","Segoe UI Emoji","Noto Color Emoji",sans-serif';
 const DISPLAY_FONT = '"Jua","Apple SD Gothic Neo",sans-serif';
 
-const DEFAULTS = { paper: "postcard", extra: 2, countdown: 7, zoom: 1, attractTitle: "PHOTO BOOTH", title: "PHOTO BOOTH", showDate: true, timers: true, cassette: true, printerReady: false, printVia: "canon", bleed: 2, retouch: "natural", faceFx: true, aiRetouch: true, sharpen: true, voice: true, voiceName: "", sound: true, pin: "0000" };
+const DEFAULTS = { paper: "postcard", extra: 2, countdown: 7, zoom: 1, attractTitle: "PHOTO BOOTH", title: "PHOTO BOOTH", showDate: true, timers: true, cassette: true, printerReady: false, printVia: "canon", printMode: "sheet", bleed: 2, retouch: "natural", faceFx: true, sharpen: true, voice: true, voiceName: "", sound: true, pin: "0000" };
 let S = loadSettings();
 function loadSettings() {
   try { const raw = localStorage.getItem("booth.settings"); if (raw) { const o = Object.assign({}, DEFAULTS, JSON.parse(raw)); delete o.shots; delete o.maxCopies; return o; } } catch (e) {}
@@ -608,7 +612,7 @@ function saveSettings() { try { localStorage.setItem("booth.settings", JSON.stri
 /* ───────── 한 팀의 촬영 데이터 ───────── */
 const session = {
   copies: 1, layout: "strip4", frame: 0, shots: [], slots: [null, null, null, null], active: 0,
-  filter: "original", retouch: "natural", bg: "none", stickers: [], finalCanvas: null, finalBlob: null, liveBlob: null, filtered: {}
+  filter: "original", retouch: "natural", stickers: [], finalCanvas: null, finalBlob: null, liveBlob: null, filtered: {}
 };
 /* ── 메모리 관리 ──
    아이패드 Safari는 캔버스 메모리 한도를 넘으면 그림이 '빈 화면'으로 만들어짐 → 백지 인쇄의 원인.
@@ -617,7 +621,7 @@ function freeCanvas(c) { try { if (c && c.getContext) { c.width = 0; c.height = 
 const objectURLs = [];
 function trackURL(u) { objectURLs.push(u); return u; }
 function releaseSession() {
-  (session.shots || []).forEach((sh) => { freeCanvas(sh.still); freeCanvas(sh.thumb); (sh.live || []).forEach(freeCanvas); Object.values(sh.rt || {}).forEach(freeCanvas); if (sh.ai) { freeCanvas(sh.ai.person); freeCanvas(sh.ai.skin); } });
+  (session.shots || []).forEach((sh) => { freeCanvas(sh.still); freeCanvas(sh.thumb); (sh.live || []).forEach(freeCanvas); Object.values(sh.rt || {}).forEach(freeCanvas); freeCanvas(sh.fx); freeCanvas(sh.fxThumb); });
   Object.values(session.filtered || {}).forEach(freeCanvas);
   freeCanvas(session.finalCanvas);
   if (typeof PG !== "undefined" && PG.layers) { ["blank", "y", "m", "c"].forEach((k) => freeCanvas(PG.layers[k])); PG.layers = null; }
@@ -649,7 +653,7 @@ function resetSession() {
   releaseSession();
   hintShown = false;
   Object.assign(session, { copies: 1, layout: "strip4", frame: 0, shots: [], slots: [null, null, null, null], active: 0,
-    filter: "original", retouch: (RETOUCH[S.retouch] ? S.retouch : "natural"), bg: "none", stickers: [], finalCanvas: null, finalBlob: null, liveBlob: null, filtered: {} });
+    filter: "original", retouch: (RETOUCH[S.retouch] ? S.retouch : "natural"), stickers: [], finalCanvas: null, finalBlob: null, liveBlob: null, filtered: {} });
 }
 
 /* ───────── 도구 ───────── */
@@ -838,67 +842,128 @@ function baseSpec(extra) {
   return Object.assign({ paper: S.paper, layout: session.layout, frame: session.frame, photos: [], stickers: [], title: S.title, showDate: S.showDate, numbers: false, active: null }, extra || {});
 }
 
-/* ───────── 자동 보정 (인생네컷식 '뽀샤시' 보정) ─────────
-   1) 자동 노출·대비(어두운/밝은 끝 1%를 기준으로 범위 맞추기) + 자동 화이트밸런스(회색 기준)
-   2) 피부 영역만 골라(YCbCr 피부색 범위) 가장자리는 살리고 피부결만 부드럽게 (눈·입·머리카락은 그대로)
-   3) 피부 톤을 살짝 밝고 화사하게 + 부드러운 빛번짐(글로우) */
-/* 한국식 보정 기준 (조사 결과)
-   - 한국 포토부스(인생네컷·포토이즘·하루필름 등)의 '예쁘게 나오는' 비결은 얼굴 모양을 바꾸는 게 아니라
-     ① 정면 소프트 조명(그림자가 옅고 밝은 얼굴) ② 피부결 부드럽게 ③ 화사한 색감(흰기·핑크·파스텔)
-   - 후기에서 자연스럽다고 평가받는 곳(포토이즘·셀픽스)은 약한 보정, 하루필름류는 밝은 노출+흰 톤+뽀얀 피부,
-     올드문·픽닷류는 부드러운 피부+채도 약간↑+대비↓의 파스텔 톤
-   - 노란기·칙칙함은 라벤더 쪽으로, 창백함은 핑크로 보정하는 것이 일반적인 톤 보정 방법
-   → 얼굴형 변형(갸름·눈 크게)은 어색하다는 의견이 많아 넣지 않음 */
+/* ───────── 뽀샤시 보정 (GPU, 촬영 화면에서 실시간) ─────────
+   my4cut·인생네컷류처럼 '카메라 화면에서 바로' 자연스럽게 보이게.
+   1) 피부결 부드럽게: 가장자리(눈·눈썹·입·머리카락)는 그대로 두고, 밝기가 비슷한 이웃끼리만 섞음 (양방향 흐림)
+   2) 피부색 영역에만 강하게 → 옷·배경은 거의 그대로
+   3) 중간 밝기를 들어 올리는 곡선(하이키) + 노란기 덜고 혈색(핑크) 살짝 + 부드러운 빛번짐
+   → 얼굴 모양은 바꾸지 않음 */
 const RETOUCH = {
   off:     { name: "끄기" },
-  natural: { name: "자연스럽게", smooth: 0.45, bright: 0.5, glow: 0.05, pink: 0.3, ktone: 0.5, fill: 0.3, contrast: -0.05, sat: 1.0, white: 0, tint: [0, 0, 0] },
-  glow:    { name: "뽀샤시",     smooth: 0.8, bright: 0.85, glow: 0.09, pink: 0.45, ktone: 0.75, fill: 0.5, contrast: -0.06, sat: 0.97, white: 0.05, tint: [2, 0, 5] },
-  pastel:  { name: "파스텔",     smooth: 0.65, bright: 0.7, glow: 0.07, pink: 0.5, ktone: 0.6, fill: 0.4, contrast: -0.12, sat: 1.1, white: 0.02, tint: [7, 2, 0] }
+  natural: { name: "자연스럽게", sm: 0.55, br: 0.16, ro: 0.22, cl: 0.35, gl: 0.0,  co: -0.02, sa: 1.0 },
+  glow:    { name: "뽀샤시",     sm: 0.82, br: 0.34, ro: 0.38, cl: 0.55, gl: 0.16, co: -0.06, sa: 0.96 },
+  bright:  { name: "화사하게",   sm: 0.7,  br: 0.48, ro: 0.28, cl: 0.5,  gl: 0.10, co: -0.10, sa: 0.92 }
 };
-/* 얼굴형 보정: 턱선을 얼굴 가운데로 살짝 당기고(갸름), 눈을 살짝 키움. 얼굴 점이 없으면 건너뜀 */
-function warpFace(c, faces, P) {
-  if (!faces || !faces.length || !(P.slim || P.eyes)) return;
-  const w = c.width, h = c.height, ctx = c.getContext("2d");
-  for (const F of faces) {
-    const pt = (i) => ({ x: F[i].x * w, y: F[i].y * h });
-    if (!F[454] || !F[234]) continue;
-    const fw = Math.hypot(pt(454).x - pt(234).x, pt(454).y - pt(234).y); if (fw < 30) continue;
-    const ops = [];
-    if (P.slim) {
-      const cx = pt(1).x, cy = pt(1).y;
-      for (const i of [132, 58, 172, 136, 150, 361, 288, 397, 365, 379]) {
-        const q = pt(i); ops.push({ type: "move", c: q, r: fw * 0.2, m: { x: (cx - q.x) * P.slim, y: (cy - q.y) * P.slim * 0.25 } });
-      }
-    }
-    if (P.eyes) {
-      for (const [a, b] of [[33, 133], [362, 263]]) {
-        const A = pt(a), B = pt(b), ew = Math.hypot(B.x - A.x, B.y - A.y);
-        ops.push({ type: "scale", c: { x: (A.x + B.x) / 2, y: (A.y + B.y) / 2 }, r: ew * 1.05, a: P.eyes });
-      }
-    }
-    for (const op of ops) {
-      const r = op.r, x0 = Math.max(0, Math.floor(op.c.x - r)), y0 = Math.max(0, Math.floor(op.c.y - r));
-      const x1 = Math.min(w, Math.ceil(op.c.x + r)), y1 = Math.min(h, Math.ceil(op.c.y + r)), bw = x1 - x0, bh = y1 - y0;
-      if (bw < 2 || bh < 2) continue;
-      const src = ctx.getImageData(x0, y0, bw, bh), dst = ctx.createImageData(bw, bh), S0 = src.data, D = dst.data, r2 = r * r;
-      const m2 = op.m ? op.m.x * op.m.x + op.m.y * op.m.y : 0;
-      for (let yy = 0; yy < bh; yy++) for (let xx = 0; xx < bw; xx++) {
-        const X = x0 + xx, Y = y0 + yy, dx = X - op.c.x, dy = Y - op.c.y, d2 = dx * dx + dy * dy;
-        let sxp = X, syp = Y;
-        if (d2 < r2) {
-          if (op.type === "move") { const k = (r2 - d2) / (r2 - d2 + m2); const f = k * k; sxp = X - op.m.x * f; syp = Y - op.m.y * f; }
-          else { const k = 1 - op.a * (1 - d2 / r2); sxp = op.c.x + dx * k; syp = op.c.y + dy * k; }
-        }
-        /* 양선형 보간 */
-        const fx = Math.min(bw - 1.001, Math.max(0, sxp - x0)), fy = Math.min(bh - 1.001, Math.max(0, syp - y0));
-        const ix = fx | 0, iy = fy | 0, tx = fx - ix, ty = fy - iy, o = (yy * bw + xx) * 4;
-        const i00 = (iy * bw + ix) * 4, i10 = i00 + 4, i01 = i00 + bw * 4, i11 = i01 + 4;
-        for (let ch = 0; ch < 4; ch++) D[o + ch] = (S0[i00 + ch] * (1 - tx) + S0[i10 + ch] * tx) * (1 - ty) + (S0[i01 + ch] * (1 - tx) + S0[i11 + ch] * tx) * ty;
-      }
-      ctx.putImageData(dst, x0, y0);
-    }
-  }
+const BEAUTY_VS = "attribute vec2 p;varying vec2 v;void main(){v=p*.5+.5;gl_Position=vec4(p,0.,1.);}";
+const BEAUTY_FS = [
+  "precision highp float;varying vec2 v;uniform sampler2D t;uniform vec2 px;uniform float rad,sm,br,ro,cl,gl,co,sa;",
+  "float lum(vec3 c){return dot(c,vec3(.299,.587,.114));}",
+  "float skin(vec3 c){float y=lum(c);float cb=-.1687*c.r-.3313*c.g+.5*c.b+.5;float cr=.5*c.r-.4187*c.g-.0813*c.b+.5;",
+  " return smoothstep(.26,.32,cb)*(1.-smoothstep(.50,.56,cb))*smoothstep(.505,.545,cr)*(1.-smoothstep(.69,.75,cr))*smoothstep(.10,.24,y);}",
+  "void main(){vec3 c=texture2D(t,v).rgb;float y0=lum(c);vec3 s=c;float ws=1.;vec3 g=c;",
+  " for(int i=0;i<12;i++){float a=float(i)*.5235988+.2618;vec2 d=vec2(cos(a),sin(a))*px*rad;",
+  "  for(int k=1;k<=2;k++){vec3 q=texture2D(t,v+d*(float(k)*.5)).rgb;float dl=lum(q)-y0;float w=exp(-dl*dl*110.);s+=q*w;ws+=w;g+=q;}}",
+  " vec3 bl=s/ws;g/=25.;float m=skin(c);",
+  " vec3 o=mix(c,bl,sm*m);",
+  " o+=(c-bl)*.18*sm*m;",                                   /* 피부결이 완전히 사라지지 않게 아주 조금 되살림 */
+  " float b=br*(.55+.45*m);float k=2.5+5.*b;vec3 cv=log(1.+k*o)/log(1.+k);o=mix(o,cv,clamp(b*1.6,0.,1.));",
+  " o.r+=ro*.028*m;o.g-=cl*.014*m;o.b+=(cl*.028+ro*.008)*m;",
+  " o=1.-(1.-o)*(1.-g*gl);",
+  " o=(o-.5)*(1.+co)+.5;o=mix(vec3(lum(o)),o,sa);",
+  " gl_FragColor=vec4(clamp(o,0.,1.),1.);}"
+].join("\n");
+function makeBeautyGL(canvas, preserve) {
+  let gl = null;
+  try { gl = canvas.getContext("webgl", { preserveDrawingBuffer: !!preserve, premultipliedAlpha: false, antialias: false, alpha: false, depth: false }); } catch (e) {}
+  if (!gl) return null;
+  const sh = (type, src) => { const o = gl.createShader(type); gl.shaderSource(o, src); gl.compileShader(o); if (!gl.getShaderParameter(o, gl.COMPILE_STATUS)) throw new Error(gl.getShaderInfoLog(o)); return o; };
+  let prog;
+  try {
+    prog = gl.createProgram(); gl.attachShader(prog, sh(gl.VERTEX_SHADER, BEAUTY_VS)); gl.attachShader(prog, sh(gl.FRAGMENT_SHADER, BEAUTY_FS));
+    gl.linkProgram(prog); if (!gl.getProgramParameter(prog, gl.LINK_STATUS)) throw new Error(gl.getProgramInfoLog(prog));
+  } catch (e) { console.warn("beauty shader", e); return null; }
+  gl.useProgram(prog);
+  const buf = gl.createBuffer(); gl.bindBuffer(gl.ARRAY_BUFFER, buf);
+  gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([-1, -1, 1, -1, -1, 1, 1, 1]), gl.STATIC_DRAW);
+  const loc = gl.getAttribLocation(prog, "p"); gl.enableVertexAttribArray(loc); gl.vertexAttribPointer(loc, 2, gl.FLOAT, false, 0, 0);
+  const tex = gl.createTexture(); gl.bindTexture(gl.TEXTURE_2D, tex);
+  [gl.TEXTURE_WRAP_S, gl.TEXTURE_WRAP_T].forEach((k) => gl.texParameteri(gl.TEXTURE_2D, k, gl.CLAMP_TO_EDGE));
+  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR); gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
+  gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, true);
+  const U = {}; ["t", "px", "rad", "sm", "br", "ro", "cl", "gl", "co", "sa"].forEach((n) => { U[n] = gl.getUniformLocation(prog, n); });
+  const me = { gl, canvas, lost: false };
+  canvas.addEventListener("webglcontextlost", (e) => { e.preventDefault(); me.lost = true; });
+  /* src(비디오·캔버스)를 보정해서 이 캔버스(w×h)에 그림 */
+  me.draw = (src, srcW, srcH, w, h, P) => {
+    if (me.lost || gl.isContextLost()) { me.lost = true; return false; }
+    if (canvas.width !== w || canvas.height !== h) { canvas.width = w; canvas.height = h; }
+    gl.viewport(0, 0, w, h);
+    gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGB, gl.RGB, gl.UNSIGNED_BYTE, src);
+    gl.uniform1i(U.t, 0); gl.uniform2f(U.px, 1 / srcW, 1 / srcH);
+    gl.uniform1f(U.rad, Math.max(2, Math.min(srcW, srcH) * 0.0058));
+    gl.uniform1f(U.sm, P.sm || 0); gl.uniform1f(U.br, P.br || 0); gl.uniform1f(U.ro, P.ro || 0); gl.uniform1f(U.cl, P.cl || 0);
+    gl.uniform1f(U.gl, P.gl || 0); gl.uniform1f(U.co, P.co || 0); gl.uniform1f(U.sa, P.sa == null ? 1 : P.sa);
+    gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
+    return true;
+  };
+  return me;
 }
+const BEAUTY = {
+  cap: null, capTried: false,
+  /* 찍은 사진(캔버스) 보정 → 새 캔버스. GPU를 못 쓰면 원본 그대로 */
+  apply(src, level) {
+    const P = RETOUCH[level]; if (!P || level === "off" || !src || !src.width) return src;
+    if (!this.cap && !this.capTried) { this.capTried = true; this.cap = makeBeautyGL(document.createElement("canvas"), true); }
+    if (!this.cap || this.cap.lost) return src;
+    try {
+      if (!this.cap.draw(src, src.width, src.height, src.width, src.height, P)) return src;
+      const c = makeCanvas(src.width, src.height); c.getContext("2d").drawImage(this.cap.canvas, 0, 0);
+      return c;
+    } catch (e) { console.warn("beauty apply", e); return src; }
+  }
+};
+/* 촬영 화면: 카메라 영상을 보정해서 실시간으로 보여 줌 (얼굴 효과는 그 위에) */
+const LIVE_BEAUTY = {
+  g: null, tried: false, raf: null, last: 0, slow: 0, maxW: 1280,
+  level() { return RETOUCH[session.retouch] && session.retouch !== "off" ? session.retouch : null; },
+  start() {
+    const cv = $("beautyView");
+    if (!this.g && !this.tried) { this.tried = true; this.g = makeBeautyGL(cv, false); }
+    this.stop(); const v = $("video");
+    const tick = (now) => {
+      if (current !== "shoot" || !stream) { this.raf = null; return; }
+      const lvl = this.level(), ok = this.g && !this.g.lost && lvl && v.videoWidth;
+      cv.hidden = !ok; v.style.opacity = ok ? "0" : "";
+      if (ok && now - this.last > 30) {
+        this.last = now;
+        const s = Math.min(1, this.maxW / v.videoWidth), w = Math.round(v.videoWidth * s), h = Math.round(v.videoHeight * s);
+        const t0 = performance.now();
+        try { this.g.draw(v, v.videoWidth, v.videoHeight, w, h, RETOUCH[lvl]); } catch (e) { this.g.lost = true; }
+        /* (성능) 한 장 그리는 데 오래 걸리면 미리보기 해상도를 낮춤 */
+        const dt = performance.now() - t0; this.slow = dt > 28 ? this.slow + 1 : 0;
+        if (this.slow > 20 && this.maxW > 720) { this.maxW = 720; this.slow = 0; }
+      }
+      this.raf = requestAnimationFrame(tick);
+    };
+    this.raf = requestAnimationFrame(tick);
+  },
+  stop() { cancelAnimationFrame(this.raf); this.raf = null; const v = $("video"); if (v) v.style.opacity = ""; const cv = $("beautyView"); if (cv) cv.hidden = true; }
+};
+/* 사진 한 장의 보정본 (+ 얼굴 효과 겹치기). 한 번 만들면 저장해 두고 다시 씀 */
+function shotImg(i, kind) {
+  const sh = session.shots[i]; if (!sh) return null;
+  const lvl = RETOUCH[session.retouch] ? session.retouch : "off", fx = kind === "still" ? sh.fx : sh.fxThumb;
+  if (lvl === "off" && !fx) return sh[kind];
+  sh.rt = sh.rt || {}; const k = lvl + ":" + kind;
+  if (!sh.rt[k]) {
+    let c = BEAUTY.apply(sh[kind], lvl);
+    if (fx) { if (c === sh[kind]) { const cc = makeCanvas(c.width, c.height); cc.getContext("2d").drawImage(c, 0, 0); c = cc; } c.getContext("2d").drawImage(fx, 0, 0, c.width, c.height); }
+    sh.rt[k] = c;
+  }
+  return sh.rt[k];
+}
+
+/* 흐림 (필터의 빛번짐용) */
 function boxBlurRGB(d, w, h, r) {
   const tmp = new Float32Array(w * h * 3), out = new Float32Array(w * h * 3), src = new Float32Array(w * h * 3);
   for (let i = 0, j = 0; i < d.length; i += 4, j += 3) { src[j] = d[i]; src[j + 1] = d[i + 1]; src[j + 2] = d[i + 2]; }
@@ -908,99 +973,13 @@ function boxBlurRGB(d, w, h, r) {
       const idx = (k) => (horiz ? (L * w + k) : (k * w + L)) * 3 + ch;
       let acc = 0;
       for (let k = -r; k <= r; k++) acc += a[idx(Math.min(len - 1, Math.max(0, k)))];
-      for (let k = 0; k < len; k++) {
-        b[idx(k)] = acc / win;
-        acc += a[idx(Math.min(len - 1, k + r + 1))] - a[idx(Math.max(0, k - r))];
-      }
+      for (let k = 0; k < len; k++) { b[idx(k)] = acc / win; acc += a[idx(Math.min(len - 1, k + r + 1))] - a[idx(Math.max(0, k - r))]; }
     }
   };
   let A = src;
   for (let it = 0; it < 2; it++) { pass(A, tmp, true); pass(tmp, out, false); A = out.slice(); }
   return out;
 }
-function retouch(src, level, faces, skinMask) {
-  const P = RETOUCH[level]; if (!P || level === "off") return src;
-  const w = src.width, h = src.height; if (!w || !h) return src;
-  const c = makeCanvas(w, h), ctx = c.getContext("2d"); ctx.drawImage(src, 0, 0);
-  warpFace(c, faces, P);
-  const img = ctx.getImageData(0, 0, w, h), d = img.data;
-  /* 1) 통계 */
-  const hist = new Uint32Array(256); let sr = 0, sg = 0, sb = 0, sn = 0;
-  for (let i = 0; i < d.length; i += 16) {
-    const y = (0.299 * d[i] + 0.587 * d[i + 1] + 0.114 * d[i + 2]) | 0; hist[y]++;
-    if (y > 40 && y < 220) { sr += d[i]; sg += d[i + 1]; sb += d[i + 2]; sn++; }
-  }
-  let tot = 0; for (let v = 0; v < 256; v++) tot += hist[v];
-  let lo = 0, hi = 255, acc = 0;
-  for (let v = 0; v < 256; v++) { acc += hist[v]; if (acc > tot * 0.01) { lo = v; break; } }
-  acc = 0; for (let v = 255; v >= 0; v--) { acc += hist[v]; if (acc > tot * 0.005) { hi = v; break; } }
-  lo = Math.min(lo, 40); hi = Math.max(hi, 200);
-  const avg = sn ? (sr + sg + sb) / (3 * sn) : 128;
-  const gain = (m) => sn ? Math.min(1.15, Math.max(0.88, 1 + ((avg / Math.max(1, m)) - 1) * 0.35)) : 1;
-  const gR = gain(sr / sn), gG = gain(sg / sn), gB = gain(sb / sn);
-  let mean = 0; for (let v = 0; v < 256; v++) mean += hist[v] * Math.min(1, Math.max(0, (v - lo) / (hi - lo)));
-  mean = Math.max(0.05, mean / tot);
-  const target = 0.5 + 0.07 * P.bright, gamma = Math.min(1.4, Math.max(0.55, Math.log(target) / Math.log(mean)));
-  /* 정면 소프트 조명처럼: 어두운 부분(그림자)을 들어 올리고 대비를 살짝 낮춤 */
-  const fill = P.fill || 0, con = P.contrast || 0;
-  const lut = (g) => { const t = new Uint8ClampedArray(256); for (let v = 0; v < 256; v++) {
-    let x = Math.min(1, Math.max(0, (v * g - lo) / (hi - lo))); x = Math.pow(x, gamma);
-    x = x + fill * 0.3 * (1 - x) * (1 - x) * Math.min(1, x * 6);
-    x = 0.5 + (x - 0.5) * (1 + con);
-    t[v] = Math.min(1, Math.max(0, x)) * 255; } return t; };
-  const LR = lut(gR), LG = lut(gG), LB = lut(gB);
-  for (let i = 0; i < d.length; i += 4) { d[i] = LR[d[i]]; d[i + 1] = LG[d[i + 1]]; d[i + 2] = LB[d[i + 2]]; }
-  /* 2) 반 크기에서 흐리게 만든 사진 (피부결·글로우용) */
-  const sw = Math.max(1, Math.round(w / 2)), sh = Math.max(1, Math.round(h / 2));
-  ctx.putImageData(img, 0, 0);
-  const sm = makeCanvas(sw, sh), sctx = sm.getContext("2d"); sctx.drawImage(c, 0, 0, sw, sh);
-  const sd = sctx.getImageData(0, 0, sw, sh);
-  const r = Math.max(2, Math.round(Math.min(sw, sh) * 0.012));
-  const bl = boxBlurRGB(sd.data, sw, sh, r);
-  for (let i = 0, j = 0; i < sd.data.length; i += 4, j += 3) { sd.data[i] = bl[j]; sd.data[i + 1] = bl[j + 1]; sd.data[i + 2] = bl[j + 2]; }
-  sctx.putImageData(sd, 0, 0);
-  const big = makeCanvas(w, h), bctx = big.getContext("2d"); bctx.imageSmoothingQuality = "high"; bctx.drawImage(sm, 0, 0, w, h);
-  const B = bctx.getImageData(0, 0, w, h).data;
-  freeCanvas(sm); freeCanvas(big);
-  /* 3) 피부만 부드럽게 + 화사하게 + 글로우 (AI 피부 마스크가 있으면 그것으로 정확하게) */
-  const sig2 = 2 * 22 * 22, SK = skinMask ? maskAt(skinMask, w, h) : null;
-  for (let i = 0, px = 0; i < d.length; i += 4, px++) {
-    let R = d[i], G = d[i + 1], Bl = d[i + 2];
-    const Y = 0.299 * R + 0.587 * G + 0.114 * Bl, Cb = 128 - 0.1687 * R - 0.3313 * G + 0.5 * Bl, Cr = 128 + 0.5 * R - 0.4187 * G - 0.0813 * Bl;
-    const dCb = Cb < 77 ? 77 - Cb : Cb > 127 ? Cb - 127 : 0, dCr = Cr < 133 ? 133 - Cr : Cr > 173 ? Cr - 173 : 0;
-    let skin = SK ? SK[px] / 255 : Math.max(0, 1 - Math.max(dCb, dCr) / 10) * (Y > 45 ? 1 : Y / 45);
-    if (skin > 0) {
-      const dy = Y - (0.299 * B[i] + 0.587 * B[i + 1] + 0.114 * B[i + 2]);
-      const a = P.smooth * skin * Math.exp(-(dy * dy) / sig2);
-      R += a * (B[i] - R); G += a * (B[i + 1] - G); Bl += a * (B[i + 2] - Bl);
-      const lift = P.bright * skin * 7, pk = P.pink * skin, kt = (P.ktone || 0) * skin;
-      R += lift + pk * 5; G += lift + pk * 1; Bl += lift + pk * 3;
-      /* 한국식 톤: 피부의 노란기를 라벤더 쪽으로(파랑↑ 초록↓) → 맑고 투명한 피부 */
-      R += kt * 1.5; G -= kt * 3.5; Bl += kt * 6;
-    }
-    if (P.glow) { const g = P.glow; R = R + g * B[i] * (1 - R / 255); G = G + g * B[i + 1] * (1 - G / 255); Bl = Bl + g * B[i + 2] * (1 - Bl / 255); }
-    if (P.sat && P.sat !== 1) { const m = 0.299 * R + 0.587 * G + 0.114 * Bl; R = m + (R - m) * P.sat; G = m + (G - m) * P.sat; Bl = m + (Bl - m) * P.sat; }
-    if (P.tint) { R += P.tint[0]; G += P.tint[1]; Bl += P.tint[2]; }
-    if (P.white) { const lw = P.white * Math.min(1, (0.299 * R + 0.587 * G + 0.114 * Bl) / 200); R += lw * (255 - R); G += lw * (255 - G); Bl += lw * (255 - Bl); }
-    d[i] = R; d[i + 1] = G; d[i + 2] = Bl;
-  }
-  ctx.putImageData(img, 0, 0);
-  return c;
-}
-/* 사진 한 장의 보정본 (한 번 만들면 저장해 두고 다시 씀) */
-function shotImg(i, kind) {
-  const sh = session.shots[i]; if (!sh) return null;
-  const lvl = session.retouch || "off", bg = (sh.ai && session.bg) || "none";
-  if (lvl === "off" && bg === "none") return sh[kind];
-  sh.rt = sh.rt || {}; const k = lvl + ":" + bg + ":" + kind;
-  if (!sh.rt[k]) {
-    let c = retouch(sh[kind], lvl, sh.faces, null);
-    if (bg !== "none") { const b = applyBg(c, bg, sh.ai.person); if (c !== sh[kind]) freeCanvas(c); c = b; }
-    sh.rt[k] = c;
-  }
-  return sh.rt[k];
-}
-
 /* ───────── 필터 (픽셀 계산) ───────── */
 function applyFilter(src, id) {
   if (id === "original" || !src || !src.width) return src;
@@ -1009,19 +988,27 @@ function applyFilter(src, id) {
   const img = ctx.getImageData(0, 0, W, H), d = img.data;
   /* 몽환: 흐린 사진을 겹쳐 빛번짐 */
   let B = null;
-  if (id === "dream") {
+  if (id === "dream" || id === "golden" || id === "soft") {
     const sw = Math.max(1, Math.round(W / 3)), sh = Math.max(1, Math.round(H / 3)), sm = makeCanvas(sw, sh), sc = sm.getContext("2d");
     sc.drawImage(c, 0, 0, sw, sh); const sd = sc.getImageData(0, 0, sw, sh), bl = boxBlurRGB(sd.data, sw, sh, Math.max(2, Math.round(sw * 0.02)));
     for (let i = 0, j = 0; i < sd.data.length; i += 4, j += 3) { sd.data[i] = bl[j]; sd.data[i + 1] = bl[j + 1]; sd.data[i + 2] = bl[j + 2]; }
     sc.putImageData(sd, 0, 0); const big = makeCanvas(W, H), bc = big.getContext("2d"); bc.drawImage(sm, 0, 0, W, H);
     B = bc.getImageData(0, 0, W, H).data; freeCanvas(sm); freeCanvas(big);
   }
-  const grain = id === "film" ? 10 : id === "retro" ? 16 : 0, vig = id === "retro" ? 0.45 : id === "film" ? 0.2 : id === "cinema" ? 0.3 : 0;
+  const grain = { film: 10, retro: 16, golden: 9, flash: 13, digicam: 5 }[id] || 0, vig = { retro: 0.45, film: 0.2, cinema: 0.3, flash: 0.42, golden: 0.18 }[id] || 0;
   const cx = W / 2, cy = H / 2, maxd = Math.hypot(cx, cy); let seed = 12345;
   const sat = (r, g, b, k) => { const m = 0.299 * r + 0.587 * g + 0.114 * b; return [m + (r - m) * k, m + (g - m) * k, m + (b - m) * k]; };
   for (let i = 0, px = 0; i < d.length; i += 4, px++) {
     let r = d[i], g = d[i + 1], b = d[i + 2];
     switch (id) {
+      case "soft": { const k = 0.22; r = r + k * B[i] * (1 - r / 255); g = g + k * B[i + 1] * (1 - g / 255); b = b + k * B[i + 2] * (1 - b / 255);
+        r = 22 + r * 0.9 + 4; g = 20 + g * 0.9; b = 22 + b * 0.9 + 3; [r, g, b] = sat(r, g, b, 0.9); break; }
+      case "pink": [r, g, b] = sat(r, g, b, 0.94); r = r * 1.04 + 14; g = g * 1.0 + 4; b = b * 1.02 + 12; break;
+      case "golden": { const k = 0.16; r = r + k * B[i] * (1 - r / 255); g = g + k * B[i + 1] * (1 - g / 255); b = b + k * B[i + 2] * (1 - b / 255);
+        [r, g, b] = sat(r, g, b, 0.95); r = 16 + r * 0.95 * 1.07; g = 12 + g * 0.95 * 1.0; b = 8 + b * 0.95 * 0.84; break; }
+      case "flash": { const y = 0.299 * r + 0.587 * g + 0.114 * b, t = y / 255;
+        r = (r - 128) * 1.2 + 136; g = (g - 128) * 1.2 + 134; b = (b - 128) * 1.16 + 130; b += (1 - t) * 12; r += t * 6; [r, g, b] = sat(r, g, b, 1.08); break; }
+      case "digicam": [r, g, b] = sat(r, g, b, 1.16); r = (r - 128) * 1.08 + 126; g = (g - 128) * 1.08 + 130; b = (b - 128) * 1.06 + 136; break;
       case "bright": r = r * 1.18 + 14; g = g * 1.18 + 14; b = b * 1.16 + 16; [r, g, b] = sat(r, g, b, 0.92); break;
       case "milk": [r, g, b] = sat(r, g, b, 0.82); r = 26 + r * 0.9 + 6; g = 26 + g * 0.9 + 3; b = 26 + b * 0.9; break;
       case "fresh": [r, g, b] = sat(r, g, b, 1.12); r = r * 0.95 + 6; g = g * 1.02 + 8; b = b * 1.1 + 10; if (r + g + b < 240) { g += 4; b += 8; } break;
@@ -1234,7 +1221,7 @@ async function startCamera() {
   lastFrameAt = performance.now(); watchFrames(); startWatchdog();
   return true;
 }
-function stopCamera() { if (typeof FX !== "undefined") FX.stop(); stopWatchdog(); if (stream) { stream.getTracks().forEach((t) => t.stop()); stream = null; $("video").srcObject = null; } }
+function stopCamera() { if (typeof FX !== "undefined") FX.stop(); if (typeof LIVE_BEAUTY !== "undefined") LIVE_BEAUTY.stop(); stopWatchdog(); if (stream) { stream.getTracks().forEach((t) => t.stop()); stream = null; $("video").srcObject = null; } }
 
 /* ── 라이브 화면 멈춤 방지 ──
    아이패드에서 소리 재생 등으로 카메라 영상이 멈추면(일시정지·프레임 정지) 자동으로 다시 재생하고,
@@ -1284,17 +1271,27 @@ async function ensureLive(maxMs) {
 }
 document.addEventListener("visibilitychange", () => { if (document.visibilityState === "visible" && current === "shoot" && stream) $("video").play().catch(() => {}); });
 $("video").addEventListener("pause", () => { if (current === "shoot" && stream) $("video").play().catch(() => {}); });
-/* 화면에 보이는 그대로(좌우 반전 + 확대) 잘라 내기 */
-function grabFrame(maxSide) {
+/* 화면에 보이는 그대로(좌우 반전 + 확대) 잘라 내기. layer: "video"(사진) / "fx"(얼굴 효과만) / "both" */
+function grabFrame(maxSide, layer) {
+  layer = layer || "video";
   const v = $("video"), vw = v.videoWidth, vh = v.videoHeight; if (!vw || !vh) return null;
+  const fx = $("fxCanvas"), fxOk = FX.on() && fx.width === vw && fx.height === vh;
+  if (layer === "fx" && !fxOk) return null;
   const z = Math.max(1, S.zoom || 1), sw = vw / z, sh = vh / z, sx = (vw - sw) / 2, sy = (vh - sh) / 2;
   const s = Math.min(1, maxSide / Math.max(sw, sh)), c = makeCanvas(sw * s, sh * s), ctx = c.getContext("2d");
-  ctx.translate(c.width, 0); ctx.scale(-1, 1); ctx.drawImage(v, sx, sy, sw, sh, 0, 0, c.width, c.height);
-  const fx = $("fxCanvas");
-  if (FX.on() && fx.width === vw && fx.height === vh) ctx.drawImage(fx, sx, sy, sw, sh, 0, 0, c.width, c.height);   /* 얼굴 효과도 사진에 그대로 */
+  ctx.translate(c.width, 0); ctx.scale(-1, 1);
+  if (layer !== "fx") ctx.drawImage(v, sx, sy, sw, sh, 0, 0, c.width, c.height);
+  if (layer !== "video" && fxOk) ctx.drawImage(fx, sx, sy, sw, sh, 0, 0, c.width, c.height);   /* 얼굴 효과 */
   return c;
 }
-function startLive() { liveFrames = []; clearInterval(liveTimer); liveTimer = setInterval(() => { const f = grabFrame(460); if (f) { liveFrames.push(f); if (liveFrames.length > 12) freeCanvas(liveFrames.shift()); } }, 115); }
+/* 움직이는 사진용 장면: 보정까지 한 작은 사진 + 얼굴 효과 */
+function grabLive() {
+  const raw = grabFrame(460, "video"); if (!raw) return null;
+  let c = BEAUTY.apply(raw, session.retouch); if (c !== raw) freeCanvas(raw);
+  const f = grabFrame(460, "fx"); if (f) { c.getContext("2d").drawImage(f, 0, 0, c.width, c.height); freeCanvas(f); }
+  return c;
+}
+function startLive() { liveFrames = []; clearInterval(liveTimer); liveTimer = setInterval(() => { const f = grabLive(); if (f) { liveFrames.push(f); if (liveFrames.length > 12) freeCanvas(liveFrames.shift()); } }, 130); }
 function stopLive() { clearInterval(liveTimer); liveTimer = null; const f = liveFrames; liveFrames = []; return f; }
 function layoutCamFrame() {
   const box = $("camBox"), f = $("camFrame"), a = cellAspect(S.paper, session.layout);
@@ -1302,6 +1299,11 @@ function layoutCamFrame() {
   f.style.width = Math.max(0, w) + "px"; f.style.height = Math.max(0, h) + "px";
   $("video").style.transform = "scaleX(-1) scale(" + (S.zoom || 1) + ")";
   $("fxCanvas").style.transform = "scaleX(-1) scale(" + (S.zoom || 1) + ")";
+  $("beautyView").style.transform = "scaleX(-1) scale(" + (S.zoom || 1) + ")";
+}
+/* 촬영 화면 위쪽: 뽀샤시 보정 고르기 (바로 화면에 보임) */
+function buildBeautyBar() {
+  seg($("beautySeg"), Object.keys(RETOUCH), () => session.retouch, (v) => { session.retouch = v; }, (v) => (v === "off" ? "보정 끄기" : RETOUCH[v].name));
 }
 /* ───────── 얼굴 따라다니는 효과 (맥 Photo Booth처럼) ─────────
    구글 MediaPipe 얼굴 인식(브라우저 안에서 실행, 사진은 밖으로 나가지 않음)으로 얼굴 점 478개를 찾고,
@@ -1317,154 +1319,6 @@ function visionFiles() {
     return VISION.files;
   })();
   return VISION.p;
-}
-
-/* ───────── 배경 바꾸기: 사람을 찾아서 사람만 남기고 뒤 배경을 재미난 장면으로 ─────────
-   MediaPipe 사람 영역 모델(아이패드 안에서 실행, 사진은 밖으로 나가지 않음) */
-const AI_BG = { none: "그대로", space: "🚀 우주", ocean: "🐠 바닷속", beach: "🏖️ 해변", flowers: "🌷 꽃밭", rainbow: "🌈 무지개", party: "🎉 파티",
-  snow: "⛄ 눈 오는 날", halloween: "🎃 핼러윈", candy: "🍭 사탕 나라", dino: "🦖 공룡 정글", blur: "배경 흐림", white: "화이트 스튜디오", pastel: "파스텔" };
-const AI = {
-  seg: null, loading: false, failed: false, busy: false,
-  async load() {
-    if (this.seg || this.failed || !S.aiRetouch) return !!this.seg;
-    if (this.loading) { while (this.loading) await sleep(100); return !!this.seg; }
-    this.loading = true;
-    try {
-      const files = await visionFiles();
-      const make = (delegate) => VISION.lib.ImageSegmenter.createFromOptions(files, {
-        baseOptions: { modelAssetPath: "mp/selfie_multiclass_256x256.tflite", delegate }, runningMode: "IMAGE", outputCategoryMask: false, outputConfidenceMasks: true });
-      try { this.seg = await make("GPU"); } catch (e) { this.seg = await make("CPU"); }
-    } catch (e) { this.failed = true; console.warn("AI load failed", e); }
-    this.loading = false; return !!this.seg;
-  },
-  /* 사진 한 장 분석 → 사람 영역·피부 영역 마스크(작은 캔버스) 저장 */
-  analyze(sh) {
-    if (!this.seg || sh.ai || !sh.thumb || !sh.thumb.width) return;
-    const src = downscale(sh.thumb, 512);
-    let person = null, skin = null;
-    try {
-      this.seg.segment(src, (res) => {
-        const m = res && res.confidenceMasks; if (!m || m.length < 4) return;
-        const w = m[0].width, h = m[0].height, bg = m[0].getAsFloat32Array(), fs = m[3].getAsFloat32Array(), bs = m[2].getAsFloat32Array();
-        const mk = (fn) => { const c = makeCanvas(w, h), x = c.getContext("2d"), im = x.createImageData(w, h), d = im.data;
-          for (let i = 0, j = 0; j < w * h; i += 4, j++) { d[i] = d[i + 1] = d[i + 2] = 255; d[i + 3] = Math.max(0, Math.min(255, fn(j) * 255)); }
-          x.putImageData(im, 0, 0); return c; };
-        person = mk((j) => 1 - bg[j]);
-        skin = mk((j) => Math.min(1, fs[j] + bs[j] * 0.9));
-      });
-    } catch (e) { console.warn("segment failed", e); }
-    freeCanvas(src);
-    if (person && skin) { sh.ai = { person: featherMask(person), skin: featherMask(skin) }; }
-  },
-  /* 고른 사진들을 차례로 분석 (화면이 멈추지 않게 한 장씩 쉬어 가며) */
-  async analyzeSlots(onDone) {
-    if (!S.aiRetouch || this.busy) return;
-    if (!(await this.load())) return;
-    this.busy = true;
-    for (const s0 of session.slots) {
-      const sh = session.shots[s0]; if (!sh || sh.ai) continue;
-      this.analyze(sh); await sleep(30);
-    }
-    this.busy = false;
-    if (onDone) onDone();
-  }
-};
-/* 마스크 가장자리를 살짝 부드럽게 (경계가 칼같이 잘려 보이지 않게) */
-function featherMask(c) {
-  const w = c.width, h = c.height, x = c.getContext("2d"), im = x.getImageData(0, 0, w, h), d = im.data;
-  const a = new Uint8ClampedArray(w * h * 4); for (let i = 0; i < d.length; i += 4) { a[i] = a[i + 1] = a[i + 2] = d[i + 3]; a[i + 3] = 255; }
-  const bl = boxBlurRGB(a, w, h, Math.max(1, Math.round(Math.min(w, h) * 0.006)));
-  for (let i = 0, j = 0; i < d.length; i += 4, j += 3) d[i + 3] = bl[j];
-  x.putImageData(im, 0, 0); return c;
-}
-/* 마스크를 원하는 크기로 늘려서 0~255 값 배열로 */
-function maskAt(c, w, h) {
-  const t = makeCanvas(w, h), x = t.getContext("2d"); x.imageSmoothingQuality = "high"; x.drawImage(c, 0, 0, w, h);
-  const d = x.getImageData(0, 0, w, h).data, out = new Uint8ClampedArray(w * h);
-  for (let i = 0, j = 0; j < w * h; i += 4, j++) out[j] = d[i + 3];
-  freeCanvas(t); return out;
-}
-/* 재미난 배경 장면 그리기 (그림 파일 없이 직접 그림) */
-function drawScene(ctx, mode, w, h) {
-  const U = Math.min(w, h), rnd = seeded(7 + mode.length * 13);
-  const lin = (stops, x0, y0, x1, y1) => { const g = ctx.createLinearGradient(x0, y0, x1, y1); stops.forEach((c, i) => g.addColorStop(i / (stops.length - 1), c)); return g; };
-  const emo = (e, x, y, size, rot) => { ctx.save(); ctx.translate(x, y); ctx.rotate(rot || 0); ctx.font = size + "px " + EMOJI_FONT; ctx.textAlign = "center"; ctx.textBaseline = "middle"; ctx.fillText(e, 0, 0); ctx.restore(); };
-  const scatter = (list, n, minS, maxS, yMin, yMax, alpha) => { ctx.save(); ctx.globalAlpha = alpha || 1; for (let i = 0; i < n; i++) emo(list[i % list.length], rnd() * w, h * (yMin + rnd() * (yMax - yMin)), U * (minS + rnd() * (maxS - minS)), (rnd() - 0.5) * 0.8); ctx.restore(); };
-  const dots = (n, color, rMin, rMax, yMax) => { ctx.fillStyle = color; for (let i = 0; i < n; i++) { ctx.beginPath(); ctx.arc(rnd() * w, rnd() * h * (yMax || 1), U * (rMin + rnd() * (rMax - rMin)), 0, Math.PI * 2); ctx.fill(); } };
-  const ground = (y, color) => { ctx.fillStyle = color; ctx.beginPath(); ctx.moveTo(0, h); ctx.lineTo(0, h * y); ctx.quadraticCurveTo(w * 0.5, h * (y - 0.06), w, h * y); ctx.lineTo(w, h); ctx.fill(); };
-  switch (mode) {
-    case "white": { const g = ctx.createRadialGradient(w / 2, h * 0.38, U * 0.1, w / 2, h * 0.5, Math.max(w, h) * 0.75); g.addColorStop(0, "#ffffff"); g.addColorStop(1, "#e6e6ec"); ctx.fillStyle = g; ctx.fillRect(0, 0, w, h); break; }
-    case "pastel": ctx.fillStyle = lin(["#ffd9ec", "#e6dcff", "#d4ecff"], 0, 0, w, h); ctx.fillRect(0, 0, w, h); dots(18, "rgba(255,255,255,.35)", 0.03, 0.09); break;
-    case "space": {
-      const g = ctx.createRadialGradient(w * 0.7, h * 0.3, U * 0.05, w * 0.5, h * 0.5, Math.max(w, h)); g.addColorStop(0, "#3b2a7a"); g.addColorStop(0.5, "#1a1240"); g.addColorStop(1, "#05030f");
-      ctx.fillStyle = g; ctx.fillRect(0, 0, w, h); dots(140, "rgba(255,255,255,.9)", 0.001, 0.004); dots(20, "rgba(180,200,255,.6)", 0.004, 0.008);
-      emo("🪐", w * 0.82, h * 0.18, U * 0.28, 0.2); emo("🌙", w * 0.14, h * 0.14, U * 0.16); emo("🚀", w * 0.12, h * 0.62, U * 0.18, -0.6); emo("⭐️", w * 0.9, h * 0.62, U * 0.08); emo("🛸", w * 0.55, h * 0.1, U * 0.12, 0.1); break;
-    }
-    case "ocean": {
-      ctx.fillStyle = lin(["#9be7ff", "#2aa3e0", "#0b4f93"], 0, 0, 0, h); ctx.fillRect(0, 0, w, h);
-      ctx.fillStyle = "rgba(255,255,255,.12)"; for (let i = 0; i < 5; i++) { const x = w * (0.1 + i * 0.2); ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x + w * 0.08, 0); ctx.lineTo(x + w * 0.25, h); ctx.lineTo(x + w * 0.12, h); ctx.fill(); }
-      ctx.strokeStyle = "rgba(255,255,255,.7)"; ctx.lineWidth = U * 0.004; for (let i = 0; i < 26; i++) { ctx.beginPath(); ctx.arc(rnd() * w, rnd() * h, U * (0.008 + rnd() * 0.02), 0, Math.PI * 2); ctx.stroke(); }
-      ground(0.9, "#f1d9a0"); scatter(["🐠", "🐟", "🐡", "🐙", "🐢", "🐳"], 8, 0.08, 0.14, 0.08, 0.75); scatter(["🪸", "🐚", "🦀"], 4, 0.08, 0.12, 0.86, 0.95); break;
-    }
-    case "beach": {
-      ctx.fillStyle = lin(["#7fcbff", "#d8f2ff"], 0, 0, 0, h * 0.55); ctx.fillRect(0, 0, w, h * 0.55);
-      ctx.fillStyle = lin(["#2fb3e6", "#1b8fc9"], 0, h * 0.55, 0, h * 0.72); ctx.fillRect(0, h * 0.55, w, h * 0.18);
-      ctx.fillStyle = "#f6e1a8"; ctx.beginPath(); ctx.moveTo(0, h); ctx.lineTo(0, h * 0.74); ctx.quadraticCurveTo(w * 0.5, h * 0.68, w, h * 0.74); ctx.lineTo(w, h); ctx.fill();
-      emo("☀️", w * 0.15, h * 0.13, U * 0.2); emo("☁️", w * 0.6, h * 0.12, U * 0.14); emo("☁️", w * 0.85, h * 0.25, U * 0.1); emo("🌴", w * 0.08, h * 0.6, U * 0.34); emo("🌴", w * 0.93, h * 0.58, U * 0.3); emo("⛵", w * 0.7, h * 0.58, U * 0.09); emo("🐚", w * 0.25, h * 0.92, U * 0.07); emo("🏖️", w * 0.82, h * 0.9, U * 0.1); break;
-    }
-    case "flowers": {
-      ctx.fillStyle = lin(["#9fd8ff", "#e9f7ff"], 0, 0, 0, h * 0.6); ctx.fillRect(0, 0, w, h); ground(0.62, "#8fd36f"); ground(0.75, "#6cbf55");
-      emo("☁️", w * 0.2, h * 0.12, U * 0.14); emo("☁️", w * 0.75, h * 0.2, U * 0.18); emo("🦋", w * 0.85, h * 0.45, U * 0.08, 0.3); emo("🦋", w * 0.12, h * 0.4, U * 0.06, -0.3);
-      for (let r = 0; r < 4; r++) for (let i = 0; i < 9; i++) emo(["🌷", "🌼", "🌸", "🌻"][(i + r) % 4], w * (i / 8) + (r % 2) * w * 0.05, h * (0.68 + r * 0.09), U * (0.07 + r * 0.02));
-      break;
-    }
-    case "rainbow": {
-      ctx.fillStyle = lin(["#bfe6ff", "#f4fbff"], 0, 0, 0, h); ctx.fillRect(0, 0, w, h);
-      const cols = ["#ff8a8a", "#ffc46b", "#fff176", "#9be59b", "#8ccfff", "#b39dff"];
-      cols.forEach((c, i) => { ctx.strokeStyle = c; ctx.lineWidth = U * 0.05; ctx.beginPath(); ctx.arc(w / 2, h * 0.95, Math.max(w, h) * (0.62 - i * 0.05), Math.PI, 0); ctx.stroke(); });
-      ctx.fillStyle = "#fff"; for (const [x, y] of [[0.12, 0.85], [0.88, 0.85], [0.25, 0.2], [0.75, 0.15]]) for (let k = 0; k < 4; k++) { ctx.beginPath(); ctx.arc(w * x + (k - 1.5) * U * 0.07, h * y - (k % 2) * U * 0.04, U * 0.07, 0, Math.PI * 2); ctx.fill(); }
-      scatter(["✨", "⭐️"], 8, 0.04, 0.07, 0.05, 0.6); break;
-    }
-    case "party": {
-      ctx.fillStyle = lin(["#ff9ad5", "#b98bff", "#7fc8ff"], 0, 0, w, h); ctx.fillRect(0, 0, w, h); dots(16, "rgba(255,255,255,.25)", 0.03, 0.1);
-      const cc = ["#ffd133", "#ff5c8a", "#5cd6ff", "#7cff8a", "#ffffff", "#ff9f40"];
-      for (let i = 0; i < 160; i++) { ctx.save(); ctx.translate(rnd() * w, rnd() * h); ctx.rotate(rnd() * 3); ctx.fillStyle = cc[i % cc.length]; ctx.fillRect(0, 0, U * 0.018, U * 0.008); ctx.restore(); }
-      emo("🎈", w * 0.1, h * 0.25, U * 0.2, -0.15); emo("🎈", w * 0.9, h * 0.22, U * 0.18, 0.15); emo("🎉", w * 0.82, h * 0.7, U * 0.16); emo("🎁", w * 0.12, h * 0.82, U * 0.14); emo("🥳", w * 0.5, h * 0.1, U * 0.1); break;
-    }
-    case "snow": {
-      ctx.fillStyle = lin(["#2b3f7a", "#6f8fd1", "#cfe0ff"], 0, 0, 0, h); ctx.fillRect(0, 0, w, h); dots(150, "rgba(255,255,255,.9)", 0.002, 0.007);
-      ground(0.8, "#ffffff"); emo("⛄️", w * 0.12, h * 0.78, U * 0.26); emo("🎄", w * 0.9, h * 0.74, U * 0.3); scatter(["❄️"], 10, 0.04, 0.08, 0.05, 0.6, 0.9); emo("🌙", w * 0.85, h * 0.12, U * 0.12); break;
-    }
-    case "halloween": {
-      ctx.fillStyle = lin(["#2a1340", "#5c2a7a", "#ff8a1f"], 0, 0, 0, h); ctx.fillRect(0, 0, w, h);
-      ctx.fillStyle = "#fff4c2"; ctx.beginPath(); ctx.arc(w * 0.8, h * 0.18, U * 0.12, 0, Math.PI * 2); ctx.fill();
-      scatter(["🦇"], 7, 0.05, 0.09, 0.05, 0.45); ground(0.86, "#1d0f2b"); emo("🎃", w * 0.12, h * 0.85, U * 0.18); emo("🎃", w * 0.88, h * 0.87, U * 0.14); emo("👻", w * 0.15, h * 0.35, U * 0.16, -0.2); emo("🕸️", w * 0.06, h * 0.06, U * 0.14); emo("🍬", w * 0.7, h * 0.92, U * 0.07); break;
-    }
-    case "candy": {
-      ctx.fillStyle = lin(["#ffe0f0", "#ffc2dd", "#ffd8b5"], 0, 0, w, h); ctx.fillRect(0, 0, w, h);
-      dots(40, "rgba(255,255,255,.6)", 0.01, 0.025); scatter(["🍭", "🍬", "🧁", "🍩", "🍪", "🍫", "🍰"], 18, 0.07, 0.12, 0, 1); break;
-    }
-    case "dino": {
-      ctx.fillStyle = lin(["#bff0c9", "#7cc98f"], 0, 0, 0, h); ctx.fillRect(0, 0, w, h); emo("🌋", w * 0.78, h * 0.3, U * 0.3); emo("☀️", w * 0.12, h * 0.1, U * 0.14);
-      ground(0.8, "#4f9c5a"); emo("🦖", w * 0.13, h * 0.75, U * 0.26); emo("🦕", w * 0.88, h * 0.72, U * 0.28); scatter(["🌴", "🌿", "🥚"], 8, 0.08, 0.14, 0.82, 0.98); break;
-    }
-    default: ctx.fillStyle = "#f2f2f2"; ctx.fillRect(0, 0, w, h);
-  }
-}
-/* AI 배경 바꾸기: 사람은 그대로, 배경만 흐리게 또는 스튜디오 배경으로 */
-function applyBg(src, mode, personMask) {
-  const w = src.width, h = src.height, c = makeCanvas(w, h), ctx = c.getContext("2d");
-  if (mode === "blur") {
-    const sw = Math.max(8, Math.round(w / 10)), sh = Math.max(8, Math.round(h / 10)), sm = makeCanvas(sw, sh), sc = sm.getContext("2d");
-    sc.drawImage(src, 0, 0, sw, sh); const sd = sc.getImageData(0, 0, sw, sh), bl = boxBlurRGB(sd.data, sw, sh, 2);
-    for (let i = 0, j = 0; i < sd.data.length; i += 4, j += 3) { sd.data[i] = bl[j]; sd.data[i + 1] = bl[j + 1]; sd.data[i + 2] = bl[j + 2]; }
-    sc.putImageData(sd, 0, 0); ctx.imageSmoothingQuality = "high"; ctx.drawImage(sm, 0, 0, w, h); freeCanvas(sm);
-  } else drawScene(ctx, mode, w, h);
-  const bg = ctx.getImageData(0, 0, w, h), B = bg.data;
-  const sx = makeCanvas(w, h), sxc = sx.getContext("2d"); sxc.drawImage(src, 0, 0); const F = sxc.getImageData(0, 0, w, h).data; freeCanvas(sx);
-  const m = maskAt(personMask, w, h);
-  for (let i = 0, j = 0; j < w * h; i += 4, j++) { let a = (m[j] / 255 - 0.3) / 0.4; a = a < 0 ? 0 : a > 1 ? 1 : a * a * (3 - 2 * a); B[i] = F[i] * a + B[i] * (1 - a); B[i + 1] = F[i + 1] * a + B[i + 1] * (1 - a); B[i + 2] = F[i + 2] * a + B[i + 2] * (1 - a); B[i + 3] = 255; }
-  ctx.putImageData(bg, 0, 0); return c;
 }
 
 const FX_LIST = [
@@ -1702,6 +1556,7 @@ ENTER.shoot = async () => {
     return;
   }
   layoutCamFrame();
+  buildBeautyBar(); LIVE_BEAUTY.start();
   FX.drawBar(); FX.start();
   if (!FX.lm) setTimeout(() => FX.load(), 300);   /* 얼굴 효과는 촬영 화면에서 처음 한 번만 불러옴 */
   say("look");
@@ -1725,12 +1580,14 @@ ENTER.shoot = async () => {
     FX.detectNow(true);
     let still = grabFrame(1600);
     for (let tries = 0; still && looksBlank(still) && tries < 3; tries++) { freeCanvas(still); await ensureLive(1500); still = grabFrame(1600); }   /* 검은 화면이 찍히면 다시 */
+    const fx = still ? grabFrame(1600, "fx") : null;
     const live = stopLive();
     await sleep(160); $("flash").classList.remove("on");
     if (still) {
-      const thumb = downscale(still, 800);
-      session.shots.push({ still, thumb, live, faces: FX.facesForStill() });
-      const t = makeCanvas(thumb.width, thumb.height); t.getContext("2d").drawImage(thumb, 0, 0); $("shootThumbs").appendChild(t);
+      const thumb = downscale(still, 800), fxThumb = fx ? downscale(fx, 800) : null;
+      session.shots.push({ still, thumb, fx, fxThumb, live });
+      const sm = shotImg(session.shots.length - 1, "thumb");
+      const t = makeCanvas(sm.width, sm.height); t.getContext("2d").drawImage(sm, 0, 0); $("shootThumbs").appendChild(t);
     }
     await sleep(600);
   }
@@ -1761,7 +1618,7 @@ function drawSelect() {
   session.shots.forEach((sh, i) => {
     const used = session.slots.indexOf(i);
     const b = el("button", "shot" + (used >= 0 ? " used" : "")); b.style.aspectRatio = String(a);
-    const t = makeCanvas(sh.thumb.width, sh.thumb.height); t.getContext("2d").drawImage(sh.thumb, 0, 0); b.appendChild(t);
+    const im = shotImg(i, "thumb"), t = makeCanvas(im.width, im.height); t.getContext("2d").drawImage(im, 0, 0); b.appendChild(t);
     if (used >= 0) b.appendChild(el("b", null, String(used + 1)));
     b.addEventListener("click", () => tapShot(i)); list.appendChild(b);
   });
@@ -1789,7 +1646,7 @@ $("selNext").addEventListener("click", () => go("deco"));
 
 /* ───────── 6. 꾸미기 ───────── */
 let selectedSticker = null, textColor = 0, hintShown = false;
-function fkey(s, id) { const sh = session.shots[s]; return [session.retouch, sh && sh.ai ? session.bg : "none", id, s].join(":"); }
+function fkey(s, id) { return [session.retouch, id, s].join(":"); }
 function ensureFiltered(id) {
   if (id === "original") return;
   session.slots.forEach((s) => { if (s == null) return; const k = fkey(s, id); if (!session.filtered[k]) session.filtered[k] = applyFilter(shotImg(s, "thumb"), id); });
@@ -1799,17 +1656,6 @@ function drawDeco() {
   const c = render(baseSpec({ photos: slotPhotos(true) }), 0.5, true);
   fitStage($("decoStage"), $("decoStageWrap"), showCanvasIn($("decoCanvas"), c));
   renderStickers();
-}
-function buildAiBg() {
-  const box = $("aiBox"); box.hidden = !S.aiRetouch;
-  if (!S.aiRetouch) return;
-  const ready = session.slots.some((s0) => session.shots[s0] && session.shots[s0].ai);
-  $("aiState").textContent = AI.failed ? "(이 기기에서는 사용할 수 없어요)" : ready ? "· 사람만 남기고 뒤 배경이 바뀌어요" : "· 사람을 찾는 중…";
-  $("bgSeg").style.opacity = ready ? "" : ".4"; $("bgSeg").style.pointerEvents = ready ? "" : "none";
-  seg($("bgSeg"), Object.keys(AI_BG), () => session.bg, (v) => {
-    session.bg = v; $("decoStage").style.opacity = ".6";
-    setTimeout(() => { buildFilters(); drawDeco(); $("decoStage").style.opacity = ""; }, 30);
-  }, (v) => AI_BG[v]);
 }
 function buildRetouch() {
   seg($("retouchSeg"), Object.keys(RETOUCH), () => session.retouch, (v) => {
@@ -1925,9 +1771,7 @@ $("textAdd").addEventListener("click", addTyped);
 $("textInput").addEventListener("keydown", (e) => { if (e.key === "Enter") addTyped(); });
 ENTER.deco = () => {
   selectedSticker = null; say("deco");
-  buildRetouch(); buildAiBg(); buildFilters(); buildSwatches($("frameList2"), drawDeco);
-  /* AI 분석은 화면을 띄운 뒤 천천히 → 끝나면 AI 피부 보정으로 다시 그림 */
-  if (S.aiRetouch) setTimeout(() => AI.analyzeSlots(() => { if (current === "deco") { buildAiBg(); buildFilters(); drawDeco(); } }), 400);
+  buildRetouch(); buildFilters(); buildSwatches($("frameList2"), drawDeco);
   requestAnimationFrame(drawDeco);
 };
 $("decoNext").addEventListener("click", () => { selectedSticker = null; go("print"); });
@@ -1935,7 +1779,7 @@ $("decoNext").addEventListener("click", () => { selectedSticker = null; go("prin
 /* ───────── 7. 출력 ───────── */
 function canvasToBlob(c, type, q) { return new Promise((res) => c.toBlob((b) => res(b), type, q)); }
 ENTER.print = async () => {
-  $("printBtn").disabled = true; $("printAlt").disabled = true; $("saveBtn2").disabled = true; $("printMsg").textContent = "사진을 만들고 있어요…"; $("printPreview").removeAttribute("src");
+  $("printBtn").disabled = true; $("printAlt").disabled = true; $("saveBtn2").disabled = true; $("printAltBtn").disabled = true; $("printMsg").textContent = "사진을 만들고 있어요…"; $("printPreview").removeAttribute("src");
   printTexts();
   if (session.finalBlob) { readyToPrint(); return; }   /* '인쇄가 안 됐어요'로 돌아온 경우 */
   await sleep(50);
@@ -1968,7 +1812,6 @@ function sharpen(c, k) {
    검사를 통과한 사진만 인쇄할 수 있음 → 백지 인쇄 방지 */
 async function buildPrintImage() {
   const [W, H] = paperPx(S.paper);
-  for (let k = 0; k < 60 && AI.busy; k++) await sleep(100);   /* AI 분석이 끝나길 잠깐 기다림 */
   for (let attempt = 0; attempt < 3; attempt++) {
     if (attempt > 0) {
       /* 메모리 확보: 필터 미리보기, 움직이는 사진용 장면 버리기 */
@@ -2011,26 +1854,55 @@ const PRINT_TEXT = {
     tip: "목록에 SELPHY가 안 보이면: SELPHY를 껐다 켜고, 아이패드 Wi-Fi가 SELPHY와 같은지 확인한 뒤 10초쯤 기다려 주세요. AirPrint로 인쇄가 안 되면 관리자 설정에서 인쇄 방법을 ‘캐논 앱’으로 바꿔 주세요." }
 };
 let nativeCopies = 1;
+/* 앱(아이패드)에서의 인쇄 방법
+   sheet  : iOS 인쇄 창 (SELPHY가 미리 골라져 있음 → '프린트'만 누르면 됨). 가장 안정적인 AirPrint 방법
+   canon  : 사진을 Canon PRINT 앱으로 넘겨 인쇄 (셀피 '다이렉트 연결'일 때, AirPrint가 안 될 때)
+   direct : 창 없이 바로 보내기 (iOS 16 이후 두 번째 인쇄부터 백지가 나오는 문제가 알려져 있어 실험용) */
+const PRINT_MODES = {
+  sheet:  { name: "인쇄 창 (AirPrint)", btn: "🖨️ 인쇄하기",
+            steps: ["<b>인쇄하기</b>를 눌러요", "창에서 프린터가 <b>SELPHY CP1300</b>인지 보고 <b>매수</b> 정하기", "오른쪽 위 <b>프린트</b>!"],
+            note: "SELPHY와 아이패드가 같은 Wi-Fi에 있어야 해요." },
+  canon:  { name: "캐논 앱", btn: "🖨️ 캐논 앱으로 인쇄",
+            steps: ["<b>캐논 앱으로 인쇄</b>를 눌러요", "목록에서 <b>Canon PRINT</b>를 골라요", "캐논 앱에서 <b>인쇄</b> → 왼쪽 위 ◀ 로 돌아오기"],
+            note: "셀피 다이렉트 연결(셀피 Wi-Fi에 아이패드를 연결)일 때도 돼요." },
+  direct: { name: "바로 인쇄 (실험)", btn: "🖨️ 바로 인쇄하기",
+            steps: ["몇 장 뽑을지 고르기", "<b>바로 인쇄하기</b>를 누르면 창 없이 인쇄", "프린터 앞에서 사진 기다리기"],
+            note: "안 되면 자동으로 인쇄 창을 열어요." }
+};
+function printMode() { return PRINT_MODES[S.printMode] ? S.printMode : "sheet"; }
+function altMode() { return printMode() === "canon" ? "sheet" : "canon"; }
+/* 인쇄 기록 (관리자 화면에서 확인 → 무엇이 문제인지 알 수 있게) */
+function printLog(what) {
+  try {
+    const L = JSON.parse(localStorage.getItem("booth.printlog") || "[]"), d = new Date();
+    L.unshift(String(d.getHours()).padStart(2, "0") + ":" + String(d.getMinutes()).padStart(2, "0") + " " + what);
+    localStorage.setItem("booth.printlog", JSON.stringify(L.slice(0, 15)));
+  } catch (e) {}
+}
 function printTexts() {
-  $("nativeCopies").hidden = !NATIVE;
+  $("nativeCopies").hidden = !(NATIVE && printMode() === "direct");
+  $("printAltBtn").hidden = !NATIVE;
   if (NATIVE) {
-    $("printSteps").innerHTML = ["몇 장 뽑을지 고르기", "<b>인쇄하기</b>를 누르면 바로 인쇄!", "프린터 앞에서 사진 기다리기"].map((x) => "<li><span>" + x + "</span></li>").join("");
-    $("printNote").textContent = "SELPHY로 바로 보내요. 인쇄 창이 따로 뜨지 않아요.";
+    const M = PRINT_MODES[printMode()];
+    $("printSteps").innerHTML = M.steps.map((x) => "<li><span>" + x + "</span></li>").join("");
+    $("printNote").textContent = M.note;
+    $("printBtn").textContent = M.btn; $("printAltBtn").textContent = PRINT_MODES[altMode()].btn.replace("🖨️ ", "") .replace("인쇄하기", "인쇄 창으로 인쇄");
     $("printAlt").hidden = true; $("printerHelpBtn").textContent = "프린터 다시 고르기";
     nativeCopies = 1; seg($("copySeg"), [1, 2, 3, 4], () => nativeCopies, (v) => { nativeCopies = v; }, (v) => v + "장");
     return;
   }
   const t = PRINT_TEXT[S.printVia] || PRINT_TEXT.canon;
+  $("printBtn").textContent = "🖨️ 인쇄하기";
   $("printSteps").innerHTML = t.steps.map((x) => "<li><span>" + x + "</span></li>").join("");
   $("printNote").textContent = t.note; $("printerGo").textContent = t.btn; $("printerTip").textContent = t.tip;
   document.querySelectorAll("#printerModal [data-via]").forEach((o) => { o.hidden = o.dataset.via !== (S.printVia === "airprint" ? "airprint" : "canon"); });
 }
 function readyToPrint() {
-  $("printBtn").textContent = "🖨️ 인쇄하기"; delete $("printBtn").dataset.rebuild;
+  delete $("printBtn").dataset.rebuild; printTexts();
   const url = trackURL(URL.createObjectURL(session.finalBlob));
   $("printPreview").src = url; $("bigPhoto").src = url;
   $("printMsg").textContent = "사진 완성! 이렇게 인쇄해요";
-  $("printBtn").disabled = false; $("printAlt").disabled = false; $("saveBtn2").disabled = false;
+  $("printBtn").disabled = false; $("printAlt").disabled = false; $("saveBtn2").disabled = false; $("printAltBtn").disabled = false;
   $("printerHelpBtn").classList.remove("warn");
   say("ready");
 }
@@ -2056,6 +1928,7 @@ function doPrint() {
 /* 캐논 앱으로 보낸 경우: 캐논 앱에서 인쇄하고 Safari로 돌아오면 그때부터 진행 화면 */
 function waitReturnThenProgress() {
   $("printMsg").textContent = "캐논 앱에서 인쇄하고 돌아와 주세요";
+  $("printNote").innerHTML = "캐논 앱에서 <b>인쇄</b>를 누른 뒤 왼쪽 위 <b>◀</b>로 돌아오면 다음으로 넘어가요.";
   const go2 = () => { document.removeEventListener("visibilitychange", onVis); if (current === "print") startPrinting(true); };
   const onVis = () => { if (document.visibilityState === "visible") setTimeout(go2, 400); };
   setTimeout(() => { if (document.visibilityState === "hidden") document.addEventListener("visibilitychange", onVis); else go2(); }, 1500);
@@ -2064,48 +1937,73 @@ function printViaSafari() { $("photoModal").hidden = false; }
 $("printAlt").addEventListener("click", printViaSafari);
 $("photoClose").addEventListener("click", () => { $("photoModal").hidden = true; });
 $("photoSent").addEventListener("click", () => { $("photoModal").hidden = true; startPrinting(); });
-/* 인쇄 순서: (카트리지 확인) → (처음이면 프린터 연결 안내) → 공유 창의 프린트 */
-function printFlow() { if (NATIVE) nativePrint(); else if (!S.printerReady) openPrinterHelp(); else doPrint(); }
-/* 앱: 저장해 둔 SELPHY로 인쇄 창 없이 바로 보냄 (앱이 엽서 용지를 직접 지정) */
+/* 인쇄 순서: (카트리지 확인) → 앱이면 고른 방법으로 / 웹이면 (처음이면 프린터 연결 안내) → 공유 창의 프린트 */
+let pendingMode = null;
+function printFlow(mode) { if (NATIVE) runNativePrint(mode || printMode()); else if (!S.printerReady) openPrinterHelp(); else doPrint(); }
 let nativeBusy = false;
-async function nativePrint() {
+function setPrintButtons(on) { ["printBtn", "printAltBtn", "saveBtn2"].forEach((k) => { $(k).disabled = !on; }); }
+async function runNativePrint(mode) {
   if (!session.finalBlob || nativeBusy) return;
-  nativeBusy = true; $("printBtn").disabled = true; $("saveBtn2").disabled = true;
-  $("printMsg").textContent = "프린터로 보내는 중…"; $("printErr").textContent = "";
-  let r;
-  try { r = await native({ cmd: "print", jpeg: await blobToB64(session.finalBlob), copies: nativeCopies, paper: S.paper }, 45000); }
-  catch (e) { r = { ok: false, error: (e && e.message === "timeout") ? "unavailable" : String(e) }; }
-  nativeBusy = false; $("printBtn").disabled = false; $("saveBtn2").disabled = false;
-  if (r && r.ok) { startPrinting(false, nativeCopies); return; }
+  nativeBusy = true; setPrintButtons(false); $("printErr").textContent = "";
+  let r = null;
+  const jpeg = await blobToB64(session.finalBlob);
+  try {
+    if (mode === "sheet") {
+      $("printMsg").textContent = "인쇄 창을 여는 중…";
+      r = await native({ cmd: "printSheet", jpeg, paper: S.paper }, 600000);
+    } else if (mode === "canon") {
+      $("printMsg").textContent = "캐논 앱으로 보내는 중…";
+      r = await native({ cmd: "openIn", jpeg }, 600000);
+    } else {
+      $("printMsg").textContent = "프린터로 보내는 중…";
+      r = await native({ cmd: "print", jpeg, copies: nativeCopies, paper: S.paper }, 45000);
+    }
+  } catch (e) { r = { ok: false, error: (e && e.message) || "error" }; }
+  nativeBusy = false; setPrintButtons(true);
   const err = (r && r.error) || "";
-  if (err === "no-printer") {
-    $("printMsg").textContent = "프린터를 먼저 골라 주세요";
-    const p = await native({ cmd: "pickPrinter" }).catch(() => null);
-    if (p && p.name) $("printMsg").textContent = p.name + " 연결! 인쇄하기를 다시 눌러 주세요";
-  } else if (err === "unavailable") {
-    $("printMsg").textContent = "프린터를 찾을 수 없어요";
-    $("printNote").innerHTML = "SELPHY 전원이 켜져 있는지, 아이패드와 <b>같은 Wi-Fi</b>인지 확인하고 다시 눌러 주세요. 용지는 그대로라 낭비되지 않아요.";
-  } else {
-    $("printMsg").textContent = "인쇄를 보내지 못했어요";
-    $("printNote").textContent = err === "cancelled" ? "인쇄가 취소됐어요." : (err || "다시 한 번 눌러 주세요.");
+  printLog(PRINT_MODES[mode].name + " → " + (r && r.ok ? "보냄" + (r.app ? " (" + r.app + ")" : "") : (err || "실패")));
+  if (r && r.ok) {
+    if (mode === "canon") { waitReturnThenProgress(); return; }
+    startPrinting(false, mode === "direct" ? nativeCopies : 0); return;
   }
+  if (err === "cancelled") {
+    $("printMsg").textContent = "인쇄를 취소했어요";
+    $("printNote").innerHTML = "다시 <b>" + PRINT_MODES[mode].btn.replace("🖨️ ", "") + "</b>를 누르거나, 아래 <b>" + $("printAltBtn").textContent + "</b>를 눌러 주세요.";
+    return;
+  }
+  if (mode === "canon") {
+    if (err === "no-app") {
+      $("printMsg").textContent = "Canon PRINT 앱을 찾지 못했어요";
+      $("printNote").innerHTML = "앱스토어에서 <b>Canon PRINT</b>를 설치하고 셀피를 한 번 등록해 주세요. 지금은 <b>인쇄 창으로 인쇄</b>를 써 보세요.";
+    } else { $("printMsg").textContent = "캐논 앱으로 보내지 못했어요"; $("printNote").textContent = "다시 눌러 주세요. (" + err + ")"; }
+    return;
+  }
+  /* 인쇄 창·바로 인쇄가 안 되면 → 다른 방법으로 자동으로 넘어감 (화면이 멈추지 않게) */
+  if (mode === "direct") { $("printMsg").textContent = "바로 인쇄가 안 돼서 인쇄 창을 열게요"; await sleep(900); return runNativePrint("sheet"); }
+  $("printMsg").textContent = "인쇄 창을 열지 못했어요";
+  $("printNote").innerHTML = "아래 <b>캐논 앱으로 인쇄</b>를 눌러 주세요. (" + escapeHtml(err) + ")";
 }
 function openPrinterHelp() {
-  if (NATIVE) { native({ cmd: "pickPrinter" }).then((p) => { if (p && p.name) $("printMsg").textContent = p.name + " 연결됨"; }).catch(() => {}); return; }
+  if (NATIVE) { native({ cmd: "pickPrinter" }).then((p) => { if (p && p.name) { $("printMsg").textContent = p.name + " 연결됨"; printLog("프린터 선택: " + p.name); } }).catch(() => {}); return; }
   printTexts(); $("printerModal").hidden = false; say("printer"); }
 $("printerHelpBtn").addEventListener("click", openPrinterHelp);
 $("printerClose").addEventListener("click", () => { $("printerModal").hidden = true; });
 $("printerGo").addEventListener("click", () => { $("printerModal").hidden = true; S.printerReady = true; saveSettings(); doPrint(); });
-$("printBtn").addEventListener("click", () => {
-  if ($("printBtn").dataset.rebuild) { session.finalBlob = null; ENTER.print(); return; }
-  if (!session.printFile) return;
+function askCassette(mode) {
+  pendingMode = mode;
   if (S.cassette) {
     $("cassetteText").innerHTML = "셀피에 <b>" + PAPERS[S.paper].cassette + "</b> 잉크·용지 카세트가 들어 있나요?";
     $("cassetteModal").hidden = false;
-  } else printFlow();
+  } else printFlow(mode);
+}
+$("printBtn").addEventListener("click", () => {
+  if ($("printBtn").dataset.rebuild) { session.finalBlob = null; ENTER.print(); return; }
+  if (!session.printFile) return;
+  askCassette(NATIVE ? printMode() : null);
 });
+$("printAltBtn").addEventListener("click", () => { if (session.printFile) askCassette(altMode()); });
 $("saveBtn2").addEventListener("click", () => shareSave($("printErr")));
-$("cassetteYes").addEventListener("click", () => { $("cassetteModal").hidden = true; printFlow(); });
+$("cassetteYes").addEventListener("click", () => { $("cassetteModal").hidden = true; printFlow(pendingMode); });
 $("cassetteNo").addEventListener("click", () => { $("cassetteModal").hidden = true; });
 $("printSkip").addEventListener("click", () => go("done"));
 
@@ -2200,7 +2098,7 @@ async function makeLiveVideo(spec, stillPhotos) {
   if (typeof MediaRecorder === "undefined" || !HTMLCanvasElement.prototype.captureStream) return;
   const lives = session.slots.map((s, i) => {
     if (s == null || !session.shots[s]) return [];
-    const arr = session.shots[s].live.length ? session.shots[s].live : [session.shots[s].thumb];
+    const arr = session.shots[s].live.length ? session.shots[s].live : [shotImg(s, "thumb")];
     return arr.map((f) => { const g = applyFilter(f, session.filter); return g === f ? f : g; });
   });
   const T = 12, frames = [];
@@ -2297,11 +2195,12 @@ function openAdmin() {
   $("setTitle").value = S.title; $("setAttract").value = S.attractTitle;
   $("setTitle").oninput = drawCaptionPreview; drawCaptionPreview();
   toggle($("setDate"), "showDate"); toggle($("setTimers"), "timers"); toggle($("setCassette"), "cassette");
-  toggle($("setSharpen"), "sharpen"); toggle($("setAi"), "aiRetouch"); toggle($("setFaceFx"), "faceFx"); toggle($("setVoice"), "voice"); toggle($("setSound"), "sound");
+  toggle($("setSharpen"), "sharpen"); toggle($("setFaceFx"), "faceFx"); toggle($("setVoice"), "voice"); toggle($("setSound"), "sound");
   $("setDate").addEventListener("click", drawCaptionPreview);
   if (!RETOUCH[S.retouch]) S.retouch = "natural";
   seg($("setRetouch"), Object.keys(RETOUCH), () => S.retouch, (v) => { S.retouch = v; }, (v) => RETOUCH[v].name);
-  $("viaRow").hidden = NATIVE; $("nativePrinterRow").hidden = !NATIVE;
+  $("viaRow").hidden = NATIVE; $("nativePrinterRow").hidden = !NATIVE; $("modeRow").hidden = !NATIVE; $("logRow").hidden = !NATIVE; $("printLogBox").hidden = true;
+  seg($("setMode"), ["sheet", "canon", "direct"], () => printMode(), (v) => { S.printMode = v; }, (v) => ({ sheet: "인쇄 창 (추천)", canon: "캐논 앱", direct: "바로 (실험)" })[v]);
   if (NATIVE) native({ cmd: "info" }).then((i) => { $("nativePrinterName").textContent = (i && i.printer) ? "(" + i.printer + ")" : "(선택 안 됨)"; }).catch(() => {});
   seg($("setVia"), ["canon", "airprint"], () => S.printVia, (v) => { S.printVia = v; S.printerReady = false; }, (v) => v === "canon" ? "캐논 앱" : "AirPrint");
   seg($("setBleed"), [0, 1, 2, 3, 4], () => Number(S.bleed), (v) => { S.bleed = v; }, (v) => v + "mm");
@@ -2315,12 +2214,23 @@ function drawCaptionPreview() {
   $("captionPreview").innerHTML = ((t ? escapeHtml(t) : "") + (d ? "<small>" + d + "</small>" : "")) || "<small>(사진 아래 글자 없음)</small>";
 }
 function escapeHtml(t) { return t.replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[c]); }
+$("logBtn").addEventListener("click", () => {
+  let L = []; try { L = JSON.parse(localStorage.getItem("booth.printlog") || "[]"); } catch (e) {}
+  const box = $("printLogBox"); box.textContent = L.length ? L.join("\n") : "(기록 없음)"; box.hidden = !box.hidden;
+});
+$("checkPrinterBtn").addEventListener("click", async () => {
+  const b = $("checkPrinterBtn"); b.textContent = "확인 중…";
+  const r = await native({ cmd: "contact" }, 15000).catch(() => null);
+  b.textContent = !r ? "응답 없음" : r.ok ? "✅ 연결됨" : (r.error === "no-printer" ? "프린터 선택 필요" : "❌ 안 보임");
+  printLog("연결 확인: " + b.textContent);
+  setTimeout(() => { b.textContent = "연결 확인"; }, 5000);
+});
 $("pickPrinterBtn").addEventListener("click", () => {
   native({ cmd: "pickPrinter" }).then((p) => { if (p && p.name) $("nativePrinterName").textContent = "(" + p.name + ")"; }).catch(() => {});
 });
 $("calibBtn").addEventListener("click", async () => {
   const c = makeCalibration(), blob = await canvasToBlob(c, "image/jpeg", 0.95), file = new File([blob], "edge-test.jpg", { type: "image/jpeg" });
-  if (NATIVE) { native({ cmd: "print", jpeg: await blobToB64(blob), copies: 1, paper: S.paper }).catch(() => {}); return; }
+  if (NATIVE) { native({ cmd: printMode() === "canon" ? "openIn" : "printSheet", jpeg: await blobToB64(blob), copies: 1, paper: S.paper }, 600000).catch(() => {}); return; }
   try { if (navigator.canShare && navigator.canShare({ files: [file] })) await navigator.share({ files: [file], title: "가장자리 확인" }); } catch (e) {}
 });
 $("voiceTest").addEventListener("click", async () => {

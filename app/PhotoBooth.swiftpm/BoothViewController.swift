@@ -3,7 +3,7 @@ import WebKit
 import AVFoundation
 
 /// 포토부스 화면(웹)을 띄우고, 웹이 못 하는 일(프린터로 바로 인쇄, 공유)을 아이패드 기능으로 처리함.
-final class BoothViewController: UIViewController, WKScriptMessageHandler, WKUIDelegate, WKNavigationDelegate, UIPrintInteractionControllerDelegate, UIPrinterPickerControllerDelegate {
+final class BoothViewController: UIViewController, WKScriptMessageHandler, WKUIDelegate, WKNavigationDelegate, UIPrintInteractionControllerDelegate, UIPrinterPickerControllerDelegate, UIDocumentInteractionControllerDelegate {
 
     private var webView: WKWebView!
     private var server: LocalServer?
@@ -154,6 +154,44 @@ final class BoothViewController: UIViewController, WKScriptMessageHandler, WKUID
                 replyHandler(["ok": ok, "error": err ?? ""] as [String: Any], nil)
             }
 
+        case "printSheet":
+            guard let b64 = body["jpeg"] as? String, let data = Data(base64Encoded: b64) else {
+                replyHandler(["ok": false, "error": "bad-image"] as [String: Any], nil)
+                return
+            }
+            let paper = body["paper"] as? String ?? "postcard"
+            presentPrintSheet(data, paper: paper) { ok, err in
+                replyHandler(["ok": ok, "error": err ?? ""] as [String: Any], nil)
+            }
+
+        case "openIn":
+            guard let b64 = body["jpeg"] as? String, let data = Data(base64Encoded: b64) else {
+                replyHandler(["ok": false, "error": "bad-image"] as [String: Any], nil)
+                return
+            }
+            openInOtherApp(data) { ok, app, err in
+                replyHandler(["ok": ok, "app": app ?? "", "error": err ?? ""] as [String: Any], nil)
+            }
+
+        case "contact":
+            guard let url = savedPrinterURL else {
+                replyHandler(["ok": false, "error": "no-printer"] as [String: Any], nil)
+                return
+            }
+            let flag = AnswerFlag()
+            DispatchQueue.main.asyncAfter(deadline: .now() + 10.0) {
+                if flag.answered { return }
+                flag.answered = true
+                replyHandler(["ok": false, "error": "timeout"] as [String: Any], nil)
+            }
+            UIPrinter(url: url).contactPrinter { available in
+                DispatchQueue.main.async {
+                    if flag.answered { return }
+                    flag.answered = true
+                    replyHandler(["ok": available, "error": available ? "" : "unavailable"] as [String: Any], nil)
+                }
+            }
+
         case "share":
             let files = body["files"] as? [[String: Any]] ?? []
             share(files) {
@@ -219,14 +257,7 @@ final class BoothViewController: UIViewController, WKScriptMessageHandler, WKUID
             done(false, "no-printer")
             return
         }
-        switch paper {
-        case "lsize":
-            paperSize = CGSize(width: 89.0 / 25.4 * 72.0, height: 119.0 / 25.4 * 72.0)
-        case "card":
-            paperSize = CGSize(width: 54.0 / 25.4 * 72.0, height: 86.0 / 25.4 * 72.0)
-        default:
-            paperSize = CGSize(width: 100.0 / 25.4 * 72.0, height: 148.0 / 25.4 * 72.0)
-        }
+        setPaper(paper)
         let printer = UIPrinter(url: url)
         // 먼저 프린터가 켜져 있고 연결되는지 확인 → 안 되면 용지 낭비 없이 바로 알려 줌
         // 프린터가 대답을 안 하면 8초 뒤 '연결 안 됨'으로 처리 (한 번만 응답)
@@ -278,6 +309,139 @@ final class BoothViewController: UIViewController, WKScriptMessageHandler, WKUID
                     self.printing = false
                     finish(false, "unavailable")
                 }
+            }
+        }
+    }
+
+    private func setPaper(_ paper: String) {
+        switch paper {
+        case "lsize":
+            paperSize = CGSize(width: 89.0 / 25.4 * 72.0, height: 119.0 / 25.4 * 72.0)
+        case "card":
+            paperSize = CGSize(width: 54.0 / 25.4 * 72.0, height: 86.0 / 25.4 * 72.0)
+        default:
+            paperSize = CGSize(width: 100.0 / 25.4 * 72.0, height: 148.0 / 25.4 * 72.0)
+        }
+    }
+
+    // MARK: - 인쇄 창 (가장 안정적: 사진 앱과 같은 방법)
+    // iOS 16 이후 '창 없이 바로 인쇄'는 두 번째 인쇄부터 백지가 나오는 문제가 알려져 있어,
+    // 기본은 iOS 인쇄 창을 띄우되 저장된 SELPHY를 미리 골라 둠 → '프린트'만 누르면 됨
+
+    private var sheetBusy = false
+
+    private func presentPrintSheet(_ data: Data, paper: String, done: @escaping (Bool, String?) -> Void) {
+        if sheetBusy {
+            done(false, "busy")
+            return
+        }
+        guard let image = UIImage(data: data) else {
+            done(false, "bad-image")
+            return
+        }
+        setPaper(paper)
+        let controller = UIPrintInteractionController.shared
+        let info = UIPrintInfo(dictionary: nil)
+        info.outputType = .photo
+        info.jobName = "네컷 포토부스"
+        info.orientation = .portrait
+        info.duplex = .none
+        if let url = savedPrinterURL {
+            info.printerID = url.absoluteString
+        }
+        controller.printInfo = info
+        controller.delegate = self
+        controller.showsNumberOfCopies = true
+        controller.printingItems = nil
+        controller.printingItem = image
+        sheetBusy = true
+        let rect = CGRect(x: view.bounds.midX - 1, y: view.bounds.midY - 1, width: 2, height: 2)
+        let shown = controller.present(from: rect, in: view, animated: true) { [weak self] ctl, completed, error in
+            DispatchQueue.main.async {
+                guard let self = self else { return }
+                self.sheetBusy = false
+                // 창에서 고른 프린터를 기억 → 다음부터 미리 골라져 있음
+                if completed, let pid = ctl.printInfo?.printerID, let u = URL(string: pid) {
+                    self.savedPrinterURL = u
+                }
+                if let error = error {
+                    done(false, error.localizedDescription)
+                } else {
+                    done(completed, completed ? nil : "cancelled")
+                }
+            }
+        }
+        if !shown {
+            sheetBusy = false
+            done(false, "no-sheet")
+        }
+    }
+
+    // MARK: - 다른 앱(Canon PRINT)으로 사진 넘기기
+    // 셀피 '다이렉트 연결'처럼 AirPrint가 안 되는 상황에서도 캐논 앱은 인쇄가 됨
+
+    private var docController: UIDocumentInteractionController?
+    private var openInDone: ((Bool, String?, String?) -> Void)?
+    private var openInApp: String?
+    private var leftApp = false
+    private var resignObserver: NSObjectProtocol?
+
+    private func openInOtherApp(_ data: Data, done: @escaping (Bool, String?, String?) -> Void) {
+        let url = FileManager.default.temporaryDirectory.appendingPathComponent("photobooth_print.jpg")
+        do {
+            try data.write(to: url, options: .atomic)
+        } catch {
+            done(false, nil, "write-failed")
+            return
+        }
+        let dc = UIDocumentInteractionController(url: url)
+        dc.uti = "public.jpeg"
+        dc.name = "네컷 사진"
+        dc.delegate = self
+        docController = dc
+        openInDone = done
+        openInApp = nil
+        leftApp = false
+        if let o = resignObserver {
+            NotificationCenter.default.removeObserver(o)
+        }
+        resignObserver = NotificationCenter.default.addObserver(forName: UIApplication.willResignActiveNotification, object: nil, queue: .main) { [weak self] _ in
+            self?.leftApp = true
+        }
+        let rect = CGRect(x: view.bounds.midX - 1, y: view.bounds.midY - 1, width: 2, height: 2)
+        if !dc.presentOpenInMenu(from: rect, in: view, animated: true) {
+            finishOpenIn(false, "no-app")
+        }
+    }
+
+    private func finishOpenIn(_ ok: Bool, _ err: String?) {
+        guard let done = openInDone else { return }
+        openInDone = nil
+        if let o = resignObserver {
+            NotificationCenter.default.removeObserver(o)
+            resignObserver = nil
+        }
+        done(ok, openInApp, err)
+        docController = nil
+    }
+
+    func documentInteractionController(_ controller: UIDocumentInteractionController, willBeginSendingToApplication application: String?) {
+        openInApp = application ?? "app"
+    }
+
+    func documentInteractionController(_ controller: UIDocumentInteractionController, didEndSendingToApplication application: String?) {
+        openInApp = application ?? openInApp ?? "app"
+        finishOpenIn(true, nil)
+    }
+
+    func documentInteractionControllerDidDismissOpenInMenu(_ controller: UIDocumentInteractionController) {
+        // 앱을 골랐으면 곧 캐논 앱으로 넘어감 → 잠깐 기다렸다가 판단
+        DispatchQueue.main.asyncAfter(deadline: .now() + 1.2) { [weak self] in
+            guard let self = self else { return }
+            if self.openInApp != nil || self.leftApp {
+                self.finishOpenIn(true, nil)
+            } else {
+                self.finishOpenIn(false, "cancelled")
             }
         }
     }
