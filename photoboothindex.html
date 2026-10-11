@@ -315,6 +315,26 @@ button:focus-visible { outline: 3px solid var(--yellow); outline-offset: 2px; }
 button { transition: transform .08s ease; }
 button:active:not(:disabled) { transform: scale(.96); }
 .big:active:not(:disabled) { transform: translateY(2px) scale(.98); }
+/* 시작 점검 */
+#s-check { background: linear-gradient(160deg, #f6f1ff, #fff8e1); }
+.checkBody { flex: 1; min-height: 0; display: grid; grid-template-columns: minmax(0, 1.15fr) minmax(0, 1fr); gap: 22px; padding: 0 30px 22px; }
+.checkList { overflow-y: auto; -webkit-overflow-scrolling: touch; display: flex; flex-direction: column; gap: 8px; padding-right: 4px; }
+.ckRow { display: grid; grid-template-columns: 34px minmax(0, 1fr); gap: 10px; align-items: center; background: #fff; border-radius: 14px; padding: 10px 14px; box-shadow: 0 2px 8px rgba(107, 61, 168, .07); }
+.ckRow i { font-style: normal; font-size: 24px; text-align: center; }
+.ckRow b { display: block; font-size: 18px; color: var(--ink); font-weight: 600; }
+.ckRow small { display: block; font-size: 14px; color: var(--muted); line-height: 1.4; margin-top: 2px; word-break: keep-all; }
+.ckRow.fail { background: #fff0f0; } .ckRow.fail small { color: #c0392b; }
+.ckRow.warn { background: #fff8e6; } .ckRow.warn small { color: #9a6b00; }
+.ckRow.run i { animation: pulse 1s ease-in-out infinite; }
+.checkSide { display: flex; flex-direction: column; gap: 12px; min-height: 0; overflow-y: auto; }
+.checkCam { position: relative; height: 24vh; min-height: 150px; background: #241a33; border-radius: 16px; overflow: hidden; flex: none; display: grid; place-items: center; }
+.checkCam video { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; transform: scaleX(-1); }
+.checkCam span { color: rgba(255,255,255,.6); font-size: 16px; position: relative; }
+.checkSum { background: #fff; border-radius: 14px; padding: 12px 16px; font-size: 18px; line-height: 1.5; color: var(--purple-deep); }
+.checkSum.bad { background: #fff0f0; color: #a8322a; } .checkSum.meh { background: #fff8e6; color: #7a5600; } .checkSum.good { background: #eafaf0; color: #1f7a45; }
+#reportText { width: 100%; height: min(50vh, 420px); font: 14px/1.5 ui-monospace, Menlo, monospace; border: 2px solid var(--line); border-radius: 12px; padding: 10px; resize: none; background: var(--paper); color: var(--ink); -webkit-user-select: text; user-select: text; }
+.checkSide .row .big { padding-top: 14px; padding-bottom: 14px; }
+@media (orientation: portrait) { .checkBody { grid-template-columns: 1fr; grid-template-rows: minmax(0, 1fr) auto; } .checkCam { height: 18vh; } }
 /* 휴대폰 QR 받기 */
 .qrBox { display: flex; align-items: center; gap: 14px; background: #fff; border-radius: 18px; padding: 12px 16px; box-shadow: 0 6px 18px rgba(107, 61, 168, .15); text-align: left; animation: slotIn .4s ease both; }
 .qrBox[hidden] { display: none; }
@@ -352,6 +372,22 @@ details.guide p { margin: 4px 0; color: var(--muted); }
   </div>
   <div class="tap">화면을 터치해서 시작하세요</div>
   <div id="adminCorner" aria-hidden="true"></div>
+</section>
+
+<!-- 0. 시작 점검 (관리자) -->
+<section class="screen" id="s-check" hidden>
+  <div class="head"><div class="navL"></div><div><h1>🔧 시작 점검</h1><p>손님을 받기 전에 카메라·프린터·소리가 잘 되는지 확인해요</p></div><div></div></div>
+  <div class="checkBody">
+    <div class="checkList" id="checkList"></div>
+    <div class="checkSide">
+      <div class="checkCam"><video id="checkVideo" playsinline muted autoplay></video><span id="checkCamMsg">카메라 화면</span></div>
+      <div class="qrBox small" id="checkQr" hidden></div>
+      <div class="row"><button class="big gray" id="ckSound" disabled>🔊 소리 확인</button><button class="big gray" id="ckPrint" disabled>🖨️ 테스트 인쇄</button></div>
+      <div class="checkSum" id="checkSum">아래 <b>점검 시작</b>을 눌러 주세요. (약 20초)</div>
+      <div class="row"><button class="big gray" id="ckReport" disabled>📋 보고서</button><button class="big" id="ckStart">▶ 점검 시작</button></div>
+      <div class="row small"><button class="link" id="ckAgain" hidden>다시 점검</button><button class="link" id="ckSkip">점검 건너뛰고 손님 화면으로</button></div>
+    </div>
+  </div>
 </section>
 
 <!-- 3. 프레임 -->
@@ -517,6 +553,16 @@ details.guide p { margin: 4px 0; color: var(--muted); }
   </div>
 </div>
 
+<!-- 모달: 점검·오류 보고서 -->
+<div class="modal" id="reportModal" hidden>
+  <div class="sheet" style="width:min(720px,100%)">
+    <h3 id="reportTitle">점검 결과</h3>
+    <p id="reportLead" style="margin:0 0 8px"></p>
+    <textarea id="reportText" readonly spellcheck="false"></textarea>
+    <div class="row"><button class="big gray" id="reportClear">오류 기록 지우기</button><button class="big gray" id="reportCopy">복사</button><button class="big yellow" id="reportShare">보내기</button><button class="big" id="reportClose">닫기</button></div>
+  </div>
+</div>
+
 <!-- 모달: 공용 확인 (뒤로 가기 · 처음으로) -->
 <div class="modal" id="askModal" hidden>
   <div class="sheet">
@@ -574,6 +620,7 @@ details.guide p { margin: 4px 0; color: var(--muted); }
     <div class="field"><span>목소리·소리 확인</span><button class="mini" id="voiceTest">들어보기</button></div>
     <div class="field"><span>효과음 (찰칵 · 삐)</span><button class="toggle" id="setSound" aria-label="효과음"></button></div>
     <div class="field"><span>포즈 추천 <small>(찍을 때마다 포즈 아이디어)</small></span><button class="toggle" id="setPoses" aria-label="포즈 추천"></button></div>
+    <div class="field"><span>포즈 감독 목소리 <small>(포즈 추천을 재밌게 말해 줌)</small></span><div class="seg" id="setPoseVoice"></div></div>
     <div class="field"><span>사진 아래 글자 기본 글꼴</span><select id="setFont"></select></div>
     <div class="field"><span>얼굴 따라다니는 효과</span><button class="toggle" id="setFaceFx" aria-label="얼굴 효과"></button></div>
     <div class="field"><span>화질 개선 <small>(인쇄 사진을 선명하게)</small></span><button class="toggle" id="setSharpen" aria-label="화질 개선"></button></div>
@@ -588,7 +635,9 @@ details.guide p { margin: 4px 0; color: var(--muted); }
     <div class="field"><span>프린터 연결 안내 <small>(처음 인쇄할 때 한 번 나옴)</small></span><button class="mini" id="printerReset">다시 보이기</button></div>
     <div class="field" id="qrRow" hidden><span>휴대폰 QR 받기 <small>(같은 와이파이의 휴대폰이 QR을 찍으면 사진 저장)</small></span><button class="toggle" id="setQr" aria-label="QR 받기"></button></div>
     <div class="field" id="wifiRow" hidden><span>와이파이 이름 <small>(QR 아래 안내, 비워도 됨)</small></span><input type="text" id="setWifi" maxlength="32" placeholder="예: StrangeEnglish_5G"></div>
-    <div class="field"><span>인쇄 전 카트리지 확인 창</span><button class="toggle" id="setCassette" aria-label="카트리지 확인"></button></div>
+    <div class="field"><span>앱 켤 때 시작 점검 <small>(카메라·프린터·소리 등 자동 확인)</small></span><button class="toggle" id="setStartCheck" aria-label="시작 점검"></button></div>
+    <div class="field"><span>오늘 이용 <small id="statLine"></small></span><span></span></div>
+    <div class="field"><span>점검 · 오류 기록</span><span style="display:flex;gap:8px"><button class="mini" id="openCheckBtn">지금 점검하기</button><button class="mini" id="errLogBtn">오류 보고서</button></span></div>
     <div class="field"><span>새 비밀번호 (숫자 4자리)</span><input type="password" id="setPin" inputmode="numeric" maxlength="4"></div>
     <p class="note" style="font-size:15px;color:var(--muted);text-align:left">· 공유기(같은 Wi-Fi)가 있으면 ‘인쇄 창’, 셀피 다이렉트 연결이면 ‘캐논 앱’이 가장 안정적이에요.<br>· 인쇄 창에서 SELPHY를 한 번 고르면 다음부터 기억해요.<br>· 소리가 안 나면 아이패드 무음 모드(제어 센터의 종 아이콘)와 볼륨을 확인해 주세요.</p>
     <details class="guide"><summary>🔒 아이들이 앱 밖으로 못 나가게 하기 (사용법 유도)</summary>
@@ -619,6 +668,30 @@ details.guide p { margin: 4px 0; color: var(--muted); }
 
 <script>
 "use strict";
+const APP_VERSION = "1.5";
+/* 손님이 쓰는 중에 생긴 오류를 기록 → 시작 점검·관리자 '오류 보고서'에서 보여 줌 (선생님이 그대로 알려 주면 고칠 수 있게) */
+function errLog(msg) {
+  try {
+    const L = JSON.parse(localStorage.getItem("booth.errlog") || "[]"), d = new Date();
+    const scr = typeof current === "string" ? current : "?";
+    L.unshift((d.getMonth() + 1) + "/" + d.getDate() + " " + String(d.getHours()).padStart(2, "0") + ":" + String(d.getMinutes()).padStart(2, "0") + " [" + scr + "] " + String(msg).slice(0, 300));
+    localStorage.setItem("booth.errlog", JSON.stringify(L.slice(0, 40)));
+  } catch (e) {}
+}
+/* 오늘 이용 통계 (관리자 설정·보고서에 표시) */
+function statBump(key, sid) {
+  try {
+    const d = new Date(), day = d.getFullYear() + "-" + (d.getMonth() + 1) + "-" + d.getDate(), all = JSON.parse(localStorage.getItem("booth.stats") || "{}");
+    const t = all[day] = all[day] || { teams: 0, prints: 0, qr: 0, seen: [] };
+    if (sid != null) { const tag = key + sid; if (t.seen.includes(tag)) return; t.seen.push(tag); t.seen = t.seen.slice(-50); }
+    t[key] = (t[key] || 0) + 1;
+    Object.keys(all).sort().slice(0, -14).forEach((k) => delete all[k]);
+    localStorage.setItem("booth.stats", JSON.stringify(all));
+  } catch (e) {}
+}
+function statToday() { try { const d = new Date(), all = JSON.parse(localStorage.getItem("booth.stats") || "{}"); return all[d.getFullYear() + "-" + (d.getMonth() + 1) + "-" + d.getDate()] || { teams: 0, prints: 0, qr: 0 }; } catch (e) { return { teams: 0, prints: 0, qr: 0 }; } }
+window.addEventListener("error", (e) => { if (e && e.message) errLog(e.message + (e.filename ? " @" + String(e.filename).split("/").pop() + ":" + e.lineno : "")); });
+window.addEventListener("unhandledrejection", (e) => { const r = e && e.reason; errLog("promise: " + (r && (r.message || r.name) ? (r.name || "") + " " + (r.message || "") : String(r))); });
 /* 아이패드 앱(네컷 포토부스 앱) 안에서 열렸는지: 앱이면 프린터로 바로 인쇄 */
 const NATIVE = !!(window.webkit && window.webkit.messageHandlers && window.webkit.messageHandlers.booth);
 const nativePending = {}; let nativeSeq = 0;
@@ -818,7 +891,7 @@ function loadFont(id) {
   return fontLoaded[f.id];
 }
 
-const DEFAULTS = { paper: "postcard", extra: 2, countdown: 7, zoom: 1, attractTitle: "PHOTO BOOTH", title: "PHOTO BOOTH", showDate: true, timers: true, cassette: true, printerReady: false, printVia: "canon", printMode: "sheet", bleed: 2, retouch: "natural", faceFx: true, poses: true, font: "jua", sharpen: true, voice: true, voiceName: "", sound: true, pin: "0000", qr: true, wifiName: "" };
+const DEFAULTS = { paper: "postcard", extra: 2, countdown: 7, zoom: 1, attractTitle: "PHOTO BOOTH", title: "PHOTO BOOTH", showDate: true, timers: true, cassette: true, printerReady: false, printVia: "canon", printMode: "sheet", bleed: 2, retouch: "natural", faceFx: true, poses: true, font: "jua", sharpen: true, voice: true, voiceName: "", sound: true, pin: "0000", qr: true, wifiName: "", poseVoice: "m", startCheck: true };
 let S = loadSettings();
 function loadSettings() {
   try { const raw = localStorage.getItem("booth.settings"); if (raw) { const o = Object.assign({}, DEFAULTS, JSON.parse(raw)); delete o.shots; delete o.maxCopies; return o; } } catch (e) {}
@@ -1436,7 +1509,7 @@ function unlockAudio() {
   Object.keys(SFX).forEach((k) => {
     sfxPool[k] = [0, 1].map(() => { const a = new Audio(SFX[k]); a.preload = "auto"; a.muted = true; a.play().then(() => { a.pause(); a.currentTime = 0; a.muted = false; }).catch(() => { a.muted = false; }); return a; });
   });
-  voiceWarmup();
+  voiceWarmup(); poseUnlock();
 }
 function playSfx(name) {
   if (!S.sound || !sfxPool[name]) return;
@@ -1462,6 +1535,7 @@ function voiceWarmup() {
 }
 function say(key) {
   if (!S.voice || !voicePool[key]) return;
+  stopPose();
   try {
     if (voiceNow && voiceNow !== voicePool[key]) { voiceNow.pause(); voiceNow.currentTime = 0; }
     const a = voicePool[key]; voiceNow = a; a.muted = false; a.currentTime = 0; a.play().catch(() => {});
@@ -1615,7 +1689,7 @@ async function startCamera() {
   lastFrameAt = performance.now(); watchFrames(); startWatchdog();
   return true;
 }
-function stopCamera() { camGen++; if (typeof FX !== "undefined") FX.stop(); if (typeof LIVE_BEAUTY !== "undefined") LIVE_BEAUTY.stop(); stopWatchdog(); if (stream) { stream.getTracks().forEach((t) => t.stop()); stream = null; $("video").srcObject = null; } }
+function stopCamera() { camGen++; if (typeof stopPose === "function") stopPose(); if (typeof FX !== "undefined") FX.stop(); if (typeof LIVE_BEAUTY !== "undefined") LIVE_BEAUTY.stop(); stopWatchdog(); if (stream) { stream.getTracks().forEach((t) => t.stop()); stream = null; $("video").srcObject = null; } }
 
 /* ── 라이브 화면 멈춤 방지 ──
    아이패드에서 소리 재생 등으로 카메라 영상이 멈추면(일시정지·프레임 정지) 자동으로 다시 재생하고,
@@ -1957,6 +2031,7 @@ function flyShot(img, slot) {
 /* 카메라·촬영 실패: 다시 시도 / 처음으로 (90초 동안 아무도 안 누르면 처음으로) */
 let camErrTimer = null;
 function showCamError(msg) {
+  errLog("카메라/촬영: " + msg);
   const box = $("camErr"); box.hidden = false; box.innerHTML = "";
   box.appendChild(el("div", null, escapeHtml(msg)));
   const row = el("div", "row"); row.style.marginTop = "18px"; row.style.justifyContent = "center";
@@ -1971,10 +2046,30 @@ let skipNap = null, cdJump = false;
 function nap(ms) { return new Promise((res) => { const t = setTimeout(done, ms); function done() { clearTimeout(t); if (skipNap === done) skipNap = null; res(); } skipNap = done; }); }
 $("quickShot").addEventListener("click", () => { cdJump = true; if (skipNap) skipNap(); });
 /* 포즈 추천 (네컷 포즈 앱·포토부스에서 많이 하는 포즈) */
-const POSES = ["브이 ✌️", "손하트 🫶", "볼 하트 🥰", "꽃받침 🌼", "깜짝 놀란 표정 😲", "윙크 😉", "엄지 척 👍", "고양이 손 🐱", "메롱 😛", "볼 빵빵 🐡",
-  "토끼 귀 🐰", "멋진 척 😎", "머리 위 하트 💕", "서로 바라보기 👀", "볼 콕 ☝️", "주먹 꽉 화이팅 💪", "턱 괴기 🤔", "만세 🙌", "얼굴 가리고 빼꼼 🙈", "제일 웃긴 표정 🤪"];
+const POSES = ["브이 ✌️", "손하트 🫶", "볼 하트 🥰", "꽃받침 🌼", "깜짝 놀란 표정 😲", "윙크 😉", "엄지 척 👍", "고양이 손 🐱", "메롱 😛", "볼 빵빵 🐡", "토끼 귀 🐰", "멋진 척 😎", "머리 위 하트 💕", "서로 바라보기 👀", "볼 콕 ☝️", "주먹 꽉 화이팅 💪", "턱 괴기 🤔", "만세 🙌", "얼굴 가리고 빼꼼 🙈", "제일 웃긴 표정 🤪", "사자처럼 어흥 🦁", "꿀벌 윙윙 🐝", "졸린 척 😴", "선물 받은 표정 🎁", "슈퍼 히어로 🦸"];
 let poseBag = [];
-function nextPose() { if (!poseBag.length) poseBag = POSES.slice().sort(() => Math.random() - 0.5); return poseBag.pop(); }
+function nextPose() { if (!poseBag.length) poseBag = POSES.map((_, i) => i).sort(() => Math.random() - 0.5); return poseBag.pop(); }
+/* 포즈 감독 목소리 (voice 폴더 mp3): 포즈 지시 → 찰칵 → 칭찬 한마디. 사진작가(남)·선생님(여) 중 고름 */
+const POSE_AUDIO = { a: null, n: 0 };
+function poseVoiceKind() { return S.voice && S.poses && (S.poseVoice === "m" || S.poseVoice === "f") ? S.poseVoice : null; }
+function poseUnlock() {
+  if (POSE_AUDIO.a) return;
+  const a = new Audio(); a.preload = "auto"; POSE_AUDIO.a = a;
+  a.src = "voice/m_react03.mp3"; a.muted = true; a.play().then(() => { a.pause(); a.muted = false; }).catch(() => { a.muted = false; });
+}
+function playPose(file) {
+  const k = poseVoiceKind(), a = POSE_AUDIO.a;
+  if (!k || !a) return Promise.resolve();
+  const my = ++POSE_AUDIO.n;
+  return new Promise((res) => {
+    const fin = () => { clearTimeout(t); if (POSE_AUDIO.n === my) { a.onended = null; a.onerror = null; } res(); };
+    const t = setTimeout(fin, 4500);
+    a.onended = fin; a.onerror = fin;
+    try { if (voiceNow) voiceNow.pause(); a.src = "voice/" + k + "_" + file + ".mp3"; a.muted = false; a.play().catch(fin); } catch (e) { fin(); }
+  });
+}
+function stopPose() { POSE_AUDIO.n++; const a = POSE_AUDIO.a; try { if (a && !a.paused) a.pause(); } catch (e) {} }
+const pad2 = (n) => String(n).padStart(2, "0");
 /* 촬영 중 완성 모양 미리보기: 찍은 순서대로 칸을 채워 보여 줌 */
 function drawShootMini(bump) {
   const cv = $("shootMini"); if (retakeOf != null) { cv.hidden = true; return; }
@@ -2016,9 +2111,16 @@ ENTER.shoot = async () => {
   await nap(2200); if (run !== shootRun) return;
   $("camGuide").hidden = true;
   const cd = Math.max(1, S.countdown);
+  let reactP = Promise.resolve();
   for (let i = 0; i < total; i++) {
     if (retakeOf == null) $("shotCount").textContent = (i + 1) + " / " + total;
-    const pose = S.poses ? nextPose() : ""; $("poseTip").textContent = pose ? "💡 " + pose : ""; $("poseTip").hidden = !pose;
+    const pi = S.poses ? nextPose() : -1, pose = pi >= 0 ? POSES[pi] : ""; $("poseTip").textContent = pose ? "💡 " + pose : ""; $("poseTip").hidden = !pose;
+    /* 포즈 감독 목소리: 앞 칭찬이 끝나면 포즈 지시. 카운트다운이 짧으면(5초 이하) 지시를 다 듣고 시작 */
+    if (pi >= 0 && poseVoiceKind()) {
+      await Promise.race([reactP, sleep(2200)]); if (run !== shootRun) return;
+      const pp = playPose(i === total - 1 && total > 2 ? "last" : "pose" + pad2(pi));
+      if (cd < 6) { await Promise.race([pp, sleep(3600)]); if (run !== shootRun) { stopPose(); return; } }
+    }
     if (cd <= 2) startLive();
     cdJump = false;
     for (let n = cd; n >= 1; n--) {
@@ -2045,6 +2147,7 @@ ENTER.shoot = async () => {
     await sleep(160); $("flash").classList.remove("on");
     if (run !== shootRun) { freeCanvas(still); freeCanvas(fx); (live || []).forEach(freeCanvas); return; }
     $("shootMini").classList.remove("dim");
+    if (still && i < total - 1 && poseVoiceKind()) reactP = playPose("react" + pad2(Math.floor(Math.random() * 8)));
     if (still) {
       const thumb = downscale(still, 800), fxThumb = fx ? downscale(fx, 800) : null, shot = { still, thumb, fx, fxThumb, live };
       let idx;
@@ -2369,6 +2472,7 @@ ENTER.print = async () => {
   try { ok = await buildPrintImage(tok); } catch (e) { console.warn("build", e); ok = false; }
   if (tok !== printTok || current !== "print") return;   /* 만드는 동안 다른 화면으로 갔으면 여기서 멈춤 */
   if (!ok) {
+    errLog("인쇄 사진 만들기 실패 (layout " + session.layout + ", frame " + session.frame + ")");
     $("printMsg").textContent = "사진을 만들지 못했어요 😢";
     $("printNote").innerHTML = "용지 낭비를 막으려고 인쇄를 멈췄어요. <b>다시 만들기</b>를 눌러 주세요.<br>계속 안 되면 Safari를 새로고침한 뒤 다시 찍어 주세요.";
     $("printBtn").disabled = false; $("printBtn").textContent = "🔄 다시 만들기"; $("printBtn").dataset.rebuild = "1";
@@ -2394,7 +2498,7 @@ function lanShare(withVideo) {
       if (withVideo) { msg.video = await blobToB64(session.liveBlob); msg.videoType = session.liveBlob.type; }
       const r = await native(msg, 20000);
       if (sid !== sessionId || session.finalBlob !== blob) return;
-      if (r && r.ok && r.qr) { session.share = { token: r.token, url: r.url, qr: r.qr, video: !!msg.video }; session.shareErr = null; }
+      if (r && r.ok && r.qr) { if (!session.share) statBump("qr", sessionId); session.share = { token: r.token, url: r.url, qr: r.qr, video: !!msg.video }; session.shareErr = null; }
       else { session.share = session.share || null; printLog("QR 받기 실패: " + ((r && r.error) || "?")); if (r && r.error === "no-wifi") session.shareErr = "no-wifi"; }
     } catch (e) { printLog("QR 받기 오류: " + (e && e.message)); }
     renderQR();
@@ -2617,11 +2721,8 @@ $("printerHelpBtn").addEventListener("click", openPrinterHelp);
 $("printerClose").addEventListener("click", () => { $("printerModal").hidden = true; });
 $("printerGo").addEventListener("click", () => { $("printerModal").hidden = true; S.printerReady = true; saveSettings(); doPrint(); });
 function askCassette(mode) {
-  pendingMode = mode;
-  if (S.cassette) {
-    $("cassetteText").innerHTML = "셀피에 <b>" + PAPERS[S.paper].cassette + "</b> 잉크·용지 카세트가 들어 있나요?";
-    $("cassetteModal").hidden = false;
-  } else printFlow(mode);
+  /* 카세트 확인은 손님에게 묻지 않음 (관리자가 '시작 점검'의 테스트 인쇄에서 확인) */
+  pendingMode = mode; printFlow(mode);
 }
 $("printBtn").addEventListener("click", () => {
   if ($("printBtn").dataset.rebuild) { session.finalBlob = null; ENTER.print(); return; }
@@ -2653,7 +2754,7 @@ function makeLayers() {
   return { blank, y: mk(false, false), m: mk(false, true), c: src, w, h };
 }
 let pgReturned = false, pgPreset = 0;
-function startPrinting(returned, copies) { if (!session.finalCanvas) return; pgReturned = !!returned; pgPreset = copies || 0; go("printing"); }
+function startPrinting(returned, copies) { if (!session.finalCanvas) return; statBump("prints"); pgReturned = !!returned; pgPreset = copies || 0; go("printing"); }
 ENTER.printing = () => {
   renderQR();
   PG.copies = pgPreset || 1; PG.finished = false; clearTimeout(PG.autoTimer);
@@ -2783,7 +2884,7 @@ ENTER.done = () => {
   $("shareErr").textContent = "";
   $("doneImg").hidden = false; $("liveVideo").hidden = true;
   if (session.finalBlob) $("doneImg").src = trackURL(URL.createObjectURL(session.finalBlob)); else $("doneImg").removeAttribute("src");
-  showLive(); confetti(); renderQR();
+  showLive(); confetti(); renderQR(); statBump("teams", sessionId);
   lanShare(false); lanShare(true);   /* 앞에서 실패했으면 다시 시도 (이미 올렸으면 아무 일 안 함) */
 };
 $("shareBtn").addEventListener("click", () => shareSave($("shareErr")));
@@ -2843,13 +2944,15 @@ function openAdmin() {
   $("setZoom").oninput = () => { S.zoom = Number($("setZoom").value); $("zoomVal").textContent = S.zoom.toFixed(1); };
   $("setTitle").value = S.title; $("setAttract").value = S.attractTitle;
   $("setTitle").oninput = drawCaptionPreview; drawCaptionPreview();
-  toggle($("setDate"), "showDate"); toggle($("setTimers"), "timers"); toggle($("setCassette"), "cassette");
+  toggle($("setDate"), "showDate"); toggle($("setTimers"), "timers"); toggle($("setStartCheck"), "startCheck");
   toggle($("setSharpen"), "sharpen"); toggle($("setFaceFx"), "faceFx"); toggle($("setPoses"), "poses"); toggle($("setQr"), "qr");
+  { const t = statToday(); $("statLine").textContent = "(" + t.teams + "팀 · 인쇄 " + t.prints + "번 · QR " + t.qr + "번)"; }
   $("qrRow").hidden = !NATIVE; $("wifiRow").hidden = !NATIVE; $("setWifi").value = S.wifiName || "";
   { const sf = $("setFont"); sf.innerHTML = ""; FONTS.forEach((f) => { const o = el("option"); o.value = f.id; o.textContent = f.name; if ((S.font || "jua") === f.id) o.selected = true; sf.appendChild(o); }); sf.onchange = () => { S.font = sf.value; session.font = sf.value; }; } toggle($("setVoice"), "voice"); toggle($("setSound"), "sound");
   if (!openAdmin.bound) { $("setDate").addEventListener("click", drawCaptionPreview); openAdmin.bound = true; }
   if (!RETOUCH[S.retouch]) S.retouch = "natural";
   seg($("setRetouch"), Object.keys(RETOUCH), () => S.retouch, (v) => { S.retouch = v; }, (v) => RETOUCH[v].name);
+  seg($("setPoseVoice"), ["m", "f", "off"], () => (S.poseVoice || "off"), (v) => { S.poseVoice = v; if (v !== "off") { poseUnlock(); const was = S.poses; S.poses = true; playPose("pose" + pad2(Math.floor(Math.random() * POSES.length))); S.poses = was; } }, (v) => ({ m: "사진작가 (남)", f: "선생님 (여)", off: "끄기" })[v]);
   $("viaRow").hidden = NATIVE; $("nativePrinterRow").hidden = !NATIVE; $("modeRow").hidden = !NATIVE; $("logRow").hidden = !NATIVE; $("printLogBox").hidden = true;
   seg($("setMode"), ["sheet", "canon", "direct"], () => printMode(), (v) => { S.printMode = v; }, (v) => ({ sheet: "인쇄 창 (추천)", canon: "캐논 앱", direct: "바로 (실험)" })[v]);
   if (NATIVE) native({ cmd: "info" }).then((i) => { $("nativePrinterName").textContent = (i && i.printer) ? "(" + i.printer + ")" : "(선택 안 됨)"; }).catch(() => {});
@@ -2910,10 +3013,246 @@ $("adminClose").addEventListener("click", () => {
     box.appendChild(sp);
   }
 })();
+/* ───────── 0. 시작 점검 (관리자) ─────────
+   앱을 켜면 먼저 카메라·보정·글꼴·그림·인쇄 사진 만들기·프린터·QR·소리를 확인하고,
+   문제가 있으면 끝에 보고서 창으로 정리 → 선생님이 그 내용을 그대로 알려 주면 고칠 수 있게 */
+const CK = { rows: {}, order: [], running: false, done: false, stream: null, frame: null, runId: 0 };
+const CK_ITEMS = [
+  ["storage", "설정 저장"], ["camera", "카메라"], ["beauty", "뽀샤시 보정 (GPU)"], ["fonts", "글꼴 " + FONTS.length + "개"],
+  ["images", "프레임 배경 · 3D 스티커 그림"], ["voice", "안내 · 포즈 목소리 파일"], ["worker", "필터 계산 (백그라운드)"], ["compose", "인쇄용 사진 만들기"],
+  ["live", "움직이는 사진"], ["facefx", "얼굴 따라다니는 효과"], ["app", "아이패드 앱 연결"], ["printer", "프린터"], ["qr", "휴대폰 QR 받기"],
+  ["errlog", "지난번 사용 중 오류 기록"], ["sound", "소리 (직접 확인)"], ["print", "테스트 인쇄 (직접 확인)"]
+];
+const CK_ICON = { wait: "⏳", run: "🔄", ok: "✅", warn: "⚠️", fail: "❌", skip: "➖" };
+function ckBuild() {
+  const list = $("checkList"); list.innerHTML = ""; CK.rows = {};
+  CK_ITEMS.forEach(([id, name]) => {
+    const r = el("div", "ckRow"), i = el("i", null, CK_ICON.wait), t = el("div");
+    const b = el("b"), d = el("small"); b.textContent = name; t.appendChild(b); t.appendChild(d); r.appendChild(i); r.appendChild(t); list.appendChild(r);
+    CK.rows[id] = { r, i, d, name, status: "wait", detail: "" };
+  });
+  ckSet("sound", "skip", "아래 ‘소리 확인’을 눌러 확인 (선택)"); ckSet("print", "skip", "아래 ‘테스트 인쇄’로 확인 (행사 전에 한 번 추천)");
+}
+function ckSet(id, status, detail) {
+  const row = CK.rows[id]; if (!row) return;
+  row.status = status; row.detail = detail || ""; row.i.textContent = CK_ICON[status] || "•"; row.d.textContent = row.detail;
+  row.r.className = "ckRow " + status;
+  if (status === "run") row.r.scrollIntoView({ block: "nearest" });
+}
+function ckTimeout(p, ms, msg) { return Promise.race([p, new Promise((_, rej) => setTimeout(() => rej(new Error(msg || "시간 초과")), ms))]); }
+function ckStopCam() { if (CK.stream) { CK.stream.getTracks().forEach((t) => t.stop()); CK.stream = null; } const v = $("checkVideo"); v.srcObject = null; }
+function ckTestImage() {
+  /* 카메라 사진이 없으면 색 막대 시험 그림 */
+  if (CK.frame) return CK.frame;
+  const c = makeCanvas(1600, 1200), x = c.getContext("2d"), cols = ["#ff5f5f", "#ffb347", "#ffe95c", "#7be37b", "#5fb8ff", "#9b7bff"];
+  cols.forEach((k, i) => { x.fillStyle = k; x.fillRect(i * c.width / 6, 0, c.width / 6 + 1, c.height); });
+  x.fillStyle = "#fff"; x.font = "120px " + DISPLAY_FONT; x.textAlign = "center"; x.fillText("TEST", 800, 640); return c;
+}
+function ckSpec(img) {
+  return { paper: S.paper, layout: "strip4", frame: Math.max(0, FRAMES.findIndex((f) => f.cat === "3D 캐릭터")), font: S.font || "jua", photos: [img, img, img, img],
+    stickers: [{ id: "t1", text: "", img: "sparkling_heart", x: 0.75, y: 0.3, scale: 0.2, rot: 0.2 }, { id: "t2", text: "점검 인쇄", badge: 3, color: 2, font: S.font || "jua", x: 0.5, y: 0.52, scale: 0.075, rot: -0.1 }],
+    title: S.title, showDate: S.showDate, numbers: false, active: null };
+}
+async function runChecks() {
+  if (CK.running) return;
+  const my = ++CK.runId; CK.running = true; CK.done = false;
+  unlockAudio(); keepAwake();
+  ckBuild(); $("checkQr").hidden = true; $("checkSum").className = "checkSum"; $("checkSum").textContent = "점검하는 중이에요… 잠시만 기다려 주세요.";
+  ["ckStart", "ckReport", "ckSound", "ckPrint"].forEach((k) => { $(k).disabled = true; }); $("ckAgain").hidden = true;
+  const alive = () => my === CK.runId && current === "check";
+  const step = async (id, fn) => {
+    if (!alive()) return; ckSet(id, "run", "확인 중…");
+    try { const r = await fn(); if (r) ckSet(id, r[0], r[1]); else ckSet(id, "ok", ""); }
+    catch (e) { ckSet(id, "fail", (e && e.message) || String(e)); }
+  };
+  await step("storage", async () => { localStorage.setItem("booth.test", "1"); const ok = localStorage.getItem("booth.test") === "1"; localStorage.removeItem("booth.test"); return ok ? ["ok", "설정이 저장돼요"] : ["fail", "설정을 저장할 수 없어요 (개인정보 보호 모드?)"]; });
+  await step("camera", async () => {
+    if (!window.isSecureContext || !navigator.mediaDevices) throw new Error("이 주소에서는 카메라를 쓸 수 없어요 (앱으로 열어 주세요)");
+    freeCanvas(CK.frame); CK.frame = null; ckStopCam();
+    let st;
+    try { st = await ckTimeout(navigator.mediaDevices.getUserMedia({ video: { facingMode: "user", width: { ideal: 1920 }, height: { ideal: 1440 } }, audio: false }), 15000, "카메라가 응답하지 않아요"); }
+    catch (e) { throw new Error(e && e.name === "NotAllowedError" ? "카메라 권한이 꺼져 있어요 → 설정 > 포토부스 > 카메라 켜기" : ((e && e.message) || "카메라를 열 수 없어요")); }
+    if (!alive()) { st.getTracks().forEach((t) => t.stop()); return ["skip", ""]; }
+    CK.stream = st; const v = $("checkVideo"); v.srcObject = st; await v.play().catch(() => {});
+    for (let i = 0; i < 50 && !v.videoWidth; i++) await sleep(100);
+    if (!v.videoWidth) throw new Error("카메라 화면이 안 나와요 (다른 앱이 카메라를 쓰는 중?)");
+    $("checkCamMsg").hidden = true;
+    await sleep(600);
+    const c = makeCanvas(v.videoWidth, v.videoHeight); c.getContext("2d").drawImage(v, 0, 0); CK.frame = c;
+    if (looksBlank(c)) return ["fail", "카메라 사진이 까맣게 찍혀요 (렌즈 가림·조명 확인)"];
+    const res = v.videoWidth + "×" + v.videoHeight;
+    return Math.max(v.videoWidth, v.videoHeight) < 1280 ? ["warn", res + " — 화질이 낮아요"] : ["ok", res];
+  });
+  await step("beauty", async () => {
+    const src = downscale(ckTestImage(), 800), out = BEAUTY.apply(src, "natural");
+    const ok = out !== src && !looksBlank(out); if (out !== src) freeCanvas(out); freeCanvas(src);
+    return ok ? ["ok", "보정이 잘 돼요"] : ["warn", "GPU 보정을 쓸 수 없어 보정 없이 찍혀요"];
+  });
+  await step("fonts", async () => {
+    await ckTimeout(Promise.all(FONTS.map((f) => loadFont(f.id))), 8000, "글꼴을 불러오는 데 너무 오래 걸려요").catch(() => {});
+    const bad = FONTS.filter((f) => document.fonts && document.fonts.check && !document.fonts.check('30px "' + f.fam + '"', "가A"));
+    return bad.length ? [bad.length > 3 ? "fail" : "warn", "안 불러와진 글꼴: " + bad.map((f) => f.name).join(", ")] : ["ok", "모두 준비됨"];
+  });
+  await step("images", async () => {
+    const frameIms = Object.entries(FRAME_IMG), stk = [].concat(...STK_CATS.map((c) => c.keys)).map((k) => [k, stkImg(k)]);
+    await waitImgs(frameIms.map((x) => x[1]).concat(stk.map((x) => x[1])), 10000);
+    const bad = frameIms.concat(stk).filter(([, im]) => !(im.complete && im.naturalWidth)).map(([k]) => k);
+    return bad.length ? ["fail", bad.length + "개 그림을 못 불러옴: " + bad.slice(0, 8).join(", ") + (bad.length > 8 ? " …" : "") + " (Web 폴더에 frames·stickers 폴더가 있는지 확인)"] : ["ok", "배경 " + frameIms.length + "장 · 스티커 " + stk.length + "개"];
+  });
+  await step("voice", async () => {
+    const ok = await new Promise((res) => { const a = new Audio(); const t = setTimeout(() => res(false), 5000); a.oncanplaythrough = a.onloadedmetadata = () => { clearTimeout(t); res(true); }; a.onerror = () => { clearTimeout(t); res(false); }; a.preload = "auto"; a.src = "voice/m_pose00.mp3"; a.load(); });
+    return ok ? ["ok", "안내 목소리 " + Object.keys(VOICE_DATA).length + "개 · 포즈 목소리 준비됨"] : ["warn", "포즈 목소리 파일(voice 폴더)을 못 찾았어요 → 포즈 목소리 없이 진행"];
+  });
+  await step("worker", async () => {
+    const src = downscale(ckTestImage(), 320), a = applyFilter(src, "dream"), b = await applyFilterAsync(src, "dream");
+    const da = a.getContext("2d").getImageData(0, 0, a.width, a.height).data, db = b.getContext("2d").getImageData(0, 0, b.width, b.height).data;
+    let diff = 0; for (let i = 0; i < da.length; i += 97) diff = Math.max(diff, Math.abs(da[i] - db[i]));
+    [src, a, b].forEach(freeCanvas);
+    if (!FW.w) return ["warn", "백그라운드 계산을 못 써요 → 인쇄 사진 만들 때 잠깐 멈출 수 있어요"];
+    return diff <= 1 ? ["ok", "잘 돼요"] : ["warn", "결과가 조금 달라요 (차이 " + diff + ")"];
+  });
+  await step("compose", async () => {
+    const t0 = performance.now(), [W, H] = paperPx(S.paper);
+    const ims = ckSpec(ckTestImage()).stickers.filter((x) => x.img).map((x) => stkImg(x.img));
+    await Promise.all([waitImgs(ims, 3000), waitImgs(frameAssetImgs(FRAMES[ckSpec(null).frame]), 3000)]);
+    const c = render(ckSpec(ckTestImage()), 1, false), blob = await canvasToBlob(c, "image/jpeg", 0.92); freeCanvas(c);
+    if (!(await blobImageOK(blob, W, H))) return ["fail", "인쇄용 사진이 비어 있거나 크기가 달라요 (" + (blob ? Math.round(blob.size / 1024) + "KB" : "없음") + ")"];
+    CK.testBlob = blob;
+    const sec = (performance.now() - t0) / 1000;
+    return [sec > 6 ? "warn" : "ok", W + "×" + H + " · " + Math.round(blob.size / 1024) + "KB · " + sec.toFixed(1) + "초" + (sec > 6 ? " (느려요)" : "")];
+  });
+  await step("live", async () => (typeof MediaRecorder !== "undefined" && HTMLCanvasElement.prototype.captureStream) ? ["ok", "움직이는 사진을 만들 수 있어요"] : ["warn", "이 기기에서는 움직이는 사진 없이 진행돼요"]);
+  await step("facefx", async () => {
+    if (!S.faceFx) return ["skip", "관리자 설정에서 꺼 둠"];
+    await ckTimeout((async () => { await FX.load(); })(), 25000, "불러오는 데 너무 오래 걸려요").catch(() => {});
+    return FX.lm ? ["ok", "준비됨"] : ["warn", "얼굴 효과를 불러오지 못했어요 → 효과 없이 촬영"];
+  });
+  let info = null;
+  await step("app", async () => {
+    if (!NATIVE) return ["warn", "브라우저(사파리)로 실행 중이에요. 아이패드 앱으로 열면 인쇄·QR이 더 안정적이에요"];
+    info = await ckTimeout(native({ cmd: "info" }), 5000, "앱이 대답하지 않아요");
+    return ["ok", "아이패드 앱 v" + APP_VERSION];
+  });
+  await step("printer", async () => {
+    const mode = NATIVE ? printMode() : (S.printVia || "canon"), name = (PRINT_MODES[mode] && PRINT_MODES[mode].name) || mode;
+    if (!NATIVE) return ["skip", "브라우저: 인쇄할 때 공유 창으로 보내요"];
+    if (mode === "canon") return ["ok", "인쇄 방법: " + name + " (Canon PRINT 앱이 설치·등록되어 있어야 해요)"];
+    if (!info || !info.printer) return ["warn", "프린터를 아직 고르지 않았어요 → 관리자 설정 ‘프린터 고르기’ (인쇄 창에서 골라도 돼요)"];
+    const r = await ckTimeout(native({ cmd: "contact" }), 12000, "프린터 응답 시간 초과").catch((e) => ({ ok: false, error: e.message }));
+    return r && r.ok ? ["ok", info.printer + " 연결됨 · 인쇄 방법: " + name] : ["fail", info.printer + "가 응답하지 않아요 (전원·와이파이·같은 공유기인지 확인) [" + ((r && r.error) || "?") + "]"];
+  });
+  await step("qr", async () => {
+    if (!NATIVE) return ["skip", "앱에서만 쓸 수 있어요"];
+    if (!S.qr) return ["skip", "관리자 설정에서 꺼 둠"];
+    if (!CK.testBlob) return ["warn", "시험 사진이 없어 확인 못 함"];
+    const r = await ckTimeout(native({ cmd: "lanShare", jpeg: await blobToB64(CK.testBlob), title: "시작 점검" }), 15000, "응답 없음");
+    if (r && r.ok && r.qr) {
+      const box = $("checkQr"); box.innerHTML = ""; const im = new Image(); im.src = "data:image/png;base64," + r.qr; box.appendChild(im);
+      const t = el("div"); t.appendChild(el("b", null, "휴대폰으로 찍어 보세요")); t.appendChild(el("span", null, "시험 사진이 열리면 QR 받기 정상이에요")); box.appendChild(t); box.hidden = false;
+      return ["ok", r.url];
+    }
+    if (r && r.error === "no-wifi") return ["warn", "아이패드가 와이파이에 연결되어 있지 않아 QR 받기를 못 써요"];
+    return ["fail", "QR 서버 오류 [" + ((r && r.error) || "?") + "]"];
+  });
+  await step("errlog", async () => {
+    let L = []; try { L = JSON.parse(localStorage.getItem("booth.errlog") || "[]"); } catch (e) {}
+    return L.length ? ["warn", L.length + "건 — ‘보고서’에서 내용 확인 (가장 최근: " + L[0] + ")"] : ["ok", "없음"];
+  });
+  if (!alive()) { CK.running = false; return; }
+  CK.running = false; CK.done = true;
+  ["ckStart", "ckReport", "ckSound", "ckPrint"].forEach((k) => { $(k).disabled = false; }); $("ckAgain").hidden = false;
+  $("ckStart").textContent = "손님 화면 시작 ▶";
+  ckSummary(true);
+}
+function ckCounts() { const c = { ok: 0, warn: 0, fail: 0 }; Object.values(CK.rows).forEach((r) => { if (c[r.status] != null) c[r.status]++; }); return c; }
+function ckSummary(openReport) {
+  const c = ckCounts(), box = $("checkSum");
+  if (c.fail) { box.className = "checkSum bad"; box.innerHTML = "❌ 문제 <b>" + c.fail + "</b>개" + (c.warn ? " · 주의 " + c.warn + "개" : "") + "<br>‘보고서’ 내용을 그대로 보내 주시면 고칠게요."; }
+  else if (c.warn) { box.className = "checkSum meh"; box.innerHTML = "⚠️ 주의 <b>" + c.warn + "</b>개 — 손님 받기는 가능해요.<br>노란 줄을 확인해 주세요."; }
+  else { box.className = "checkSum good"; box.innerHTML = "✅ 모두 정상이에요!<br>행사 전에 <b>테스트 인쇄</b>를 한 번 해 보면 더 안심이에요."; }
+  if (openReport && (c.fail || c.warn)) showReport("점검 결과");
+}
+function buildReport() {
+  const d = new Date(), c = ckCounts();
+  let L = [], P = []; try { L = JSON.parse(localStorage.getItem("booth.errlog") || "[]"); P = JSON.parse(localStorage.getItem("booth.printlog") || "[]"); } catch (e) {}
+  const lines = ["[네컷 포토부스 점검 보고서] v" + APP_VERSION,
+    "날짜: " + d.getFullYear() + "-" + pad2(d.getMonth() + 1) + "-" + pad2(d.getDate()) + " " + pad2(d.getHours()) + ":" + pad2(d.getMinutes()),
+    "실행: " + (NATIVE ? "아이패드 앱" : "브라우저") + " · 화면 " + innerWidth + "×" + innerHeight + " · " + navigator.userAgent.replace(/^Mozilla\/5\.0 /, "").slice(0, 120),
+    "설정: 인쇄방법=" + (NATIVE ? printMode() : S.printVia) + ", 용지=" + S.paper + ", 여유컷=" + S.extra + ", 카운트다운=" + S.countdown + ", 보정=" + S.retouch + ", 포즈목소리=" + S.poseVoice + ", QR=" + (S.qr ? "켬" : "끔") + ", 가장자리=" + S.bleed + "mm"];
+  if (Object.keys(CK.rows).length) {
+    lines.push("", "결과: 문제 " + c.fail + " · 주의 " + c.warn + " · 정상 " + c.ok);
+    ["fail", "warn", "ok", "skip", "wait"].forEach((stt) => Object.values(CK.rows).filter((r) => r.status === stt).forEach((r) => lines.push(CK_ICON[stt] + " " + r.name + (r.detail ? " — " + r.detail : ""))));
+  }
+  { const t = statToday(); lines.push("오늘 이용: " + t.teams + "팀 · 인쇄 " + t.prints + "번 · QR " + t.qr + "번"); }
+  lines.push("", "[사용 중 오류 기록 " + L.length + "건]"); L.forEach((x) => lines.push("· " + x)); if (!L.length) lines.push("· 없음");
+  lines.push("", "[최근 인쇄 기록]"); P.slice(0, 10).forEach((x) => lines.push("· " + x)); if (!P.length) lines.push("· 없음");
+  return lines.join("\n");
+}
+function showReport(title) {
+  const c = ckCounts();
+  $("reportTitle").textContent = title || "오류 보고서";
+  $("reportLead").innerHTML = (c.fail || c.warn) ? "아래 내용을 <b>복사</b>하거나 <b>보내기</b>로 저장해서 그대로 전달해 주세요." : "문제가 없어요. 기록용으로 저장해 둘 수 있어요.";
+  $("reportText").value = buildReport(); $("reportModal").hidden = false;
+}
+$("reportClose").addEventListener("click", () => { $("reportModal").hidden = true; });
+$("reportCopy").addEventListener("click", async () => {
+  const t = $("reportText"); let ok = false;
+  try { await navigator.clipboard.writeText(t.value); ok = true; } catch (e) { try { t.focus(); t.select(); ok = document.execCommand("copy"); } catch (e2) {} }
+  $("reportCopy").textContent = ok ? "복사됨 ✓" : "길게 눌러 복사"; setTimeout(() => { $("reportCopy").textContent = "복사"; }, 2000);
+});
+$("reportShare").addEventListener("click", async () => {
+  const text = $("reportText").value, name = "포토부스_점검보고서.txt";
+  try {
+    if (NATIVE) { const b64 = btoa(unescape(encodeURIComponent(text))); await native({ cmd: "share", files: [{ name, mime: "text/plain", b64 }] }); return; }
+    const f = new File([text], name, { type: "text/plain" });
+    if (navigator.canShare && navigator.canShare({ files: [f] })) await navigator.share({ files: [f], title: "점검 보고서" }); else if (navigator.share) await navigator.share({ text });
+  } catch (e) {}
+});
+$("reportClear").addEventListener("click", async () => {
+  const v = await ask("오류 기록을 지울까요?", "보고서를 보낸 뒤에 지우면 다음 행사 기록만 남아요.", [{ t: "아니요", v: false, cls: "gray" }, { t: "지우기", v: true }]);
+  if (v) { try { localStorage.removeItem("booth.errlog"); localStorage.removeItem("booth.printlog"); } catch (e) {} if (CK.rows.errlog) ckSet("errlog", "ok", "지움"); $("reportText").value = buildReport(); }
+});
+ENTER.check = () => { CK.done = false; ckBuild(); $("ckStart").textContent = "▶ 점검 시작"; $("ckStart").disabled = false; ["ckReport", "ckSound", "ckPrint"].forEach((k) => { $(k).disabled = true; }); $("ckAgain").hidden = true; $("checkCamMsg").hidden = false; $("checkSum").className = "checkSum"; $("checkSum").innerHTML = "아래 <b>점검 시작</b>을 눌러 주세요. (약 20초)"; $("checkQr").hidden = true; };
+function leaveCheck() { CK.runId++; CK.running = false; ckStopCam(); freeCanvas(CK.frame); CK.frame = null; CK.testBlob = null; goHome(); }
+$("ckStart").addEventListener("click", () => { if (CK.done) leaveCheck(); else runChecks(); });
+$("ckAgain").addEventListener("click", () => { $("ckStart").textContent = "▶ 점검 시작"; runChecks(); });
+$("ckSkip").addEventListener("click", leaveCheck);
+$("ckReport").addEventListener("click", () => showReport("점검 결과"));
+$("ckSound").addEventListener("click", async () => {
+  unlockAudio(); const was = S.voice; S.voice = true; say("ready"); setTimeout(() => shutterSound(), 2600);
+  setTimeout(() => { if (S.poseVoice !== "off") { const wp = S.poses; S.poses = true; playPose("pose" + pad2(Math.floor(Math.random() * POSES.length))); S.poses = wp; } }, 3300);
+  S.voice = was;
+  await sleep(6500); if (current !== "check") return;
+  const v = await ask("소리가 잘 들렸나요?", "안내 목소리 → 찰칵 → 포즈 목소리 순서로 나와요.", [{ t: "안 들렸어요", v: false, cls: "gray" }, { t: "잘 들렸어요", v: true }]);
+  ckSet("sound", v ? "ok" : "fail", v ? "잘 들림" : "소리가 안 들림 → 아이패드 소리 크기·블루투스 스피커 연결 확인"); ckSummary(false);
+});
+$("ckPrint").addEventListener("click", async () => {
+  if (!CK.testBlob) { ckSet("print", "fail", "시험 사진을 만들지 못했어요"); return; }
+  const ok = await ask("셀피 카세트 확인", "셀피에 <b>" + PAPERS[S.paper].cassette + "</b> 잉크·용지 카세트가 들어 있나요?<br>시험 사진 1장을 인쇄해요.", [{ t: "취소", v: false, cls: "gray" }, { t: "맞아요, 인쇄", v: true }]);
+  if (!ok) return;
+  ckSet("print", "run", "인쇄 보내는 중…");
+  try {
+    if (NATIVE) {
+      const mode = printMode(), cmd = mode === "canon" ? "openIn" : mode === "direct" ? "print" : "printSheet";
+      const r = await native({ cmd, jpeg: await blobToB64(CK.testBlob), copies: 1, paper: S.paper }, 600000);
+      if (r && r.ok === false) { ckSet("print", "fail", "인쇄를 보내지 못했어요 [" + (r.error || "?") + "] → 인쇄 방법을 바꿔 다시 시도"); printLog("점검 인쇄 실패: " + (r.error || "?")); ckSummary(false); return; }
+    } else {
+      const f = new File([CK.testBlob], "test.jpg", { type: "image/jpeg" });
+      if (navigator.canShare && navigator.canShare({ files: [f] })) await navigator.share({ files: [f], title: "테스트 인쇄" });
+    }
+  } catch (e) { if (!(e && e.name === "AbortError")) { ckSet("print", "fail", "인쇄 오류: " + (e && e.message)); ckSummary(false); return; } }
+  ckSet("print", "run", "프린터에서 나오길 기다리는 중 (약 1분)…");
+  const v = await ask("인쇄가 잘 나왔나요?", "다 나올 때까지(약 1분) 기다린 뒤 골라 주세요.", [{ t: "안 나왔어요", v: "no", cls: "gray" }, { t: "잘림·색 이상", v: "odd", cls: "gray" }, { t: "잘 나왔어요", v: "ok" }]);
+  ckSet("print", v === "ok" ? "ok" : v === "odd" ? "warn" : "fail", v === "ok" ? "잘 나옴" : v === "odd" ? "잘리거나 색이 이상함 → 관리자 설정 ‘가장자리 보정’·‘가장자리 확인용 인쇄’ 참고" : "인쇄가 안 나옴 → 프린터 전원·용지·와이파이 확인, 인쇄 방법 바꿔 보기");
+  printLog("점검 인쇄: " + v); ckSummary(false);
+});
+$("openCheckBtn").addEventListener("click", () => { $("adminModal").hidden = true; saveSettings(); stopCamera(); resetSession(); go("check"); });
+$("errLogBtn").addEventListener("click", () => { showReport("오류 보고서"); });
+
 /* 시작 */
 /* 앱 안에서 카메라를 쓸 수 없는 주소로 열렸으면 인터넷 주소로 바꿔 달라고 앱에 요청 */
 if (NATIVE && !window.isSecureContext) native({ cmd: "useRemote" }).catch(() => {});
-go("attract");
+go(S.startCheck !== false ? "check" : "attract");
 if (document.fonts && document.fonts.load) { document.fonts.load('40px "Jua"').catch(() => {}); }
 </script>
 </body>
