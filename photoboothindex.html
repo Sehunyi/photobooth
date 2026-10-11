@@ -124,7 +124,7 @@ button:focus-visible { outline: 3px solid var(--yellow); outline-offset: 2px; }
 .camFrame video { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; transform: scaleX(-1); }
 .camFrame .num { position: absolute; inset: 0; display: grid; place-items: center; font-family: var(--display); font-size: 180px; text-shadow: 0 4px 24px rgba(0,0,0,.5); }
 .camFrame .guide { position: absolute; left: 0; right: 0; bottom: 16px; text-align: center; font-family: var(--display); font-size: 26px; text-shadow: 0 2px 10px rgba(0,0,0,.6); }
-#fxCanvas, #beautyView { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; transform: scaleX(-1); pointer-events: none; }
+#fxCanvas, #beautyView, #fxGLView { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; transform: scaleX(-1); pointer-events: none; }
 #s-shoot .top .count { flex: 1; text-align: center; }
 .seg.beautySeg { background: rgba(255,255,255,.1); border-color: rgba(255,255,255,.35); }
 .seg.beautySeg button { background: transparent; color: #fff; font-size: 17px; padding: 8px 12px; border: 0; }
@@ -133,6 +133,10 @@ button:focus-visible { outline: 3px solid var(--yellow); outline-offset: 2px; }
 .fxBar button { flex: none; display: flex; flex-direction: column; align-items: center; gap: 2px; min-width: 76px; padding: 8px 10px; border-radius: 16px; background: rgba(255,255,255,.12); color: #fff; font-size: 15px; border: 3px solid transparent; }
 .fxBar button i { font-style: normal; font-size: 30px; line-height: 1.1; font-family: "Apple Color Emoji", "Segoe UI Emoji", sans-serif; }
 .fxBar button.on { border-color: var(--yellow); background: rgba(255,209,51,.22); }
+.fxBar .fxTabs { display: flex; flex-direction: column; gap: 4px; flex: none; margin-right: 4px; }
+.fxBar .fxTabs button { min-width: 0; padding: 4px 12px; border-radius: 10px; font-size: 15px; background: rgba(255,255,255,.08); border: 1px solid rgba(255,255,255,.18); }
+.fxBar .fxTabs button.on { background: var(--yellow); color: #3a2a00; border-color: var(--yellow); }
+.camFrame .fxHint { position: absolute; left: 50%; top: 64px; transform: translateX(-50%); background: rgba(107,61,168,.88); color: #fff; padding: 8px 18px; border-radius: 999px; font-family: var(--display); font-size: 22px; white-space: nowrap; animation: slotIn .3s ease both; }
 .fxBar .fxLoading { color: rgba(255,255,255,.7); font-size: 16px; }
 .thumbs { display: flex; gap: 10px; padding: 14px 30px 18px; overflow-x: auto; min-height: 96px; }
 .thumbs canvas { width: 96px; height: 72px; object-fit: cover; border-radius: 8px; flex: none; }
@@ -412,10 +416,12 @@ details.guide p { margin: 4px 0; color: var(--muted); }
     <div class="camFrame" id="camFrame">
       <video id="video" playsinline muted autoplay></video>
       <canvas id="beautyView" hidden></canvas>
+      <canvas id="fxGLView" hidden></canvas>
       <canvas id="fxCanvas"></canvas>
       <svg class="cdRing" id="cdRing" viewBox="0 0 260 260" hidden><circle cx="130" cy="130" r="120"/></svg>
       <div class="num" id="countNum"></div>
       <div class="poseTip" id="poseTip" hidden></div>
+      <div class="fxHint" id="fxHint" hidden></div>
       <button class="quickShot" id="quickShot" hidden>⚡ 바로 찍기</button>
       <div class="guide" id="camGuide">카메라를 보세요!</div>
       <canvas class="shootMini" id="shootMini" hidden></canvas>
@@ -669,7 +675,7 @@ details.guide p { margin: 4px 0; color: var(--muted); }
 
 <script>
 "use strict";
-const APP_VERSION = "1.5";
+const APP_VERSION = "1.7";
 /* 손님이 쓰는 중에 생긴 오류를 기록 → 시작 점검·관리자 '오류 보고서'에서 보여 줌 (관리자가 그대로 알려 주면 고칠 수 있게) */
 function errLog(msg) {
   try {
@@ -1293,30 +1299,22 @@ const BEAUTY = {
 };
 /* 촬영 화면: 카메라 영상을 보정해서 실시간으로 보여 줌 (얼굴 효과는 그 위에) */
 const LIVE_BEAUTY = {
-  g: null, tried: false, raf: null, last: 0, slow: 0, maxW: 1280,
+  g: null, tried: false, slow: 0, maxW: 1280,
   level() { return RETOUCH[session.retouch] && session.retouch !== "off" ? session.retouch : null; },
-  start() {
+  /* 카메라 장면 하나를 보정해서 그림 (얼굴 효과 엔진이 매 장면 부름 → 장식과 같은 순간에 바뀜). 그렸으면 true */
+  drawFrame(v) {
     const cv = $("beautyView");
     if (!this.g && !this.tried) { this.tried = true; this.g = makeBeautyGL(cv, false); }
-    this.stop(); const v = $("video");
-    const tick = (now) => {
-      if (current !== "shoot" || !stream) { this.raf = null; return; }
-      const lvl = this.level(), ok = this.g && !this.g.lost && lvl && v.videoWidth;
-      cv.hidden = !ok; v.style.opacity = ok ? "0" : "";
-      if (ok && now - this.last > 30) {
-        this.last = now;
-        const s = Math.min(1, this.maxW / v.videoWidth), w = Math.round(v.videoWidth * s), h = Math.round(v.videoHeight * s);
-        const t0 = performance.now();
-        try { this.g.draw(v, v.videoWidth, v.videoHeight, w, h, RETOUCH[lvl]); } catch (e) { this.g.lost = true; }
-        /* (성능) 한 장 그리는 데 오래 걸리면 미리보기 해상도를 낮춤 */
-        const dt = performance.now() - t0; this.slow = dt > 28 ? this.slow + 1 : 0;
-        if (this.slow > 20 && this.maxW > 720) { this.maxW = 720; this.slow = 0; }
-      }
-      this.raf = requestAnimationFrame(tick);
-    };
-    this.raf = requestAnimationFrame(tick);
+    const lvl = this.level(); if (!(this.g && !this.g.lost && lvl && v.videoWidth)) return false;
+    const s = Math.min(1, this.maxW / v.videoWidth), w = Math.round(v.videoWidth * s), h = Math.round(v.videoHeight * s), t0 = performance.now();
+    try { if (!this.g.draw(v, v.videoWidth, v.videoHeight, w, h, RETOUCH[lvl])) return false; } catch (e) { this.g.lost = true; return false; }
+    /* (성능) 한 장 그리는 데 오래 걸리면 미리보기 해상도를 낮춤 */
+    const dt = performance.now() - t0; this.slow = dt > 20 ? this.slow + 1 : 0;
+    if (this.slow > 20 && this.maxW > 720) { this.maxW = 720; this.slow = 0; }
+    return true;
   },
-  stop() { cancelAnimationFrame(this.raf); this.raf = null; const v = $("video"); if (v) v.style.opacity = ""; const cv = $("beautyView"); if (cv) cv.hidden = true; }
+  start() { FX.start(); },
+  stop() { const v = $("video"); if (v) v.style.opacity = ""; const cv = $("beautyView"); if (cv) cv.hidden = true; }
 };
 /* 화면 미리보기용 작은 보정본 (480px) — 필터 계산이 4배 빨라짐 */
 function shotPrev(i) {
@@ -1334,7 +1332,7 @@ function dropOtherRetouch(keep) {
 /* 사진 한 장의 보정본 (+ 얼굴 효과 겹치기). 한 번 만들면 저장해 두고 다시 씀 */
 function shotImg(i, kind) {
   const sh = session.shots[i]; if (!sh) return null;
-  const lvl = RETOUCH[session.retouch] ? session.retouch : "off", fx = kind === "still" ? sh.fx : sh.fxThumb;
+  const lvl = (RETOUCH[session.retouch] && !sh.nb) ? session.retouch : "off", fx = kind === "still" ? sh.fx : sh.fxThumb;
   if (lvl === "off" && !fx) return sh[kind];
   sh.rt = sh.rt || {}; const k = lvl + ":" + kind;
   if (!sh.rt[k]) {
@@ -1727,6 +1725,7 @@ async function restartCamera() {
     if (stream) stream.getTracks().forEach((t) => t.stop());
     stream = null; $("video").srcObject = null; stopWatchdog();
     await startCamera();
+    if (current === "shoot" && stream) FX.start();
   } catch (e) {} finally { restarting = false; stuckSince = 0; }
 }
 async function ensureLive(maxMs) {
@@ -1749,14 +1748,16 @@ function grabFrame(maxSide, layer) {
   const z = Math.max(1, S.zoom || 1), sw = vw / z, sh = vh / z, sx = (vw - sw) / 2, sy = (vh - sh) / 2;
   const s = Math.min(1, maxSide / Math.max(sw, sh)), c = makeCanvas(sw * s, sh * s), ctx = c.getContext("2d");
   ctx.translate(c.width, 0); ctx.scale(-1, 1);
-  if (layer !== "fx") ctx.drawImage(v, sx, sy, sw, sh, 0, 0, c.width, c.height);
+  /* 얼굴 변형·거울·색 효과 중이면 효과가 들어간 화면을 찍음 */
+  const glv = $("fxGLView"), useGL = FX.glOn() && !glv.hidden && glv.width > 0, k = useGL ? glv.width / vw : 1;
+  if (layer !== "fx") ctx.drawImage(useGL ? glv : v, sx * k, sy * k, sw * k, sh * k, 0, 0, c.width, c.height);
   if (layer !== "video" && fxOk) ctx.drawImage(fx, sx, sy, sw, sh, 0, 0, c.width, c.height);   /* 얼굴 효과 */
   return c;
 }
 /* 움직이는 사진용 장면: 보정까지 한 작은 사진 + 얼굴 효과 */
 function grabLive() {
   const raw = grabFrame(460, "video"); if (!raw) return null;
-  let c = BEAUTY.apply(raw, session.retouch); if (c !== raw) freeCanvas(raw);
+  let c = FX.glColor() ? raw : BEAUTY.apply(raw, session.retouch); if (c !== raw) freeCanvas(raw);
   const f = grabFrame(460, "fx"); if (f) { c.getContext("2d").drawImage(f, 0, 0, c.width, c.height); freeCanvas(f); }
   return c;
 }
@@ -1769,6 +1770,7 @@ function layoutCamFrame() {
   $("video").style.transform = "scaleX(-1) scale(" + (S.zoom || 1) + ")";
   $("fxCanvas").style.transform = "scaleX(-1) scale(" + (S.zoom || 1) + ")";
   $("beautyView").style.transform = "scaleX(-1) scale(" + (S.zoom || 1) + ")";
+  $("fxGLView").style.transform = "scaleX(-1) scale(" + (S.zoom || 1) + ")";
 }
 /* 촬영 화면 위쪽: 뽀샤시 보정 고르기 (바로 화면에 보임) */
 function buildBeautyBar() {
@@ -1790,34 +1792,126 @@ function visionFiles() {
   return VISION.p;
 }
 
+/* ───────── 얼굴 효과 엔진 ─────────
+   스냅챗·SNOW·애플 포토부스처럼 '얼굴에 딱 붙어 있는' 효과를 위해:
+   1) 카메라 화면이 바뀔 때마다(requestVideoFrameCallback) 같은 순간에 얼굴 찾기 → 효과 그리기 → 화면 표시 (효과가 늦게 따라오며 떠다니지 않게)
+   2) One-Euro 필터로 떨림은 없애고 빠른 움직임엔 바로 따라감
+   3) 얼굴 점 478개로 얼굴의 3D 방향(좌우·위아래·기울기)을 계산해 장식을 얼굴 면에 맞춰 원근감 있게 붙임
+   4) 머리 뒤로 돌아가는 장식(꽃 머리띠·별)은 얼굴에 가려지게
+   5) 입 벌리기·눈썹 올리기·윙크 등 표정에 반응
+   6) GPU로 얼굴 변형(왕눈이·외계인·코주부…)과 애플 포토부스식 거울 효과·색 효과 */
 const FX_LIST = [
-  { id: "none", icon: "🚫", name: "없음" },
-  { id: "crown", icon: "👑", name: "왕관" },
-  { id: "bunny", icon: "🐰", name: "토끼" },
-  { id: "cat", icon: "🐱", name: "고양이" },
-  { id: "puppy", icon: "🐶", name: "강아지" },
-  { id: "shades", icon: "🕶️", name: "선글라스" },
-  { id: "hearts", icon: "😍", name: "하트 눈" },
-  { id: "flowers", icon: "🌸", name: "꽃 머리띠" },
-  { id: "blush", icon: "☺️", name: "볼터치" },
-  { id: "clown", icon: "🔴", name: "빨간 코" },
-  { id: "stars", icon: "⭐️", name: "별 빙글" },
-  { id: "party", icon: "🥳", name: "파티 모자" },
-  { id: "bear", icon: "🐻", name: "곰돌이" },
-  { id: "fox", icon: "🦊", name: "여우" },
-  { id: "angel", icon: "😇", name: "천사" },
-  { id: "devil", icon: "😈", name: "꼬마 악마" },
-  { id: "heartglass", icon: "💗", name: "하트 안경" },
-  { id: "nerd", icon: "🤓", name: "안경·수염" },
-  { id: "frog", icon: "🐸", name: "개구리" },
-  { id: "dinohat", icon: "🦖", name: "공룡 모자" },
-  { id: "butterfly", icon: "🦋", name: "나비" },
-  { id: "rainbow", icon: "🌈", name: "무지개 입" },
-  { id: "sparkle", icon: "✨", name: "반짝반짝" }
+  { id: "none", icon: "🚫", name: "없음", cat: "ar" },
+  { id: "puppy", icon: "🐶", name: "강아지", cat: "ar", hint: "입을 벌려 보세요!" },
+  { id: "bunny", icon: "🐰", name: "토끼", cat: "ar", hint: "입을 벌려 보세요!" },
+  { id: "cat", icon: "🐱", name: "고양이", cat: "ar" },
+  { id: "bear", icon: "🐻", name: "곰돌이", cat: "ar" },
+  { id: "panda", icon: "🐼", name: "판다", cat: "ar" },
+  { id: "fox", icon: "🦊", name: "여우", cat: "ar" },
+  { id: "lion", icon: "🦁", name: "사자", cat: "ar", hint: "입을 벌리면 어흥!" },
+  { id: "crown", icon: "👑", name: "왕관", cat: "ar" },
+  { id: "flowers", icon: "🌸", name: "꽃 머리띠", cat: "ar" },
+  { id: "angel", icon: "😇", name: "천사", cat: "ar" },
+  { id: "devil", icon: "😈", name: "꼬마 악마", cat: "ar" },
+  { id: "unicorn", icon: "🦄", name: "유니콘", cat: "ar" },
+  { id: "bee", icon: "🐝", name: "꿀벌", cat: "ar" },
+  { id: "hearts", icon: "😍", name: "하트 눈", cat: "ar", hint: "눈썹을 올리면 하트 펑!" },
+  { id: "shades", icon: "🕶️", name: "선글라스", cat: "ar" },
+  { id: "heartglass", icon: "💗", name: "하트 안경", cat: "ar" },
+  { id: "nerd", icon: "🤓", name: "안경·수염", cat: "ar" },
+  { id: "party", icon: "🥳", name: "파티 모자", cat: "ar", hint: "입을 벌리면 폭죽!" },
+  { id: "grad", icon: "🎓", name: "졸업 모자", cat: "ar" },
+  { id: "santa", icon: "🎅", name: "산타 모자", cat: "ar" },
+  { id: "deer", icon: "🦌", name: "루돌프", cat: "ar" },
+  { id: "pumpkin", icon: "🎃", name: "호박 머리", cat: "ar" },
+  { id: "frog", icon: "🐸", name: "개구리 모자", cat: "ar" },
+  { id: "dinohat", icon: "🦖", name: "공룡 모자", cat: "ar" },
+  { id: "stars", icon: "⭐️", name: "별 빙글", cat: "ar" },
+  { id: "butterfly", icon: "🦋", name: "나비", cat: "ar" },
+  { id: "blush", icon: "☺️", name: "볼터치", cat: "ar" },
+  { id: "clown", icon: "🔴", name: "빨간 코", cat: "ar" },
+  { id: "rainbow", icon: "🌈", name: "무지개 입", cat: "ar", hint: "입을 크게 벌려 보세요!" },
+  { id: "sparkle", icon: "✨", name: "반짝반짝", cat: "ar" },
+  /* 얼굴 변형 (SNOW·스냅챗식) */
+  { id: "bigeyes", icon: "👀", name: "왕눈이", cat: "face" },
+  { id: "alien", icon: "👽", name: "외계인", cat: "face" },
+  { id: "bignose", icon: "👃", name: "코주부", cat: "face" },
+  { id: "bigmouth", icon: "👄", name: "메기 입", cat: "face" },
+  { id: "chubby", icon: "🐹", name: "볼빵빵", cat: "face" },
+  { id: "slim", icon: "🥢", name: "홀쭉이", cat: "face" },
+  { id: "bighead", icon: "🎈", name: "머리 크게", cat: "face" },
+  { id: "tinyface", icon: "🫘", name: "콩알 얼굴", cat: "face" },
+  /* 애플 포토부스식 거울 효과 (얼굴을 따라다님) */
+  { id: "bulge", icon: "🔮", name: "볼록", cat: "warp", g: 1 },
+  { id: "dent", icon: "🥣", name: "오목", cat: "warp", g: 2 },
+  { id: "twirl", icon: "🌀", name: "소용돌이", cat: "warp", g: 3 },
+  { id: "squeeze", icon: "🍐", name: "홀쭉 거울", cat: "warp", g: 4 },
+  { id: "stretch", icon: "📏", name: "길쭉 거울", cat: "warp", g: 5 },
+  { id: "mirror", icon: "🪞", name: "데칼코마니", cat: "warp", g: 6 },
+  { id: "fisheye", icon: "🐟", name: "어안 렌즈", cat: "warp", g: 7 },
+  { id: "tunnel", icon: "💫", name: "빛 터널", cat: "warp", g: 8 },
+  /* 색 효과 */
+  { id: "thermal", icon: "🌡️", name: "열화상", cat: "color", c: 1 },
+  { id: "xray", icon: "🩻", name: "엑스레이", cat: "color", c: 2 },
+  { id: "comic", icon: "💥", name: "만화", cat: "color", c: 3 },
+  { id: "popart", icon: "🎨", name: "팝아트", cat: "color", c: 4 },
+  { id: "sketch", icon: "✏️", name: "연필 스케치", cat: "color", c: 5 },
+  { id: "noir", icon: "🎬", name: "흑백 영화", cat: "color", c: 6 },
+  { id: "neon", icon: "🌃", name: "네온", cat: "color", c: 7 }
 ];
+const FX_BY = Object.fromEntries(FX_LIST.map((f) => [f.id, f]));
+const FX_CATS = [["ar", "꾸미기"], ["face", "얼굴 변형"], ["warp", "거울"], ["color", "색 효과"]];
+const FACE_OVAL = [10, 338, 297, 332, 284, 251, 389, 356, 454, 323, 361, 288, 397, 365, 379, 378, 400, 377, 152, 148, 176, 149, 150, 136, 172, 58, 132, 93, 234, 127, 162, 21, 54, 103, 67, 109];
+const LIPS_IN = [78, 191, 80, 81, 82, 13, 312, 311, 310, 415, 308, 324, 318, 402, 317, 14, 87, 178, 88, 95];
+
+/* One-Euro 필터: 가만히 있으면 떨림 없이, 빨리 움직이면 바로 따라감 */
+function OneEuro(minCut, beta, dCut) { this.mc = minCut; this.b = beta; this.dc = dCut; this.x = null; this.dx = 0; this.t = 0; }
+OneEuro.prototype.f = function (x, t) {
+  if (this.x == null) { this.x = x; this.t = t; return x; }
+  const dt = Math.max(1e-3, (t - this.t) / 1000); this.t = t;
+  const al = (c) => { const r = 2 * Math.PI * c * dt; return r / (r + 1); };
+  const dx = (x - this.x) / dt; this.dx += al(this.dc) * (dx - this.dx);
+  const cut = this.mc + this.b * Math.abs(this.dx); this.x += al(cut) * (x - this.x); return this.x;
+};
+const v3 = {
+  sub: (a, b) => ({ x: a.x - b.x, y: a.y - b.y, z: a.z - b.z }), add: (a, b) => ({ x: a.x + b.x, y: a.y + b.y, z: a.z + b.z }),
+  mul: (a, k) => ({ x: a.x * k, y: a.y * k, z: a.z * k }), dot: (a, b) => a.x * b.x + a.y * b.y + a.z * b.z,
+  len: (a) => Math.hypot(a.x, a.y, a.z), norm: (a) => { const l = Math.hypot(a.x, a.y, a.z) || 1; return { x: a.x / l, y: a.y / l, z: a.z / l }; },
+  cross: (a, b) => ({ x: a.y * b.z - a.z * b.y, y: a.z * b.x - a.x * b.z, z: a.x * b.y - a.y * b.x })
+};
+/* 얼굴 하나의 3D 틀: 화면 기준 오른쪽(x)·아래(y)·카메라 쪽(z), 단위 = 얼굴 너비 */
+function faceFrame(P) {
+  const R = v3.norm(v3.sub(P[263], P[33]));
+  const u0 = v3.sub(P[10], P[152]), U = v3.norm(v3.sub(u0, v3.mul(R, v3.dot(u0, R))));
+  const F = v3.norm(v3.cross(R, U)), s = v3.len(v3.sub(P[454], P[234]));
+  const O = P[168], X = v3.mul(R, -s), Y = v3.mul(U, -s), Z = v3.mul(F, s);   /* 화면이 좌우 반전이라 x는 반대로 */
+  const fr = { P, R, U, F, s, O, X, Y, Z };
+  fr.at = (x, y, z) => ({ x: O.x + X.x * x + Y.x * y + Z.x * (z || 0), y: O.y + X.y * x + Y.y * y + Z.y * (z || 0) });
+  /* 이 점의 얼굴 좌표 (원래 점을 얼굴 틀 기준으로) */
+  fr.local = (p) => { const d = v3.sub(p, O); return { x: v3.dot(d, X) / (s * s), y: v3.dot(d, Y) / (s * s), z: v3.dot(d, Z) / (s * s) }; };
+  return fr;
+}
+/* 얼굴 면(뒤로 tilt만큼 젖힌 면) 위에서 그리기: 그 안에서는 단위 1 = 얼굴 너비, x 오른쪽 y 아래 */
+function facePlane(ctx, fr, x, y, z, tilt, roll) {
+  const o = fr.at(x, y, z), ct = Math.cos(tilt || 0), st = Math.sin(tilt || 0);
+  let ax = fr.X, ay = { x: fr.Y.x * ct - fr.Z.x * st, y: fr.Y.y * ct - fr.Z.y * st };
+  if (roll) { const c = Math.cos(roll), s = Math.sin(roll), bx = { x: ax.x * c + ay.x * s, y: ax.y * c + ay.y * s }, by = { x: -ax.x * s + ay.x * c, y: -ax.y * s + ay.y * c }; ax = bx; ay = by; }
+  ctx.setTransform(ax.x, ax.y, ay.x, ay.y, o.x, o.y);
+}
+function fxImg(ctx, key, cx, cy, w, h) { if (!stkReady(key)) return; const im = STK_IMG[key]; h = h || w; ctx.drawImage(im, cx - w / 2, cy - h / 2, w, h); }
+function grad(ctx, x0, y0, x1, y1, stops) { const g = ctx.createLinearGradient(x0, y0, x1, y1); stops.forEach(([o, c]) => g.addColorStop(o, c)); return g; }
+function rgrad(ctx, x, y, r, stops) { const g = ctx.createRadialGradient(x, y, 0, x, y, r); stops.forEach(([o, c]) => g.addColorStop(o, c)); return g; }
+
 const FX = {
-  lib: null, lm: null, loading: false, failed: false, cur: "none", raf: null, faces: [], lastT: 0,
-  on() { return S.faceFx && this.cur !== "none" && !!this.lm; },
+  lib: null, lm: null, loading: false, failed: false, cur: "none", tab: "ar", faces: [], tracks: [], lastT: 0, raw: null,
+  vfc: null, raf: null, running: false, detEvery: 1, frameN: 0, parts: [], hintAt: 0,
+  def() { return FX_BY[this.cur] || FX_BY.none; },
+  /* 얼굴 위 장식(AR)이 켜져 있는지 */
+  on() { const d = this.def(); return S.faceFx && d.cat === "ar" && d.id !== "none" && !!this.lm; },
+  /* GPU 화면 효과(얼굴 변형·거울·색)가 켜져 있는지 */
+  glOn() { const d = this.def(); return S.faceFx && d.cat !== "ar" && (d.cat !== "face" || !!this.lm) && FXGL.ok(); },
+  glColor() { const d = this.def(); return this.glOn() && d.cat === "color"; },
+  needFaces() { const d = this.def(); return S.faceFx && d.id !== "none" && !!this.lm; },
   async load() {
     if (this.lm || this.loading || this.failed) return;
     this.loading = true; this.drawBar();
@@ -1825,7 +1919,8 @@ const FX = {
       const files = await visionFiles();
       this.lib = VISION.lib;
       const make = (delegate) => this.lib.FaceLandmarker.createFromOptions(files, {
-        baseOptions: { modelAssetPath: "mp/face_landmarker.task", delegate }, runningMode: "VIDEO", numFaces: 4 });
+        baseOptions: { modelAssetPath: "mp/face_landmarker.task", delegate }, runningMode: "VIDEO", numFaces: 4,
+        outputFaceBlendshapes: true, minFaceDetectionConfidence: 0.45, minFacePresenceConfidence: 0.45, minTrackingConfidence: 0.45 });
       try { this.lm = await make("GPU"); } catch (e) { this.lm = await make("CPU"); }
     } catch (e) { this.failed = true; console.warn("face fx load failed", e); }
     this.loading = false; this.drawBar();
@@ -1836,180 +1931,454 @@ const FX = {
     bar.hidden = !S.faceFx;
     if (!S.faceFx) return;
     bar.innerHTML = "";
-    if (this.failed) { bar.appendChild(el("span", "fxLoading", "얼굴 효과를 불러오지 못했어요 (인터넷 연결 확인)")); return; }
-    if (!this.lm) { bar.appendChild(el("span", "fxLoading", "✨ 얼굴 효과 준비 중…")); if (current === "shoot") requestAnimationFrame(layoutCamFrame); return; }
-    FX_LIST.forEach((f) => {
+    const tabs = el("div", "fxTabs");
+    FX_CATS.forEach(([k, n]) => { const b = el("button", k === this.tab ? "on" : "", n); b.addEventListener("click", () => { this.tab = k; this.drawBar(); }); tabs.appendChild(b); });
+    bar.appendChild(tabs);
+    if (this.tab !== "warp" && this.tab !== "color") {
+      if (this.failed) { bar.appendChild(el("span", "fxLoading", "얼굴 효과를 불러오지 못했어요 · ‘거울’ ‘색 효과’는 쓸 수 있어요")); return; }
+      if (!this.lm) { bar.appendChild(el("span", "fxLoading", "✨ 얼굴 효과 준비 중…")); if (current === "shoot") requestAnimationFrame(layoutCamFrame); return; }
+    }
+    FX_LIST.filter((f) => f.cat === this.tab || f.id === "none").forEach((f) => {
       const b = el("button", f.id === this.cur ? "on" : ""); b.innerHTML = "<i>" + f.icon + "</i>" + f.name;
-      b.addEventListener("click", () => { this.cur = f.id; bar.querySelectorAll("button").forEach((x) => x.classList.toggle("on", x === b)); if (f.id === "none") this.clear(); });
+      b.addEventListener("click", () => {
+        this.cur = f.id; bar.querySelectorAll("button:not(.fxTabs button)").forEach((x) => x.classList.toggle("on", x === b));
+        this.parts = []; if (f.id === "none") this.clear();
+        const hint = $("fxHint"); if (f.hint) { hint.textContent = f.hint; hint.hidden = false; clearTimeout(this.hintT); this.hintT = setTimeout(() => { hint.hidden = true; }, 3500); } else hint.hidden = true;
+        this.renderNow();
+      });
       bar.appendChild(b);
     });
     if (current === "shoot") requestAnimationFrame(layoutCamFrame);
   },
+  /* 카메라 한 장면마다: 얼굴 찾기 → 보정/효과 화면 → 장식 (같은 순간에 그려서 딱 붙어 보임) */
   start() {
-    cancelAnimationFrame(this.raf); let last = 0;
-    /* (성능) 얼굴 찾기는 1초에 약 20번만 */
-    const loop = (now) => { if (current !== "shoot" || !stream) { this.raf = null; return; } if (now - last > 48) { last = now; this.detectNow(); } this.raf = requestAnimationFrame(loop); };
-    this.raf = requestAnimationFrame(loop);
+    if (this.running && performance.now() - (this.lastAt || 0) < 1500) return;   /* 멈춰 있으면(카메라 다시 켬 등) 새로 시작 */
+    this.stopLoop(); this.running = true; this.lastAt = performance.now(); const v = $("video");
+    const useVfc = typeof v.requestVideoFrameCallback === "function";
+    const step = (now) => {
+      if (!this.running || current !== "shoot" || !stream) { this.running = false; return; }
+      this.lastAt = performance.now();
+      try { this.frame(this.lastAt); } catch (e) { if (!this.errOnce) { this.errOnce = true; errLog("얼굴 효과 그리기 오류: " + (e && e.message)); } }
+      if (useVfc) this.vfc = v.requestVideoFrameCallback(step); else this.raf = requestAnimationFrame(step);
+    };
+    if (useVfc) this.vfc = v.requestVideoFrameCallback(step); else this.raf = requestAnimationFrame(step);
   },
-  stop() { cancelAnimationFrame(this.raf); this.raf = null; this.faces = []; this.clear(); },
-  clear() { const c = $("fxCanvas"); c.getContext("2d").clearRect(0, 0, c.width, c.height); },
-  detectNow(force) {
-    const v = $("video"), c = $("fxCanvas");
-    if (!this.lm || !(force || this.on()) || !v.videoWidth || v.readyState < 2) return;
-    if (c.width !== v.videoWidth || c.height !== v.videoHeight) { c.width = v.videoWidth; c.height = v.videoHeight; }
+  stopLoop() {
+    this.running = false; cancelAnimationFrame(this.raf); this.raf = null;
+    const v = $("video"); try { if (this.vfc != null && v.cancelVideoFrameCallback) v.cancelVideoFrameCallback(this.vfc); } catch (e) {} this.vfc = null;
+  },
+  stop() {
+    this.stopLoop(); const v = $("video");
+    this.faces = []; this.tracks = []; this.parts = []; this.clear();
+    if (v) v.style.opacity = ""; ["beautyView", "fxGLView"].forEach((k) => { const c = $(k); if (c) c.hidden = true; });
+  },
+  clear() { const c = $("fxCanvas"); if (c && c.width) c.getContext("2d").clearRect(0, 0, c.width, c.height); },
+  renderNow() { if (current === "shoot" && stream) this.frame(performance.now(), true); },
+  detectNow() { this.renderNow(); },   /* 찰칵 직전: 바로 이 장면으로 한 번 더 */
+  frame(now, force) {
+    const v = $("video"); if (!v.videoWidth || v.readyState < 2) return;
+    this.frameN++;
+    if (this.needFaces() && (force || this.frameN % this.detEvery === 0)) this.track(v);
+    else if (!this.needFaces()) { this.faces = []; this.tracks = []; }
+    /* 바탕 화면: GPU 효과 → 보정 → 그냥 카메라 */
+    const gl = this.glOn(), fxv = $("fxGLView"), bv = $("beautyView");
+    let shown = false;
+    if (gl) { shown = FXGL.draw(v, this.faces, this.def(), now); }
+    fxv.hidden = !shown;
+    let bshown = false;
+    if (!shown) bshown = LIVE_BEAUTY.drawFrame(v, now);
+    bv.hidden = !bshown;
+    v.style.opacity = shown || bshown ? "0" : "";
+    this.drawOverlay(v, now);
+  },
+  track(v) {
     let t = performance.now(); if (t <= this.lastT) t = this.lastT + 1; this.lastT = t;
+    const t0 = performance.now();
     let res; try { res = this.lm.detectForVideo(v, t); } catch (e) { return; }
-    const W = c.width, H = c.height, raw = (res && res.faceLandmarks) || [];
+    const dt = performance.now() - t0;
+    /* (성능) 얼굴 찾기가 오래 걸리면 두 장면에 한 번만 */
+    this.slowN = dt > 24 ? (this.slowN || 0) + 1 : 0; if (this.slowN > 8) { this.detEvery = 2; this.slowN = 0; }
+    const W = v.videoWidth, H = v.videoHeight, raw = (res && res.faceLandmarks) || [], bss = (res && res.faceBlendshapes) || [];
     this.raw = raw;
-    /* 떨림 줄이기: 이전 위치와 섞기 */
-    this.faces = raw.map((pts, k) => {
-      const prev = this.faces[k];
-      return pts.map((p, i) => { const x = p.x * W, y = p.y * H; if (prev && prev[i]) return { x: prev[i].x * 0.45 + x * 0.55, y: prev[i].y * 0.45 + y * 0.55 }; return { x, y }; });
+    /* 얼굴마다 번호표: 지난번 위치와 가장 가까운 얼굴끼리 이어 줌 (여럿이 찍어도 효과가 바뀌지 않게) */
+    const used = new Set(), next = [];
+    raw.forEach((pts, k) => {
+      const nx = pts[1].x, ny = pts[1].y; let best = null, bd = 0.12;
+      this.tracks.forEach((tr) => { if (used.has(tr)) return; const d = Math.hypot(tr.nx - nx, tr.ny - ny); if (d < bd) { bd = d; best = tr; } });
+      const tr = best || { id: Math.random(), f: pts.map(() => [new OneEuro(1.4, 9, 1), new OneEuro(1.4, 9, 1), new OneEuro(1.4, 9, 1)]), bs: {}, born: t };
+      used.add(tr); tr.nx = nx; tr.ny = ny; tr.seen = t;
+      tr.P = pts.map((p, i) => { const f = tr.f[i]; return { x: f[0].f(p.x, t) * W, y: f[1].f(p.y, t) * H, z: f[2].f(p.z, t) * W }; });
+      const cats = (bss[k] && bss[k].categories) || [];
+      cats.forEach((c) => { const o = tr.bs[c.categoryName] || 0; tr.bs[c.categoryName] = o * 0.4 + c.score * 0.6; });
+      next.push(tr);
     });
-    const ctx = c.getContext("2d"); ctx.clearRect(0, 0, W, H);
-    if (this.on()) for (const f of this.faces) drawFaceFx(ctx, f, this.cur, t);
+    this.tracks = next;
+    this.faces = next.map((tr) => { const fr = faceFrame(tr.P); fr.bs = tr.bs; fr.id = tr.id; fr.age = t - tr.born; return fr; });
   },
-  /* 찍은 사진(좌우 반전·확대된 화면) 기준 얼굴 점 → 얼굴형 보정에 사용 */
+  drawOverlay(v, now) {
+    const c = $("fxCanvas"), W = v.videoWidth, H = v.videoHeight;
+    if (c.width !== W || c.height !== H) { c.width = W; c.height = H; }
+    const ctx = c.getContext("2d"); ctx.setTransform(1, 0, 0, 1, 0, 0); ctx.clearRect(0, 0, W, H);
+    if (!this.on()) { this.parts = []; return; }
+    const id = this.cur, t = now;
+    /* 1) 머리 뒤쪽 장식 → 2) 얼굴·머리 모양으로 지움(가려짐) → 3) 앞쪽 장식 → 4) 날아다니는 입자 */
+    for (const fr of this.faces) { ctx.save(); FXDRAW.back(ctx, fr, id, t); ctx.restore(); }
+    if (this.faces.length && FXDRAW.hasBack(id)) { ctx.save(); ctx.setTransform(1, 0, 0, 1, 0, 0); ctx.globalCompositeOperation = "destination-out"; for (const fr of this.faces) headMask(ctx, fr); ctx.restore(); }
+    for (const fr of this.faces) { ctx.save(); FXDRAW.front(ctx, fr, id, t, this); ctx.restore(); }
+    ctx.setTransform(1, 0, 0, 1, 0, 0); stepParts(ctx, this, t);
+  },
+  /* 찍은 사진(좌우 반전·확대된 화면) 기준 얼굴 점 */
   facesForStill() {
     const v = $("video"), vw = v.videoWidth, vh = v.videoHeight; if (!this.raw || !vw) return [];
     const z = Math.max(1, S.zoom || 1), sw = vw / z, sh = vh / z, sx = (vw - sw) / 2, sy = (vh - sh) / 2;
     return this.raw.map((pts) => pts.map((p) => ({ x: 1 - (p.x * vw - sx) / sw, y: (p.y * vh - sy) / sh })));
   }
 };
-function drawFaceFx(ctx, P, id, t) {
-  const eL = P[33], eR = P[263], ang = Math.atan2(eR.y - eL.y, eR.x - eL.x);
-  const fw = Math.hypot(P[454].x - P[234].x, P[454].y - P[234].y), ed = Math.hypot(eR.x - eL.x, eR.y - eL.y);
-  const up = { x: Math.sin(ang), y: -Math.cos(ang) }, rt = { x: Math.cos(ang), y: Math.sin(ang) };
-  const top = P[10], at = (p, r, u) => ({ x: p.x + rt.x * r + up.x * u, y: p.y + rt.y * r + up.y * u });
-  const emoji = (e, p, size, rot) => {
-    ctx.save(); ctx.translate(p.x, p.y); ctx.rotate(ang + (rot || 0)); ctx.scale(-1, 1);   /* 화면이 좌우 반전이라 글자 그림을 한 번 더 뒤집어 바로 보이게 */
-    ctx.font = size + "px " + EMOJI_FONT; ctx.textAlign = "center"; ctx.textBaseline = "middle"; ctx.fillText(e, 0, 0); ctx.restore();
-  };
-  const ear = (p, len, wid, tilt, outer, inner) => {
-    ctx.save(); ctx.translate(p.x, p.y); ctx.rotate(ang + tilt);
-    ctx.fillStyle = outer; ctx.beginPath(); ctx.ellipse(0, -len / 2, wid / 2, len / 2, 0, 0, Math.PI * 2); ctx.fill();
-    ctx.fillStyle = inner; ctx.beginPath(); ctx.ellipse(0, -len / 2 + len * 0.06, wid / 4, len / 2.6, 0, 0, Math.PI * 2); ctx.fill();
-    ctx.restore();
-  };
-  const tri = (p, h, w, tilt, color, inner) => {
-    ctx.save(); ctx.translate(p.x, p.y); ctx.rotate(ang + tilt);
-    ctx.fillStyle = color; ctx.beginPath(); ctx.moveTo(-w / 2, 0); ctx.lineTo(0, -h); ctx.lineTo(w / 2, 0); ctx.closePath(); ctx.fill();
-    if (inner) { ctx.fillStyle = inner; ctx.beginPath(); ctx.moveTo(-w / 4, -h * 0.1); ctx.lineTo(0, -h * 0.75); ctx.lineTo(w / 4, -h * 0.1); ctx.closePath(); ctx.fill(); }
-    ctx.restore();
-  };
-  const dot = (p, r, color) => { ctx.fillStyle = color; ctx.beginPath(); ctx.arc(p.x, p.y, r, 0, Math.PI * 2); ctx.fill(); };
-  const nose = P[4], headTop = at(top, 0, fw * 0.12);
-  ctx.save(); ctx.shadowColor = "rgba(0,0,0,.25)"; ctx.shadowBlur = fw * 0.03;
-  switch (id) {
-    case "crown": emoji("👑", at(top, 0, fw * 0.32), fw * 0.62); break;
-    case "bunny":
-      ear(at(top, -fw * 0.17, fw * 0.05), fw * 0.85, fw * 0.24, -0.22, "#ffffff", "#ffb6c8");
-      ear(at(top, fw * 0.17, fw * 0.05), fw * 0.85, fw * 0.24, 0.22, "#ffffff", "#ffb6c8");
-      ctx.shadowBlur = 0; dot(nose, fw * 0.045, "#ff8fab"); break;
-    case "cat":
-      tri(at(top, -fw * 0.28, -fw * 0.02), fw * 0.42, fw * 0.32, -0.35, "#3a3a3a", "#ff9fb5");
-      tri(at(top, fw * 0.28, -fw * 0.02), fw * 0.42, fw * 0.32, 0.35, "#3a3a3a", "#ff9fb5");
-      ctx.shadowBlur = 0; ctx.strokeStyle = "rgba(40,40,40,.85)"; ctx.lineWidth = Math.max(2, fw * 0.012); ctx.lineCap = "round";
-      for (const side of [-1, 1]) for (const k of [-1, 0, 1]) {
-        const a = at(nose, side * fw * 0.08, -fw * 0.03 + k * fw * 0.035), b = at(nose, side * fw * 0.36, -fw * 0.02 + k * fw * 0.08);
-        ctx.beginPath(); ctx.moveTo(a.x, a.y); ctx.lineTo(b.x, b.y); ctx.stroke();
+/* 머리 모양(얼굴선 + 이마 위 머리카락까지)으로 경로 */
+function headMask(ctx, fr) {
+  ctx.beginPath();
+  FACE_OVAL.forEach((i, k) => {
+    const p = fr.P[i], l = fr.local(p);
+    let q = { x: p.x, y: p.y };
+    if (l.y < 0.1) { const up = Math.min(1, (0.1 - l.y) / 0.6), a = fr.at(l.x * (1 + 0.12 * up), l.y - 0.32 * up, l.z); q = a; }   /* 이마 위로 머리카락만큼 */
+    if (k === 0) ctx.moveTo(q.x, q.y); else ctx.lineTo(q.x, q.y);
+  });
+  ctx.closePath(); ctx.fill();
+}
+/* 날아다니는 입자 (하트·폭죽·반짝이) */
+function spawn(fx, n, at, opt) {
+  for (let i = 0; i < n; i++) {
+    const a = (opt.dir != null ? opt.dir : -Math.PI / 2) + (Math.random() - 0.5) * (opt.spread || 1.6), sp = opt.speed * (0.6 + Math.random() * 0.8);
+    fx.parts.push({ x: at.x, y: at.y, vx: Math.cos(a) * sp, vy: Math.sin(a) * sp, g: opt.g || 0, life: 0, max: opt.life || 1400, size: opt.size * (0.7 + Math.random() * 0.6), img: opt.imgs ? opt.imgs[Math.floor(Math.random() * opt.imgs.length)] : null, col: opt.cols ? opt.cols[Math.floor(Math.random() * opt.cols.length)] : null, rot: Math.random() * 6, vr: (Math.random() - 0.5) * 0.2 });
+  }
+  if (fx.parts.length > 160) fx.parts.splice(0, fx.parts.length - 160);
+}
+function stepParts(ctx, fx, t) {
+  const dt = Math.min(50, t - (fx.pt || t)); fx.pt = t; if (!fx.parts.length) return;
+  fx.parts = fx.parts.filter((p) => {
+    p.life += dt; if (p.life > p.max) return false;
+    p.x += p.vx * dt / 16; p.y += p.vy * dt / 16; p.vy += p.g * dt / 16; p.rot += p.vr;
+    const a = 1 - Math.pow(p.life / p.max, 2);
+    ctx.save(); ctx.globalAlpha = a; ctx.translate(p.x, p.y); ctx.rotate(p.rot); ctx.scale(-1, 1);
+    if (p.img) fxImg(ctx, p.img, 0, 0, p.size); else { ctx.fillStyle = p.col; ctx.fillRect(-p.size / 2, -p.size / 4, p.size, p.size / 2); }
+    ctx.restore(); return true;
+  });
+}
+
+/* ── 장식 그리기 (단위: 얼굴 너비 1, x 오른쪽, y 아래, 원점 = 미간) ── */
+const FXDRAW = {
+  hasBack(id) { return ["flowers", "stars", "lion", "butterfly", "bee", "angel"].includes(id); },
+  back(ctx, fr, id, t) {
+    const ring = (n, rx, rz, y, fn, spin) => { for (let i = 0; i < n; i++) { const a = (i / n) * Math.PI * 2 + (spin || 0); const z = Math.sin(a); if (z < -0.05) fn(Math.cos(a) * rx, y, Math.sin(a) * rz - 0.32, a, i); } };
+    switch (id) {
+      case "flowers": ring(10, 0.62, 0.5, -0.66, (x, y, z, a, i) => { facePlane(ctx, fr, x, y, z, 0.2); fxImg(ctx, ["cherry_blossom", "blossom", "tulip"][i % 3], 0, 0, 0.26); }); break;
+      case "stars": ring(6, 0.78, 0.6, -0.75 + 0.05 * Math.sin(t / 400), (x, y, z, a, i) => { facePlane(ctx, fr, x, y, z, 0); fxImg(ctx, "glowing_star", 0, 0, 0.2); }, t / 900); break;
+      case "butterfly": ring(4, 0.9, 0.7, -0.5, (x, y, z, a, i) => { facePlane(ctx, fr, x, y + 0.1 * Math.sin(t / 300 + i), z, 0); ctx.scale(Math.cos(t / 90 + i * 2) * 0.5 + 0.6, 1); fxImg(ctx, "butterfly", 0, 0, 0.24); }, t / 1600); break;
+      case "bee": ring(3, 0.95, 0.7, -0.45, (x, y, z, a, i) => { facePlane(ctx, fr, x, y + 0.06 * Math.sin(t / 150 + i), z, 0); fxImg(ctx, "honeybee", 0, 0, 0.22); }, t / 1100); break;
+      case "lion": {
+        /* 갈기: 얼굴 뒤 큰 원 (얼굴 부분은 지워져서 가려짐) */
+        facePlane(ctx, fr, 0, 0.12, -0.45, 0);
+        for (let i = 0; i < 26; i++) { const a = (i / 26) * Math.PI * 2, r = 0.95 + 0.07 * Math.sin(i * 2.3); ctx.fillStyle = i % 2 ? "#c46a1b" : "#e08a2c"; ctx.beginPath(); ctx.ellipse(Math.cos(a) * r * 0.82, Math.sin(a) * r, 0.26, 0.16, a, 0, Math.PI * 2); ctx.fill(); }
+        ctx.fillStyle = rgrad(ctx, 0, 0, 1.05, [[0.5, "#d9802a"], [1, "rgba(160,80,20,0)"]]); ctx.beginPath(); ctx.ellipse(0, 0, 0.88, 1.02, 0, 0, Math.PI * 2); ctx.fill();
+        break;
       }
-      dot(nose, fw * 0.035, "#ff7f9f"); break;
-    case "puppy":
-      ear(at(P[127], -fw * 0.02, fw * 0.12), fw * 0.6, fw * 0.26, Math.PI + 0.35, "#8b5a2b", "#b98250");
-      ear(at(P[356], fw * 0.02, fw * 0.12), fw * 0.6, fw * 0.26, Math.PI - 0.35, "#8b5a2b", "#b98250");
-      ctx.shadowBlur = 0; dot(nose, fw * 0.065, "#222"); dot(at(nose, -fw * 0.02, fw * 0.02), fw * 0.018, "#666");
-      { const m = P[17]; ctx.fillStyle = "#ff6f91"; ctx.save(); ctx.translate(m.x, m.y); ctx.rotate(ang); ctx.beginPath(); ctx.ellipse(0, fw * 0.08, fw * 0.08, fw * 0.11, 0, 0, Math.PI * 2); ctx.fill(); ctx.restore(); }
-      break;
-    case "shades": { const mid = { x: (eL.x + eR.x) / 2, y: (eL.y + eR.y) / 2 }; emoji("🕶️", at(mid, 0, -ed * 0.05), ed * 1.9); break; }
-    case "hearts": { const pulse = 1 + 0.12 * Math.sin(t / 160); emoji("❤️", P[468] || eL, ed * 0.62 * pulse); emoji("❤️", P[473] || eR, ed * 0.62 * pulse); break; }
-    case "flowers": {
-      const ids = [127, 162, 21, 54, 103, 67, 109, 10, 338, 297, 332, 284, 251, 389, 356], fl = ["🌸", "🌼", "🌷"];
-      ids.forEach((i, k) => { if (k % 2) return; emoji(fl[k % 3], at(P[i], 0, fw * 0.11), fw * 0.17, (k - 7) * 0.08); });
-      break;
-    }
-    case "blush":
-      ctx.shadowBlur = 0;
-      for (const i of [50, 280]) { const p = P[i], g = ctx.createRadialGradient(p.x, p.y, 0, p.x, p.y, fw * 0.12); g.addColorStop(0, "rgba(255,120,150,.55)"); g.addColorStop(1, "rgba(255,120,150,0)"); ctx.fillStyle = g; ctx.beginPath(); ctx.arc(p.x, p.y, fw * 0.12, 0, Math.PI * 2); ctx.fill(); }
-      emoji("✨", at(P[50], -fw * 0.18, fw * 0.12), fw * 0.12); emoji("✨", at(P[280], fw * 0.18, fw * 0.12), fw * 0.1); break;
-    case "clown": {
-      const r = fw * 0.075, g = ctx.createRadialGradient(nose.x - r * 0.3, nose.y - r * 0.3, r * 0.1, nose.x, nose.y, r);
-      g.addColorStop(0, "#ff8a8a"); g.addColorStop(1, "#d10f1f"); ctx.fillStyle = g; ctx.beginPath(); ctx.arc(nose.x, nose.y, r, 0, Math.PI * 2); ctx.fill(); break;
-    }
-    case "stars":
-      for (let k = 0; k < 5; k++) { const a = t / 600 + k * Math.PI * 2 / 5, p = at(headTop, Math.cos(a) * fw * 0.45, fw * 0.12 + Math.sin(a) * fw * 0.08); emoji(k % 2 ? "✨" : "⭐️", p, fw * (0.13 + 0.04 * Math.sin(a))); }
-      break;
-    case "bear":
-      for (const side of [-1, 1]) { const p = at(top, side * fw * 0.34, fw * 0.0); dot(p, fw * 0.15, "#8a5a33"); dot(p, fw * 0.08, "#d9a77a"); }
-      ctx.shadowBlur = 0; { const m = at(nose, 0, -fw * 0.03); ctx.fillStyle = "rgba(240,215,180,.9)"; ctx.beginPath(); ctx.ellipse(m.x, m.y, fw * 0.13, fw * 0.1, ang, 0, Math.PI * 2); ctx.fill(); }
-      dot(nose, fw * 0.05, "#3b2412"); break;
-    case "fox":
-      tri(at(top, -fw * 0.3, -fw * 0.04), fw * 0.46, fw * 0.34, -0.3, "#f08a2c", "#fff1e0");
-      tri(at(top, fw * 0.3, -fw * 0.04), fw * 0.46, fw * 0.34, 0.3, "#f08a2c", "#fff1e0");
-      ctx.shadowBlur = 0; dot(nose, fw * 0.045, "#2b1a10");
-      for (const i of [50, 280]) { const p = P[i]; ctx.fillStyle = "rgba(255,140,80,.35)"; ctx.beginPath(); ctx.arc(p.x, p.y, fw * 0.08, 0, Math.PI * 2); ctx.fill(); }
-      break;
-    case "angel": {
-      const c = at(top, 0, fw * 0.3); ctx.save(); ctx.translate(c.x, c.y); ctx.rotate(ang);
-      ctx.strokeStyle = "#ffd75a"; ctx.lineWidth = fw * 0.06; ctx.shadowColor = "rgba(255,220,90,.9)"; ctx.shadowBlur = fw * 0.12;
-      ctx.beginPath(); ctx.ellipse(0, 0, fw * 0.34, fw * 0.09, 0, 0, Math.PI * 2); ctx.stroke(); ctx.restore();
-      emoji("✨", at(top, -fw * 0.45, fw * 0.25), fw * 0.12); emoji("✨", at(top, fw * 0.45, fw * 0.15), fw * 0.1); break;
-    }
-    case "devil":
-      for (const side of [-1, 1]) {
-        const b = at(top, side * fw * 0.24, fw * 0.12); ctx.save(); ctx.translate(b.x, b.y); ctx.rotate(ang + side * 0.3); ctx.scale(1.3, 1.3);
-        ctx.fillStyle = "#e0262f"; ctx.beginPath(); ctx.moveTo(-fw * 0.07, 0); ctx.quadraticCurveTo(side * fw * 0.02, -fw * 0.2, side * fw * 0.06, -fw * 0.3); ctx.quadraticCurveTo(fw * 0.02, -fw * 0.12, fw * 0.07, 0); ctx.closePath(); ctx.fill(); ctx.restore();
+      case "angel": {
+        /* 날개: 머리 양옆 뒤 */
+        for (const sd of [-1, 1]) {
+          facePlane(ctx, fr, sd * 0.55, 0.05, -0.55, 0, sd * (0.1 + 0.08 * Math.sin(t / 260)));
+          ctx.fillStyle = grad(ctx, 0, -0.5, 0, 0.5, [[0, "#ffffff"], [1, "#e6ecff"]]); ctx.strokeStyle = "rgba(150,170,220,.6)"; ctx.lineWidth = 0.014;
+          for (let k = 0; k < 5; k++) { ctx.beginPath(); ctx.ellipse(sd * (0.25 + k * 0.08), -0.3 + k * 0.13, 0.42 - k * 0.05, 0.13, sd * (0.55 + k * 0.12), 0, Math.PI * 2); ctx.fill(); ctx.stroke(); }
+        }
+        break;
       }
-      break;
-    case "heartglass": {
-      ctx.shadowBlur = 0;
-      const heart = (c, r) => { ctx.save(); ctx.translate(c.x, c.y); ctx.rotate(ang); ctx.beginPath(); ctx.moveTo(0, r * 0.9); ctx.bezierCurveTo(-r * 1.6, -r * 0.2, -r * 0.8, -r * 1.3, 0, -r * 0.45); ctx.bezierCurveTo(r * 0.8, -r * 1.3, r * 1.6, -r * 0.2, 0, r * 0.9); ctx.closePath();
-        ctx.fillStyle = "rgba(255,70,140,.55)"; ctx.fill(); ctx.lineWidth = r * 0.16; ctx.strokeStyle = "#ff2f86"; ctx.stroke(); ctx.restore(); };
-      const L = P[468] || eL, R = P[473] || eR; heart(L, ed * 0.42); heart(R, ed * 0.42);
-      ctx.strokeStyle = "#ff2f86"; ctx.lineWidth = ed * 0.07; ctx.beginPath(); ctx.moveTo(L.x + (R.x - L.x) * 0.3, L.y + (R.y - L.y) * 0.3 - ed * 0.1); ctx.lineTo(L.x + (R.x - L.x) * 0.7, L.y + (R.y - L.y) * 0.7 - ed * 0.1); ctx.stroke(); break;
     }
-    case "nerd": {
-      ctx.shadowBlur = 0; const L = P[468] || eL, R = P[473] || eR, r = ed * 0.36;
-      ctx.strokeStyle = "#1d1d1d"; ctx.lineWidth = ed * 0.08;
-      for (const c of [L, R]) { ctx.fillStyle = "rgba(200,230,255,.18)"; ctx.beginPath(); ctx.arc(c.x, c.y, r, 0, Math.PI * 2); ctx.fill(); ctx.stroke(); }
-      ctx.beginPath(); ctx.moveTo(L.x + (R.x - L.x) * 0.35, L.y + (R.y - L.y) * 0.35); ctx.lineTo(L.x + (R.x - L.x) * 0.65, L.y + (R.y - L.y) * 0.65); ctx.stroke();
-      { const m = at(P[0], 0, fw * 0.035); ctx.save(); ctx.translate(m.x, m.y); ctx.rotate(ang); ctx.fillStyle = "#3a2516";
-        for (const sd of [-1, 1]) { ctx.beginPath(); ctx.ellipse(sd * fw * 0.08, 0, fw * 0.09, fw * 0.035, sd * -0.25, 0, Math.PI * 2); ctx.fill(); } ctx.restore(); }
-      break;
-    }
-    case "frog": emoji("🐸", at(top, 0, fw * 0.28), fw * 0.55); break;
-    case "dinohat": emoji("🦖", at(top, -fw * 0.05, fw * 0.35), fw * 0.7, -0.1); break;
-    case "butterfly": {
-      [127, 54, 10, 284, 356].forEach((i, k) => emoji("🦋", at(P[i], 0, fw * (0.14 + 0.04 * Math.sin(t / 300 + k))), fw * 0.15, (k - 2) * 0.25 + 0.15 * Math.sin(t / 250 + k)));
-      break;
-    }
-    case "rainbow": {
-      const lipU = P[13], lipL = P[14], open = Math.hypot(lipL.x - lipU.x, lipL.y - lipU.y) / fw;
-      if (open > 0.05) {
-        const m = { x: (lipU.x + lipL.x) / 2, y: (lipU.y + lipL.y) / 2 }, cols = ["#ff5f5f", "#ffb347", "#ffe95c", "#7be37b", "#5fb8ff", "#9b7bff"];
-        const len = fw * 1.4, wid = fw * Math.min(0.35, open * 3);
-        ctx.shadowBlur = 0; ctx.save(); ctx.translate(m.x, m.y); ctx.rotate(ang);
-        cols.forEach((c, i) => { const x0 = -wid / 2 + (wid / cols.length) * i, x1 = x0 + wid / cols.length; ctx.fillStyle = c;
-          ctx.beginPath(); ctx.moveTo(x0, 0); ctx.lineTo(x1, 0); ctx.lineTo(x1 * 2.2, len); ctx.lineTo(x0 * 2.2, len); ctx.closePath(); ctx.fill(); });
+  },
+  front(ctx, fr, id, t, fx) {
+    const P = fr.P, bs = fr.bs || {}, jaw = bs.jawOpen || 0, brow = bs.browInnerUp || 0;
+    const L = (i) => fr.local(P[i]);
+    const ring = (n, rx, rz, y, fn, spin) => { for (let i = 0; i < n; i++) { const a = (i / n) * Math.PI * 2 + (spin || 0); if (Math.sin(a) >= -0.05) fn(Math.cos(a) * rx, y, Math.sin(a) * rz - 0.32, a, i); } };
+    const shadow = (k) => { ctx.shadowColor = "rgba(0,0,0,.28)"; ctx.shadowBlur = fr.s * (k || 0.025); ctx.shadowOffsetY = fr.s * 0.01; };
+    const noShadow = () => { ctx.shadowColor = "transparent"; ctx.shadowBlur = 0; ctx.shadowOffsetY = 0; };
+    const nose = L(4), lipU = L(13), lipL = L(14), eyeL = L(468), eyeR = L(473);
+    const ear = (x, y, z, tilt, roll, w, h, outer, inner, shape) => {
+      facePlane(ctx, fr, x, y, z, tilt, roll); shadow();
+      ctx.fillStyle = outer; ctx.beginPath();
+      if (shape === "tri") { ctx.moveTo(-w / 2, 0); ctx.quadraticCurveTo(-w * 0.25, -h * 0.6, 0, -h); ctx.quadraticCurveTo(w * 0.25, -h * 0.6, w / 2, 0); ctx.closePath(); }
+      else if (shape === "round") ctx.arc(0, -h / 2, w / 2, 0, Math.PI * 2);
+      else ctx.ellipse(0, -h / 2, w / 2, h / 2, 0, 0, Math.PI * 2);
+      ctx.fill(); noShadow();
+      ctx.fillStyle = inner; ctx.beginPath();
+      if (shape === "tri") { ctx.moveTo(-w * 0.27, -h * 0.08); ctx.quadraticCurveTo(-w * 0.12, -h * 0.55, 0, -h * 0.8); ctx.quadraticCurveTo(w * 0.12, -h * 0.55, w * 0.27, -h * 0.08); ctx.closePath(); }
+      else if (shape === "round") ctx.arc(0, -h / 2 + h * 0.06, w * 0.28, 0, Math.PI * 2);
+      else ctx.ellipse(0, -h / 2 + h * 0.05, w / 4.2, h / 2.7, 0, 0, Math.PI * 2);
+      ctx.fill();
+      /* 입체감: 위에서 빛 */
+      ctx.fillStyle = grad(ctx, 0, -h, 0, 0, [[0, "rgba(255,255,255,.28)"], [0.6, "rgba(255,255,255,0)"], [1, "rgba(0,0,0,.12)"]]);
+      ctx.beginPath(); if (shape === "round") ctx.arc(0, -h / 2, w / 2, 0, Math.PI * 2); else ctx.ellipse(0, -h / 2, w / 2, h / 2, 0, 0, Math.PI * 2); ctx.fill();
+    };
+    const animalNose = (col, w, h) => {
+      facePlane(ctx, fr, nose.x, nose.y - 0.01, nose.z + 0.02, 0); shadow(0.015);
+      ctx.fillStyle = rgrad(ctx, -w * 0.15, -h * 0.25, w * 0.75, [[0, "#ffffff"], [0.18, col], [1, shade(col, -0.35)]]);
+      ctx.beginPath(); ctx.ellipse(0, 0, w / 2, h / 2, 0, 0, Math.PI * 2); ctx.fill(); noShadow();
+    };
+    const whiskers = (col) => {
+      ctx.strokeStyle = col; ctx.lineWidth = 0.011; ctx.lineCap = "round";
+      for (const sd of [-1, 1]) for (const k of [-1, 0, 1]) { facePlane(ctx, fr, nose.x + sd * 0.08, nose.y + 0.07, nose.z - 0.02, 0); ctx.beginPath(); ctx.moveTo(0, k * 0.03); ctx.quadraticCurveTo(sd * 0.18, k * 0.05 - 0.02, sd * 0.36, k * 0.09); ctx.stroke(); }
+    };
+    const tongue = () => {
+      if (jaw < 0.25) return;
+      const k = Math.min(1, (jaw - 0.25) / 0.45), m = { x: (lipU.x + lipL.x) / 2, y: lipL.y - 0.02, z: lipL.z };
+      facePlane(ctx, fr, m.x, m.y, m.z + 0.02, 0); const len = 0.12 + 0.3 * k;
+      ctx.fillStyle = grad(ctx, 0, 0, 0, len, [[0, "#e8576f"], [1, "#ff8fa3"]]); ctx.beginPath(); ctx.moveTo(-0.1, 0); ctx.quadraticCurveTo(-0.12, len, 0, len + 0.02); ctx.quadraticCurveTo(0.12, len, 0.1, 0); ctx.closePath(); ctx.fill();
+      ctx.strokeStyle = "rgba(160,30,60,.5)"; ctx.lineWidth = 0.012; ctx.beginPath(); ctx.moveTo(0, 0.02); ctx.lineTo(0, len * 0.7); ctx.stroke();
+    };
+    const hatOn = (key, w, y, tilt) => { facePlane(ctx, fr, 0, y, -0.18, tilt == null ? 0.18 : tilt); shadow(); fxImg(ctx, key, 0, -w * 0.45, w); };
+    switch (id) {
+      case "puppy":
+        ear(-0.52, -0.62, -0.28, 0.1, Math.PI - 0.45, 0.32, 0.62, "#8b5a2b", "#b98250");
+        ear(0.52, -0.62, -0.28, 0.1, Math.PI + 0.45, 0.32, 0.62, "#8b5a2b", "#b98250");
+        tongue(); animalNose("#2b2420", 0.2, 0.13); break;
+      case "bunny":
+        ear(-0.2, -0.78, -0.28, 0.35, -0.2, 0.25, 0.85, "#ffffff", "#ffb6c8");
+        ear(0.2, -0.78, -0.28, 0.35, 0.2, 0.25, 0.85, "#ffffff", "#ffb6c8");
+        if (jaw > 0.2) { facePlane(ctx, fr, lipU.x, lipU.y, lipU.z + 0.01, 0); ctx.fillStyle = "#ffffff"; ctx.strokeStyle = "#d8d8d8"; ctx.lineWidth = 0.008; for (const sd of [-1, 1]) { ctx.beginPath(); if (ctx.roundRect) ctx.roundRect(sd > 0 ? 0.004 : -0.064, -0.005, 0.06, 0.09, 0.012); else ctx.rect(sd > 0 ? 0.004 : -0.064, -0.005, 0.06, 0.09); ctx.fill(); ctx.stroke(); } }
+        animalNose("#ff8fab", 0.1, 0.07); whiskers("rgba(120,120,120,.75)"); break;
+      case "cat":
+        ear(-0.34, -0.7, -0.22, 0.2, -0.35, 0.36, 0.42, "#3a3a3a", "#ff9fb5", "tri");
+        ear(0.34, -0.7, -0.22, 0.2, 0.35, 0.36, 0.42, "#3a3a3a", "#ff9fb5", "tri");
+        animalNose("#ff7f9f", 0.09, 0.06); whiskers("rgba(40,40,40,.85)"); break;
+      case "bear":
+        ear(-0.4, -0.72, -0.25, 0.15, -0.3, 0.3, 0.3, "#7a4a24", "#d7a07a", "round");
+        ear(0.4, -0.72, -0.25, 0.15, 0.3, 0.3, 0.3, "#7a4a24", "#d7a07a", "round");
+        facePlane(ctx, fr, nose.x, nose.y + 0.08, nose.z - 0.02, 0); ctx.fillStyle = "rgba(225,185,145,.75)"; ctx.beginPath(); ctx.ellipse(0, 0, 0.2, 0.14, 0, 0, Math.PI * 2); ctx.fill();
+        animalNose("#3a2414", 0.13, 0.09); break;
+      case "panda":
+        ear(-0.4, -0.72, -0.25, 0.15, -0.3, 0.3, 0.3, "#1c1c1c", "#3a3a3a", "round");
+        ear(0.4, -0.72, -0.25, 0.15, 0.3, 0.3, 0.3, "#1c1c1c", "#3a3a3a", "round");
+        for (const e of [eyeL, eyeR]) { facePlane(ctx, fr, e.x, e.y + 0.01, e.z, 0, e.x < 0 ? 0.5 : -0.5); ctx.fillStyle = "rgba(20,20,20,.55)"; ctx.beginPath(); ctx.ellipse(0, 0, 0.15, 0.11, 0, 0, Math.PI * 2); ctx.fill(); }
+        animalNose("#1c1c1c", 0.12, 0.08); break;
+      case "fox":
+        ear(-0.36, -0.7, -0.22, 0.2, -0.3, 0.38, 0.5, "#e8742a", "#fff1e0", "tri");
+        ear(0.36, -0.7, -0.22, 0.2, 0.3, 0.38, 0.5, "#e8742a", "#fff1e0", "tri");
+        animalNose("#2b2420", 0.1, 0.07); whiskers("rgba(60,40,30,.7)"); break;
+      case "lion":
+        ear(-0.42, -0.68, -0.3, 0.15, -0.3, 0.24, 0.24, "#c46a1b", "#f3c27a", "round");
+        ear(0.42, -0.68, -0.3, 0.15, 0.3, 0.24, 0.24, "#c46a1b", "#f3c27a", "round");
+        animalNose("#5a3418", 0.13, 0.09); whiskers("rgba(90,50,20,.7)");
+        if (jaw > 0.45 && (!fx.roarAt || t - fx.roarAt > 700)) { fx.roarAt = t; const m = fr.at(lipL.x, lipL.y, lipL.z); spawn(fx, 3, m, { speed: fr.s * 0.03, size: fr.s * 0.25, imgs: ["collision", "fire"], life: 900, spread: 2.4, dir: Math.PI / 2 }); }
+        break;
+      case "crown": hatOn("crown", 0.82, -0.8); break;
+      case "grad": hatOn("graduation_cap", 1.0, -0.78, 0.25); break;
+      case "frog": hatOn("frog", 0.8, -0.78); break;
+      case "dinohat": hatOn("t_rex", 0.9, -0.76); break;
+      case "flowers": ring(10, 0.62, 0.5, -0.66, (x, y, z, a, i) => { facePlane(ctx, fr, x, y, z, 0.2); shadow(); fxImg(ctx, ["cherry_blossom", "blossom", "tulip"][i % 3], 0, 0, 0.26); }); break;
+      case "stars": ring(6, 0.78, 0.6, -0.75 + 0.05 * Math.sin(t / 400), (x, y, z) => { facePlane(ctx, fr, x, y, z, 0); fxImg(ctx, "glowing_star", 0, 0, 0.2); }, t / 900); break;
+      case "butterfly": ring(4, 0.9, 0.7, -0.5, (x, y, z, a, i) => { facePlane(ctx, fr, x, y + 0.1 * Math.sin(t / 300 + i), z, 0); ctx.scale(Math.cos(t / 90 + i * 2) * 0.5 + 0.6, 1); fxImg(ctx, "butterfly", 0, 0, 0.24); }, t / 1600); break;
+      case "bee": {
+        ring(3, 0.95, 0.7, -0.45, (x, y, z, a, i) => { facePlane(ctx, fr, x, y + 0.06 * Math.sin(t / 150 + i), z, 0); fxImg(ctx, "honeybee", 0, 0, 0.22); }, t / 1100);
+        for (const sd of [-1, 1]) { facePlane(ctx, fr, sd * 0.14, -0.62, -0.1, 0.2); ctx.strokeStyle = "#1c1c1c"; ctx.lineWidth = 0.025; ctx.lineCap = "round"; const sw = 0.03 * Math.sin(t / 200 + sd); ctx.beginPath(); ctx.moveTo(0, 0); ctx.quadraticCurveTo(sd * 0.05 + sw, -0.22, sd * 0.14 + sw, -0.34); ctx.stroke(); ctx.fillStyle = "#ffd133"; ctx.beginPath(); ctx.arc(sd * 0.14 + sw, -0.36, 0.05, 0, Math.PI * 2); ctx.fill(); ctx.strokeStyle = "#1c1c1c"; ctx.lineWidth = 0.012; ctx.stroke(); }
+        break;
+      }
+      case "angel": {
+        /* 머리 위 3D 후광 (얼굴 방향에 맞춰 타원으로 기울어짐) */
+        ctx.setTransform(1, 0, 0, 1, 0, 0);
+        const y = -1.0 + 0.03 * Math.sin(t / 500), pts = [];
+        for (let i = 0; i <= 48; i++) { const a = (i / 48) * Math.PI * 2; pts.push(fr.at(Math.cos(a) * 0.36, y, Math.sin(a) * 0.36 - 0.25)); }
+        ctx.lineCap = "round"; ctx.shadowColor = "rgba(255,220,90,.9)"; ctx.shadowBlur = fr.s * 0.06;
+        ctx.strokeStyle = "#ffd84a"; ctx.lineWidth = fr.s * 0.05; ctx.beginPath(); pts.forEach((p, i) => (i ? ctx.lineTo(p.x, p.y) : ctx.moveTo(p.x, p.y))); ctx.stroke();
+        ctx.shadowBlur = 0; ctx.strokeStyle = "rgba(255,255,220,.9)"; ctx.lineWidth = fr.s * 0.015; ctx.stroke();
+        break;
+      }
+      case "devil":
+        for (const sd of [-1, 1]) {
+          facePlane(ctx, fr, sd * 0.28, -0.72, -0.15, 0.15, sd * 0.25); shadow();
+          ctx.fillStyle = grad(ctx, 0, -0.35, 0, 0, [[0, "#ff4a3d"], [1, "#a30f12"]]);
+          ctx.beginPath(); ctx.moveTo(-0.09, 0); ctx.quadraticCurveTo(-0.1, -0.2, sd * 0.1, -0.36); ctx.quadraticCurveTo(0.02, -0.18, 0.09, 0); ctx.closePath(); ctx.fill();
+        }
+        break;
+      case "unicorn": {
+        facePlane(ctx, fr, 0, -0.58, 0.02, -0.15); shadow();
+        const HL = 0.78, HW = 0.14;
+        ctx.fillStyle = grad(ctx, -HW, 0, HW, -HL, [[0, "#ffd1f0"], [0.5, "#c9b6ff"], [1, "#b6f0ff"]]);
+        ctx.beginPath(); ctx.moveTo(-HW, 0); ctx.quadraticCurveTo(-HW * 0.4, -HL * 0.6, 0, -HL); ctx.quadraticCurveTo(HW * 0.4, -HL * 0.6, HW, 0); ctx.closePath(); ctx.fill(); noShadow();
+        ctx.strokeStyle = "rgba(255,255,255,.9)"; ctx.lineWidth = 0.016; for (let k = 1; k < 7; k++) { const yy = -k * HL / 7.5, w = HW * (1 - k / 7.5); ctx.beginPath(); ctx.moveTo(-w, yy + 0.03); ctx.lineTo(w, yy - 0.03); ctx.stroke(); }
+        if (Math.random() < 0.08) spawn(fx, 1, fr.at(0, -1.1, 0), { speed: fr.s * 0.006, size: fr.s * 0.12, imgs: ["sparkles", "star"], life: 1100, spread: 3 });
+        break;
+      }
+      case "hearts": {
+        const k = 1 + 0.12 * Math.sin(t / 140);
+        for (const e of [eyeL, eyeR]) { facePlane(ctx, fr, e.x, e.y, e.z + 0.03, 0); shadow(); fxImg(ctx, "red_heart", 0, 0, 0.32 * k); }
+        if (brow > 0.45 && (!fx.burstAt || t - fx.burstAt > 500)) { fx.burstAt = t; spawn(fx, 6, fr.at(0, -0.7, 0), { speed: fr.s * 0.02, size: fr.s * 0.16, imgs: ["red_heart", "sparkling_heart", "two_hearts"], life: 1500, g: -fr.s * 0.0004 }); }
+        break;
+      }
+      case "shades": facePlane(ctx, fr, 0, 0.02, 0.06, 0); shadow(); fxImg(ctx, "sunglasses", 0, 0, 1.08); break;
+      case "heartglass":
+        for (const e of [eyeL, eyeR]) {
+          facePlane(ctx, fr, e.x, e.y, e.z + 0.04, 0); const r = 0.17;
+          ctx.beginPath(); ctx.moveTo(0, r * 0.9); ctx.bezierCurveTo(-r * 1.6, -r * 0.2, -r * 0.8, -r * 1.3, 0, -r * 0.45); ctx.bezierCurveTo(r * 0.8, -r * 1.3, r * 1.6, -r * 0.2, 0, r * 0.9); ctx.closePath();
+          ctx.fillStyle = "rgba(255,70,140,.45)"; ctx.fill(); ctx.lineWidth = 0.03; ctx.strokeStyle = "#ff2f86"; ctx.stroke();
+        }
+        facePlane(ctx, fr, 0, -0.02, 0.06, 0); ctx.strokeStyle = "#ff2f86"; ctx.lineWidth = 0.03; ctx.beginPath(); ctx.moveTo(-0.1, 0); ctx.lineTo(0.1, 0); ctx.stroke();
+        break;
+      case "nerd":
+        for (const e of [eyeL, eyeR]) { facePlane(ctx, fr, e.x, e.y, e.z + 0.04, 0); ctx.fillStyle = "rgba(200,230,255,.18)"; ctx.strokeStyle = "#1d1d1d"; ctx.lineWidth = 0.03; ctx.beginPath(); ctx.arc(0, 0, 0.15, 0, Math.PI * 2); ctx.fill(); ctx.stroke(); }
+        facePlane(ctx, fr, 0, -0.01, 0.06, 0); ctx.strokeStyle = "#1d1d1d"; ctx.lineWidth = 0.03; ctx.beginPath(); ctx.moveTo(-0.09, 0); ctx.quadraticCurveTo(0, -0.04, 0.09, 0); ctx.stroke();
+        facePlane(ctx, fr, lipU.x, lipU.y - 0.06, lipU.z, 0); ctx.fillStyle = "#3a2516";
+        for (const sd of [-1, 1]) { ctx.beginPath(); ctx.ellipse(sd * 0.085, 0, 0.1, 0.035, sd * -0.25, 0, Math.PI * 2); ctx.fill(); }
+        break;
+      case "party": {
+        facePlane(ctx, fr, 0.08, -0.72, -0.15, 0.2, 0.2); shadow();
+        ctx.save(); ctx.beginPath(); ctx.moveTo(-0.22, 0); ctx.lineTo(0, -0.7); ctx.lineTo(0.22, 0); ctx.closePath(); ctx.fillStyle = "#7b4bc0"; ctx.fill(); ctx.clip(); noShadow();
+        ctx.fillStyle = "#ffd133"; for (let k = 0; k < 6; k++) { ctx.save(); ctx.translate(0, -0.7 * k / 5); ctx.rotate(-0.5); ctx.fillRect(-0.5, -0.025, 1, 0.045); ctx.restore(); }
+        ctx.fillStyle = grad(ctx, -0.22, 0, 0.22, 0, [[0, "rgba(0,0,0,.18)"], [0.5, "rgba(255,255,255,.15)"], [1, "rgba(0,0,0,.2)"]]); ctx.fillRect(-0.3, -0.75, 0.6, 0.8); ctx.restore();
+        ctx.fillStyle = rgrad(ctx, -0.02, -0.73, 0.07, [[0, "#ffd0e0"], [1, "#ff5c8a"]]); ctx.beginPath(); ctx.arc(0, -0.71, 0.06, 0, Math.PI * 2); ctx.fill();
+        if (jaw > 0.4 && (!fx.popAt || t - fx.popAt > 600)) { fx.popAt = t; spawn(fx, 18, fr.at(lipL.x, lipL.y, 0), { speed: fr.s * 0.03, size: fr.s * 0.05, cols: ["#ffd133", "#ff78a0", "#6b3da8", "#46a0e6", "#3caa64"], life: 1500, g: fr.s * 0.0006, spread: 2.2 }); }
+        break;
+      }
+      case "santa": {
+        facePlane(ctx, fr, 0.04, -0.68, -0.15, 0.25, 0.12); shadow();
+        ctx.fillStyle = grad(ctx, -0.3, 0, 0.3, 0, [[0, "#b3141c"], [0.5, "#e5323b"], [1, "#a10f17"]]);
+        ctx.beginPath(); ctx.moveTo(-0.42, 0); ctx.quadraticCurveTo(-0.3, -0.55, 0.05, -0.62); ctx.quadraticCurveTo(0.35, -0.6, 0.48, -0.32); ctx.quadraticCurveTo(0.3, -0.38, 0.42, 0); ctx.closePath(); ctx.fill(); noShadow();
+        ctx.fillStyle = "#ffffff"; ctx.beginPath(); if (ctx.roundRect) ctx.roundRect(-0.48, -0.08, 0.96, 0.16, 0.08); else ctx.rect(-0.48, -0.08, 0.96, 0.16); ctx.fill();
+        ctx.beginPath(); ctx.arc(0.5, -0.3, 0.09, 0, Math.PI * 2); ctx.fill();
+        break;
+      }
+      case "deer": {
+        for (const sd of [-1, 1]) {
+          facePlane(ctx, fr, sd * 0.25, -0.75, -0.2, 0.15, sd * 0.3); shadow(); ctx.strokeStyle = "#8a5a32"; ctx.lineWidth = 0.05; ctx.lineCap = "round";
+          ctx.beginPath(); ctx.moveTo(0, 0); ctx.quadraticCurveTo(sd * 0.05, -0.25, sd * 0.2, -0.5); ctx.moveTo(sd * 0.04, -0.2); ctx.lineTo(sd * 0.2, -0.26); ctx.moveTo(sd * 0.1, -0.36); ctx.lineTo(sd * 0.0, -0.5); ctx.moveTo(sd * 0.16, -0.43); ctx.lineTo(sd * 0.3, -0.48); ctx.stroke();
+        }
+        facePlane(ctx, fr, nose.x, nose.y, nose.z + 0.05, 0); ctx.shadowColor = "rgba(255,40,40,.9)"; ctx.shadowBlur = fr.s * (0.04 + 0.03 * Math.sin(t / 200));
+        ctx.fillStyle = rgrad(ctx, -0.02, -0.025, 0.1, [[0, "#ffb3b3"], [0.3, "#ff2b2b"], [1, "#a00"]]); ctx.beginPath(); ctx.arc(0, 0, 0.075, 0, Math.PI * 2); ctx.fill();
+        break;
+      }
+      case "pumpkin": facePlane(ctx, fr, 0, 0.1, 0.12, 0); shadow(); fxImg(ctx, "jack_o_lantern", 0, 0, 1.45); break;
+      case "blush":
+        for (const i of [50, 280]) { const c = L(i); facePlane(ctx, fr, c.x, c.y, c.z, 0); ctx.fillStyle = rgrad(ctx, 0, 0, 0.13, [[0, "rgba(255,105,150,.55)"], [1, "rgba(255,105,150,0)"]]); ctx.beginPath(); ctx.ellipse(0, 0, 0.14, 0.09, 0, 0, Math.PI * 2); ctx.fill(); }
+        break;
+      case "clown": animalNose("#ff2020", 0.16, 0.16); break;
+      case "rainbow": {
+        if (jaw < 0.2) break;
+        const k = Math.min(1, (jaw - 0.2) / 0.4), m = { x: (lipU.x + lipL.x) / 2, y: (lipU.y + lipL.y) / 2, z: lipL.z };
+        facePlane(ctx, fr, m.x, m.y, m.z + 0.03, 0);
+        const cols = ["#ff5f5f", "#ffb347", "#ffe95c", "#7be37b", "#5fb8ff", "#9b7bff"], wid = 0.2 * k, len = 2.2 * k, off = (t / 60) % 0.2;
+        ctx.save(); ctx.globalAlpha = 0.92;
+        cols.forEach((c, i) => { const x0 = -wid / 2 + (wid / 6) * i, x1 = x0 + wid / 6; ctx.fillStyle = c; ctx.beginPath(); ctx.moveTo(x0, 0); ctx.lineTo(x1, 0); ctx.lineTo(x1 * 2.6, len); ctx.lineTo(x0 * 2.6, len); ctx.closePath(); ctx.fill(); });
+        ctx.globalAlpha = 0.35; ctx.fillStyle = "#ffffff"; for (let y = off; y < len; y += 0.2) { ctx.fillRect(-wid * 1.6 * (0.4 + y / len), y, wid * 3.2 * (0.4 + y / len), 0.03); }
         ctx.restore();
+        break;
       }
-      break;
-    }
-    case "sparkle":
-      for (let k = 0; k < 7; k++) { const a = t / 500 + k * Math.PI * 2 / 7, rr = fw * (0.62 + 0.05 * Math.sin(t / 200 + k)); emoji(k % 2 ? "✨" : "💫", { x: nose.x + Math.cos(a) * rr, y: nose.y + Math.sin(a) * rr * 1.15 }, fw * (0.1 + 0.03 * Math.sin(t / 150 + k))); }
-      break;
-    case "party": {
-      const base = at(top, fw * 0.08, fw * 0.05), h = fw * 0.75, w = fw * 0.42;
-      ctx.save(); ctx.translate(base.x, base.y); ctx.rotate(ang + 0.18);
-      ctx.beginPath(); ctx.moveTo(-w / 2, 0); ctx.lineTo(0, -h); ctx.lineTo(w / 2, 0); ctx.closePath(); ctx.fillStyle = "#7b4bc0"; ctx.fill(); ctx.clip();
-      ctx.fillStyle = "#ffd133"; for (let k = 0; k < 6; k++) { ctx.save(); ctx.translate(0, -h * k / 5); ctx.rotate(-0.5); ctx.fillRect(-w, -h * 0.04, w * 2, h * 0.07); ctx.restore(); }
-      ctx.restore();
-      { const tip = at(base, Math.sin(0.18) * h * 0, 0); const tp = { x: base.x + Math.sin(ang + 0.18) * h, y: base.y - Math.cos(ang + 0.18) * h }; ctx.shadowBlur = 0; dot(tp, fw * 0.05, "#ff5c8a"); }
-      break;
+      case "sparkle":
+        for (let k = 0; k < 7; k++) { const a = t / 600 + k * Math.PI * 2 / 7, rr = 0.68 + 0.05 * Math.sin(t / 200 + k); facePlane(ctx, fr, Math.cos(a) * rr * 0.9, -0.05 + Math.sin(a) * rr, 0, 0); const tw = 0.6 + 0.4 * Math.abs(Math.sin(t / 180 + k)); fxImg(ctx, k % 2 ? "sparkles" : "glowing_star", 0, 0, 0.16 * tw); }
+        break;
     }
   }
-  ctx.restore();
-}
+};
+
+/* ── GPU 화면 효과: 얼굴 변형 · 거울 · 색 ── */
+const FXGL_FS = [
+  "precision highp float;varying vec2 v;uniform sampler2D t;uniform vec2 px;uniform float asp,tm;uniform int nb,gm,cm;uniform vec4 B[12];uniform vec4 G;",
+  "vec2 warp(vec2 uv){vec2 p=vec2(uv.x*asp,uv.y);",
+  " for(int i=0;i<12;i++){if(i>=nb)break;vec4 b=B[i];vec2 c=vec2(b.x*asp,b.y);vec2 d=p-c;float r=length(d)/b.z;if(r<1.){float k=1.-r*r;p=c+d*(1.-b.w*k*k);}}",
+  " if(gm>0){vec2 c=vec2(G.x*asp,G.y);vec2 d=p-c;float R=G.z,s=G.w,r=length(d)/R;",
+  "  if(gm==1&&r<1.&&r>0.)p=c+normalize(d)*R*pow(r,mix(1.,1.9,s));",
+  "  else if(gm==2&&r<1.&&r>0.)p=c+normalize(d)*R*pow(r,mix(1.,.5,s));",
+  "  else if(gm==3&&r<1.){float a=s*4.*(1.-r)*(1.-r);float cs=cos(a),sn=sin(a);p=c+vec2(d.x*cs-d.y*sn,d.x*sn+d.y*cs);}",
+  "  else if(gm==4&&r<1.)p.x=c.x+d.x*(1.+1.1*s*(1.-r*r));",
+  "  else if(gm==5&&r<1.)p.y=c.y+d.y*(1.-.5*s*(1.-r*r));",
+  "  else if(gm==6)p.x=c.x-abs(d.x);",
+  "  else if(gm==7){float q=min(r,1.6);p=c+d*mix(1.,.42+.58*q*q,s);}",
+  "  else if(gm==8&&r>1.)p=c+normalize(d)*R*(1.-.04*(r-1.));}",
+  " return vec2(p.x/asp,p.y);}",
+  "vec3 tx(vec2 w){return texture2D(t,vec2(w.x,1.-w.y)).rgb;}",
+  "float lum(vec3 c){return dot(c,vec3(.299,.587,.114));}",
+  "float edge(vec2 w){float a=lum(tx(w+vec2(-px.x,-px.y))),b=lum(tx(w+vec2(0.,-px.y))),c=lum(tx(w+vec2(px.x,-px.y))),d=lum(tx(w+vec2(-px.x,0.))),e=lum(tx(w+vec2(px.x,0.))),f=lum(tx(w+vec2(-px.x,px.y))),g=lum(tx(w+vec2(0.,px.y))),h=lum(tx(w+vec2(px.x,px.y)));",
+  " float gx=c+2.*e+h-a-2.*d-f,gy=f+2.*g+h-a-2.*b-c;return length(vec2(gx,gy));}",
+  "vec3 heat(float l){vec3 a=vec3(.05,0.,.25),b=vec3(.45,0.,.7),c=vec3(.95,.1,.2),d=vec3(1.,.65,0.),e=vec3(1.,1.,.7);",
+  " if(l<.25)return mix(a,b,l/.25);if(l<.5)return mix(b,c,(l-.25)/.25);if(l<.75)return mix(c,d,(l-.5)/.25);return mix(d,e,(l-.75)/.25);}",
+  "float rnd(vec2 p){return fract(sin(dot(p,vec2(12.9898,78.233)))*43758.5453);}",
+  "void main(){vec2 uv=vec2(v.x,1.-v.y);vec2 tu=uv;int tile=0;",
+  " if(cm==4){vec2 q=floor(uv*2.);tile=int(q.x+q.y*2.);tu=fract(uv*2.);}",
+  " vec2 w=warp(tu);vec3 c=tx(w);",
+  " if(cm==1){float l=lum(c);c=heat(clamp(l*1.15-.05,0.,1.));}",
+  " else if(cm==2){float l=1.-lum(c);l=clamp(pow(l,1.5)*1.3,0.,1.);float e=edge(w);c=vec3(.55,.8,1.)*l+vec3(.6,.9,1.)*e*1.2;}",
+  " else if(cm==3){vec3 s=mix(vec3(lum(c)),c,1.5);s=floor(clamp(s,0.,1.)*4.+.5)/4.;float e=edge(w);vec2 g=fract(gl_FragCoord.xy/6.)-.5;float dots=step(length(g),.32)*step(lum(c),.35);c=s*(1.-.35*dots);c*=1.-smoothstep(.18,.42,e);}",
+  " else if(cm==4){float l=lum(c);l=floor(l*3.+.5)/3.;vec3 A=vec3(.98,.2,.55),Bc=vec3(1.,.85,.1);",
+  "  if(tile==1){A=vec3(.1,.35,.95);Bc=vec3(.4,1.,.6);}else if(tile==2){A=vec3(.95,.45,.05);Bc=vec3(.35,.85,1.);}else if(tile==3){A=vec3(.45,.1,.75);Bc=vec3(1.,.6,.8);}",
+  "  c=mix(A,Bc,smoothstep(.3,.7,l));if(edge(w)>.35)c*=.25;}",
+  " else if(cm==5){float e=edge(w);float l=lum(c);float g=1.-smoothstep(.06,.4,e);g*=mix(.82,1.,smoothstep(.2,.7,l));c=vec3(.97,.95,.9)*g;}",
+  " else if(cm==6){float l=lum(c);l=smoothstep(.06,.94,l);float vg=1.-.55*pow(length(uv-.5)*1.25,2.);l*=vg;l+=(rnd(uv*800.+tm)-.5)*.07;c=vec3(l)*vec3(1.,.98,.94);}",
+  " else if(cm==7){float e=smoothstep(.1,.5,edge(w));float h=uv.y+tm*.15;vec3 col=.5+.5*cos(6.2832*(h+vec3(0.,.33,.67)));c=col*e*1.6+c*.12;}",
+  " gl_FragColor=vec4(clamp(c,0.,1.),1.);}"
+].join("\n");
+const FXGL = {
+  g: null, tried: false, U: null, maxW: 1440,
+  ok() { this.init(); return !!(this.g && !this.lost); },
+  init() {
+    if (this.tried) return; this.tried = true;
+    const canvas = $("fxGLView"); let gl = null;
+    try { gl = canvas.getContext("webgl", { preserveDrawingBuffer: true, premultipliedAlpha: false, antialias: false, alpha: false, depth: false }); } catch (e) {}
+    if (!gl) return;
+    const sh = (type, src) => { const o = gl.createShader(type); gl.shaderSource(o, src); gl.compileShader(o); if (!gl.getShaderParameter(o, gl.COMPILE_STATUS)) throw new Error(gl.getShaderInfoLog(o)); return o; };
+    let prog;
+    try { prog = gl.createProgram(); gl.attachShader(prog, sh(gl.VERTEX_SHADER, BEAUTY_VS)); gl.attachShader(prog, sh(gl.FRAGMENT_SHADER, FXGL_FS)); gl.linkProgram(prog); if (!gl.getProgramParameter(prog, gl.LINK_STATUS)) throw new Error(gl.getProgramInfoLog(prog)); }
+    catch (e) { console.warn("fx shader", e); errLog("얼굴 효과 GPU 준비 실패: " + (e && e.message)); return; }
+    gl.useProgram(prog);
+    const buf = gl.createBuffer(); gl.bindBuffer(gl.ARRAY_BUFFER, buf); gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([-1, -1, 1, -1, -1, 1, 1, 1]), gl.STATIC_DRAW);
+    const loc = gl.getAttribLocation(prog, "p"); gl.enableVertexAttribArray(loc); gl.vertexAttribPointer(loc, 2, gl.FLOAT, false, 0, 0);
+    const tex = gl.createTexture(); gl.bindTexture(gl.TEXTURE_2D, tex);
+    [gl.TEXTURE_WRAP_S, gl.TEXTURE_WRAP_T].forEach((k) => gl.texParameteri(gl.TEXTURE_2D, k, gl.CLAMP_TO_EDGE));
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR); gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
+    gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, true);
+    this.U = {}; ["t", "px", "asp", "tm", "nb", "gm", "cm", "G"].forEach((n) => { this.U[n] = gl.getUniformLocation(prog, n); }); this.U.B = gl.getUniformLocation(prog, "B[0]") || gl.getUniformLocation(prog, "B");
+    canvas.addEventListener("webglcontextlost", (e) => { e.preventDefault(); this.lost = true; });
+    this.g = gl;
+  },
+  /* 얼굴 점으로 볼록 렌즈 목록 만들기 (중심 x,y / 반지름 / 세기) — 좌표: x는 0~1, 반지름은 화면 높이 기준 */
+  bulges(faces, id, W, H) {
+    const out = [], asp = W / H;
+    for (const fr of faces) {
+      const P = fr.P, N = (i) => ({ x: P[i].x / W, y: P[i].y / H }), mid = (a, b) => ({ x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 });
+      const fw = fr.s / H, eL = P[468] ? N(468) : mid(N(33), N(133)), eR = P[473] ? N(473) : mid(N(362), N(263)), ed = Math.hypot((eL.x - eR.x) * asp, eL.y - eR.y);
+      const add = (p, r, s) => { if (out.length < 12) out.push([p.x, p.y, Math.max(0.01, r), s]); };
+      switch (id) {
+        case "bigeyes": add(eL, ed * 0.6, 0.42); add(eR, ed * 0.6, 0.42); break;
+        case "alien": add(eL, ed * 0.62, 0.5); add(eR, ed * 0.62, 0.5); add(N(151), fw * 0.75, 0.32); add(N(152), fw * 0.5, -0.55); break;
+        case "bignose": add(N(4), fw * 0.32, 0.6); break;
+        case "bigmouth": add(mid(N(13), N(14)), fw * 0.36, 0.55); break;
+        case "chubby": add(N(50), fw * 0.36, 0.45); add(N(280), fw * 0.36, 0.45); break;
+        case "slim": add(N(132), fw * 0.42, -0.4); add(N(361), fw * 0.42, -0.4); add(N(152), fw * 0.35, -0.2); break;
+        case "bighead": add(N(168), fw * 1.05, 0.42); break;
+        case "tinyface": add(N(168), fw * 0.95, -0.55); break;
+      }
+    }
+    return out;
+  },
+  draw(src, faces, def, now) {
+    if (!this.ok()) return false;
+    const gl = this.g, canvas = $("fxGLView"), sw = src.videoWidth || src.width, sh = src.videoHeight || src.height;
+    const s = Math.min(1, this.maxW / sw), w = Math.round(sw * s), h = Math.round(sh * s);
+    if (gl.isContextLost()) { this.lost = true; return false; }
+    if (canvas.width !== w || canvas.height !== h) { canvas.width = w; canvas.height = h; }
+    const t0 = performance.now();
+    gl.viewport(0, 0, w, h);
+    try { gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGB, gl.RGB, gl.UNSIGNED_BYTE, src); } catch (e) { return false; }
+    const U = this.U, asp = sw / sh;
+    gl.uniform1i(U.t, 0); gl.uniform2f(U.px, 1.5 / w, 1.5 / h); gl.uniform1f(U.asp, asp); gl.uniform1f(U.tm, (now || 0) / 1000);
+    const bl = def.cat === "face" ? this.bulges(faces, def.id, sw, sh) : [], arr = new Float32Array(48);
+    bl.forEach((b, i) => arr.set(b, i * 4)); gl.uniform4fv(U.B, arr); gl.uniform1i(U.nb, bl.length);
+    /* 거울 효과는 첫 번째 얼굴을 따라감 (얼굴이 없으면 화면 가운데) */
+    let cx = 0.5, cy = 0.5, R = 0.42;
+    /* 가장 크게(가까이) 보이는 얼굴을 따라감 */
+    const main = faces.reduce((a, f) => (!a || f.s > a.s * 1.15 ? f : a), null);
+    if (main) { const p = main.P[168]; cx = p.x / sw; cy = p.y / sh; R = Math.max(0.25, Math.min(0.6, main.s / sh * 1.25)); }
+    if (def.g === 7) { cx = 0.5; cy = 0.5; R = 0.75; }
+    gl.uniform1i(U.gm, def.g || 0); gl.uniform4f(U.G, cx, cy, R, 1); gl.uniform1i(U.cm, def.c || 0);
+    gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
+    const dt = performance.now() - t0; this.slow = dt > 25 ? (this.slow || 0) + 1 : 0; if (this.slow > 20 && this.maxW > 960) { this.maxW = 960; this.slow = 0; }
+    return true;
+  }
+};
 
 /* 카운트다운 숫자: 톡 튀어나오는 효과 + 둥근 줄 */
 function setCount(n) {
@@ -2163,7 +2532,7 @@ ENTER.shoot = async () => {
     $("shootMini").classList.remove("dim");
     if (still && i < total - 1 && poseVoiceKind()) reactP = playPose("react" + pad2(Math.floor(Math.random() * POSE_REACTS)));
     if (still) {
-      const thumb = downscale(still, 800), fxThumb = fx ? downscale(fx, 800) : null, shot = { still, thumb, fx, fxThumb, live };
+      const thumb = downscale(still, 800), fxThumb = fx ? downscale(fx, 800) : null, shot = { still, thumb, fx, fxThumb, live, nb: FX.glColor() };   /* 색 효과 사진은 뽀샤시 보정을 하지 않음 */
       let idx;
       if (retakeOf != null) {
         /* 예전 사진 지우고 그 자리에 새 사진 (필터 저장본도 새로) */
@@ -3140,7 +3509,9 @@ async function runChecks() {
   await step("facefx", async () => {
     if (!S.faceFx) return ["skip", "관리자 설정에서 꺼 둠"];
     await ckTimeout((async () => { await FX.load(); })(), 25000, "불러오는 데 너무 오래 걸려요").catch(() => {});
-    return FX.lm ? ["ok", "준비됨"] : ["warn", "얼굴 효과를 불러오지 못했어요 → 효과 없이 촬영"];
+    const glOk = FXGL.ok(), n = FX_LIST.length - 1;
+    if (!FX.lm) return ["warn", "얼굴 인식을 불러오지 못했어요 → " + (glOk ? "거울·색 효과만 쓸 수 있어요" : "효과 없이 촬영")];
+    return glOk ? ["ok", "효과 " + n + "가지 준비됨 (얼굴 인식 + GPU 효과)"] : ["warn", "GPU 효과(얼굴 변형·거울·색)를 쓸 수 없어요 → 얼굴 장식만 가능"];
   });
   let info = null;
   await step("app", async () => {
