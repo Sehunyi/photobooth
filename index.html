@@ -66,7 +66,7 @@ button:focus-visible { outline: 3px solid var(--yellow); outline-offset: 2px; }
 .label { font-family: var(--display); font-size: 22px; color: var(--purple-deep); }
 
 .big { font-family: var(--display); font-size: 28px; padding: 18px 44px; border-radius: 999px; background: var(--purple); color: #fff; box-shadow: 0 4px 0 var(--purple-deep); }
-.big:active { transform: translateY(2px); box-shadow: 0 2px 0 var(--purple-deep); }
+.big:active { box-shadow: 0 2px 0 var(--purple-deep); }
 .big.gray { background: #9a92a4; box-shadow: 0 4px 0 #6f6878; }
 .big.yellow { background: var(--yellow); color: var(--purple-deep); box-shadow: 0 4px 0 #c99d0e; }
 .big:disabled { opacity: .4; }
@@ -269,11 +269,47 @@ button:focus-visible { outline: 3px solid var(--yellow); outline-offset: 2px; }
   #printArea img { display: block; width: 100%; height: auto; margin: 0; break-after: page; page-break-after: always; }
   #printArea img:last-child { break-after: auto; page-break-after: auto; }
 }
+/* 화면 전환: 앞으로 가면 오른쪽에서, 뒤로 가면 왼쪽에서 살짝 밀려 들어옴 (transform·opacity만 써서 가볍게) */
+.screen.inFwd { animation: inFwd .32s cubic-bezier(.2,.8,.2,1) both; }
+.screen.inBack { animation: inBack .32s cubic-bezier(.2,.8,.2,1) both; }
+.screen.inFade { animation: inFade .4s ease both; }
+@keyframes inFwd { from { opacity: 0; transform: translateX(48px); } to { opacity: 1; transform: none; } }
+@keyframes inBack { from { opacity: 0; transform: translateX(-48px); } to { opacity: 1; transform: none; } }
+@keyframes inFade { from { opacity: 0; transform: scale(.985); } to { opacity: 1; transform: none; } }
+/* 단계 표시 (프레임 → 촬영 → 고르기 → 꾸미기 → 인쇄) */
+#stepDots { position: fixed; top: calc(env(safe-area-inset-top, 0px) + 4px); left: 50%; transform: translateX(-50%); display: flex; gap: 6px; z-index: 40; pointer-events: none; }
+#stepDots span { font-family: var(--display); font-size: 14px; padding: 3px 10px; border-radius: 999px; background: rgba(107,61,168,.08); color: rgba(60,40,90,.45); transition: background .3s, color .3s; }
+#stepDots span.done { background: rgba(107,61,168,.18); color: var(--purple); }
+#stepDots span.on { background: var(--purple); color: #fff; }
+.head { padding-top: 30px !important; }
+/* 카운트다운: 숫자가 톡 튀어나오고, 둥근 줄이 1초 동안 줄어듦 */
+.camFrame .num.pop { animation: numPop .9s cubic-bezier(.2,1.4,.4,1) both; }
+@keyframes numPop { 0% { transform: scale(1.9); opacity: 0; } 25% { opacity: 1; } 100% { transform: scale(1); opacity: 1; } }
+.cdRing { position: absolute; left: 50%; top: 50%; width: 260px; height: 260px; margin: -130px 0 0 -130px; pointer-events: none; }
+.cdRing circle { fill: none; stroke: rgba(255,255,255,.85); stroke-width: 10; stroke-linecap: round; stroke-dasharray: 754; stroke-dashoffset: 0; transform: rotate(-90deg); transform-origin: 50% 50%; filter: drop-shadow(0 2px 6px rgba(0,0,0,.35)); }
+.cdRing.run circle { animation: ring 1s linear both; }
+@keyframes ring { to { stroke-dashoffset: 754; } }
+/* 찍은 사진이 잠깐 보였다가 아래 줄로 쏙 */
+.shotFly { position: absolute; inset: 0; z-index: 4; pointer-events: none; border-radius: 20px; overflow: hidden; box-shadow: 0 10px 40px rgba(0,0,0,.5); }
+.shotFly canvas { width: 100%; height: 100%; object-fit: cover; display: block; }
+.shotFly.go { animation: fly .85s cubic-bezier(.55,0,.35,1) forwards; }
+@keyframes fly { 0% { transform: scale(1); opacity: 1; } 45% { transform: scale(.94); opacity: 1; } 100% { transform: translate(var(--fx, 0px), var(--fy, 300px)) scale(.12); opacity: .2; } }
+.thumbs .slot { width: 96px; height: 72px; border-radius: 8px; flex: none; background: rgba(255,255,255,.08); border: 2px dashed rgba(255,255,255,.25); display: grid; place-items: center; color: rgba(255,255,255,.45); font-family: var(--display); font-size: 22px; overflow: hidden; }
+.thumbs .slot.filled { border: 0; animation: slotIn .35s ease both; }
+.thumbs .slot.filled canvas { width: 100%; height: 100%; object-fit: cover; }
+@keyframes slotIn { from { transform: scale(.6); opacity: 0; } to { transform: none; opacity: 1; } }
+/* 누르면 살짝 눌리는 느낌 */
+button { transition: transform .08s ease; }
+button:active:not(:disabled) { transform: scale(.96); }
+.big:active:not(:disabled) { transform: translateY(2px) scale(.98); }
+#confetti { position: fixed; inset: 0; pointer-events: none; z-index: 45; }
 @media (prefers-reduced-motion: reduce) { * { animation: none !important; transition: none !important; } }
 </style>
 <style id="pageSize">@page { size: 100mm 148mm; margin: 0; }</style>
 </head>
 <body>
+<div id="stepDots" hidden><span>프레임</span><span>촬영</span><span>고르기</span><span>꾸미기</span><span>인쇄</span></div>
+<canvas id="confetti" hidden></canvas>
 
 <!-- 1. 대기 화면 -->
 <section class="screen" id="s-attract">
@@ -310,6 +346,7 @@ button:focus-visible { outline: 3px solid var(--yellow); outline-offset: 2px; }
       <video id="video" playsinline muted autoplay></video>
       <canvas id="beautyView" hidden></canvas>
       <canvas id="fxCanvas"></canvas>
+      <svg class="cdRing" id="cdRing" viewBox="0 0 260 260" hidden><circle cx="130" cy="130" r="120"/></svg>
       <div class="num" id="countNum"></div>
       <div class="poseTip" id="poseTip" hidden></div>
       <button class="quickShot" id="quickShot" hidden>⚡ 바로 찍기</button>
@@ -706,6 +743,8 @@ function releaseSession() {
   if (typeof PG !== "undefined" && PG.layers) { ["blank", "y", "m", "c"].forEach((k) => freeCanvas(PG.layers[k])); PG.layers = null; }
   while (objectURLs.length) { try { URL.revokeObjectURL(objectURLs.pop()); } catch (e) {} }
   $("shootThumbs").querySelectorAll("canvas").forEach(freeCanvas);
+  ["doneImg", "bigPhoto", "printPreview"].forEach((k) => { const e = $(k); if (e) e.removeAttribute("src"); });
+  const lv = $("liveVideo"); if (lv) { try { lv.pause(); lv.removeAttribute("src"); lv.load(); } catch (e) {} }
 }
 /* 그림이 비었는지 검사 (작게 줄여서 밝기 차이·투명도 확인) */
 function looksBlank(src) {
@@ -728,7 +767,9 @@ function blobImageOK(blob, w, h) {
     im.src = u;
   });
 }
+let sessionId = 0;
 function resetSession() {
+  sessionId++;
   releaseSession();
   hintShown = false;
   Object.assign(session, { copies: 1, layout: "strip4", frame: 0, font: (FONT_BY[S.font] ? S.font : "jua"), shots: [], slots: [null, null, null, null], active: 0,
@@ -1045,6 +1086,19 @@ const LIVE_BEAUTY = {
   },
   stop() { cancelAnimationFrame(this.raf); this.raf = null; const v = $("video"); if (v) v.style.opacity = ""; const cv = $("beautyView"); if (cv) cv.hidden = true; }
 };
+/* 화면 미리보기용 작은 보정본 (480px) — 필터 계산이 4배 빨라짐 */
+function shotPrev(i) {
+  const sh = session.shots[i]; if (!sh) return null;
+  const lvl = RETOUCH[session.retouch] ? session.retouch : "off", k = lvl + ":prev";
+  sh.rt = sh.rt || {};
+  if (!sh.rt[k]) sh.rt[k] = downscale(shotImg(i, "thumb"), 480);
+  return sh.rt[k];
+}
+/* 보정 단계를 바꾸면 다른 단계의 저장본은 지워 메모리 확보 */
+function dropOtherRetouch(keep) {
+  session.shots.forEach((sh) => { if (!sh.rt) return; Object.keys(sh.rt).forEach((k) => { if (!k.startsWith(keep + ":")) { freeCanvas(sh.rt[k]); delete sh.rt[k]; } }); });
+  Object.keys(session.filtered).forEach((k) => { if (!k.startsWith(keep + ":")) { freeCanvas(session.filtered[k]); delete session.filtered[k]; } });
+}
 /* 사진 한 장의 보정본 (+ 얼굴 효과 겹치기). 한 번 만들면 저장해 두고 다시 씀 */
 function shotImg(i, kind) {
   const sh = session.shots[i]; if (!sh) return null;
@@ -1223,10 +1277,21 @@ const TIMEOUTS = {
   deco: () => go("print"),
   done: () => goHome()
 };
+const FLOW = ["attract", "frame", "shoot", "select", "deco", "print", "printing", "done"];
+const STEP_OF = { frame: 0, shoot: 1, select: 2, deco: 3, print: 4, printing: 4, done: 4 };
 function go(name) {
   clearInterval(stepTimer); stepTimer = null;
-  document.querySelectorAll(".screen").forEach((s) => { s.hidden = s.id !== "s-" + name; });
+  const from = typeof current === "string" ? FLOW.indexOf(current) : -1, to = FLOW.indexOf(name);
+  document.querySelectorAll(".screen").forEach((s) => {
+    const on = s.id === "s-" + name; s.hidden = !on;
+    s.classList.remove("inFwd", "inBack", "inFade");
+    if (on) { void s.offsetWidth; s.classList.add(name === "attract" || from < 0 ? "inFade" : to >= from ? "inFwd" : "inBack"); }
+  });
   current = name;
+  /* 단계 표시 */
+  const st = STEP_OF[name], dots = $("stepDots");
+  dots.hidden = st == null || name === "shoot";
+  if (st != null) dots.querySelectorAll("span").forEach((d, i) => { d.classList.toggle("on", i === st && name !== "done"); d.classList.toggle("done", i < st || name === "done"); });
   const scr = $("s-" + name), t = scr.querySelector("[data-timer]");
   if (t) {
     const secs = (name === "done" || S.timers) ? TIMES[name] : 0;
@@ -1234,6 +1299,7 @@ function go(name) {
     if (secs) {
       let left = secs; t.textContent = left; t.classList.remove("low");
       stepTimer = setInterval(() => {
+        if (nativeBusy || document.querySelector(".modal:not([hidden])")) return;   /* 창이 떠 있는 동안은 시간 멈춤 */
         left--; t.textContent = Math.max(0, left); t.classList.toggle("low", left <= 10);
         if (left <= 0) { clearInterval(stepTimer); stepTimer = null; if (current === name) TIMEOUTS[name](); }
       }, 1000);
@@ -1242,10 +1308,12 @@ function go(name) {
   if (ENTER[name]) ENTER[name]();
 }
 /* 공용 확인 창: ask("제목", "설명", [{t:"글", v:값, cls:"gray"}]) → 누른 버튼의 값 */
-function ask(title, msg, btns) {
+function ask(title, msg, btns, timeoutSec, fallback) {
   return new Promise((res) => {
+    let t = null;
+    if (timeoutSec) t = setTimeout(() => { if (!$("askModal").hidden) { $("askModal").hidden = true; res(fallback); } }, timeoutSec * 1000);
     $("askTitle").textContent = title; $("askMsg").innerHTML = msg || ""; const row = $("askBtns"); row.innerHTML = "";
-    btns.forEach((b) => { const x = el("button", "big " + (b.cls || "")); x.textContent = b.t; x.addEventListener("click", () => { $("askModal").hidden = true; res(b.v); }); row.appendChild(x); });
+    btns.forEach((b) => { const x = el("button", "big " + (b.cls || "")); x.textContent = b.t; x.addEventListener("click", () => { clearTimeout(t); $("askModal").hidden = true; res(b.v); }); row.appendChild(x); });
     $("askModal").hidden = false;
   });
 }
@@ -1253,7 +1321,7 @@ function ask(title, msg, btns) {
 document.addEventListener("click", async (e) => {
   if (!(e.target.closest && e.target.closest("[data-home]"))) return;
   if (["select", "deco", "print"].includes(current) && session.shots.length) {
-    const v = await ask("처음으로 갈까요?", "지금까지 찍은 사진과 꾸민 내용이 사라져요.", [{ t: "계속하기", v: false, cls: "gray" }, { t: "처음으로", v: true }]);
+    const v = await ask("처음으로 갈까요?", "지금까지 찍은 사진과 꾸민 내용이 사라져요.", [{ t: "계속하기", v: false, cls: "gray" }, { t: "처음으로", v: true }], 45, false);
     if (!v) return;
   }
   nativeBusy = false; goHome();
@@ -1323,19 +1391,24 @@ $("startShoot").addEventListener("click", () => go("shoot"));
 /* 촬영 횟수 = 칸 수 + 여유 컷 (네컷 6번, 여섯컷 8번, 한컷 3번) */
 function shotsNeeded() { return LAYOUTS[session.layout].slots + Math.max(0, Number(S.extra) || 0); }
 let stream = null, shootRun = 0, liveTimer = null, liveFrames = [];
+let camGen = 0;
 async function startCamera() {
   if (stream) return true;
   if (!window.isSecureContext || !navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
     throw new Error("이 주소에서는 카메라를 쓸 수 없어요. https:// 로 시작하는 주소에서 열어 주세요.");
   }
-  stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "user", width: { ideal: 1920 }, height: { ideal: 1440 } }, audio: false });
+  const g = ++camGen;
+  const st = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "user", width: { ideal: 1920 }, height: { ideal: 1440 } }, audio: false });
+  /* 카메라를 여는 사이 촬영 화면을 떠났으면 바로 끔 (카메라가 계속 켜져 있지 않게) */
+  if (g !== camGen || current !== "shoot") { st.getTracks().forEach((t) => t.stop()); return false; }
+  stream = st;
   const v = $("video"); v.srcObject = stream; await v.play().catch(() => {});
   for (let i = 0; i < 50 && !v.videoWidth; i++) await sleep(100);
   stream.getVideoTracks().forEach((t) => { t.onended = () => { if (current === "shoot") restartCamera(); }; });
   lastFrameAt = performance.now(); watchFrames(); startWatchdog();
   return true;
 }
-function stopCamera() { if (typeof FX !== "undefined") FX.stop(); if (typeof LIVE_BEAUTY !== "undefined") LIVE_BEAUTY.stop(); stopWatchdog(); if (stream) { stream.getTracks().forEach((t) => t.stop()); stream = null; $("video").srcObject = null; } }
+function stopCamera() { camGen++; if (typeof FX !== "undefined") FX.stop(); if (typeof LIVE_BEAUTY !== "undefined") LIVE_BEAUTY.stop(); stopWatchdog(); if (stream) { stream.getTracks().forEach((t) => t.stop()); stream = null; $("video").srcObject = null; } }
 
 /* ── 라이브 화면 멈춤 방지 ──
    아이패드에서 소리 재생 등으로 카메라 영상이 멈추면(일시정지·프레임 정지) 자동으로 다시 재생하고,
@@ -1493,7 +1566,7 @@ const FX = {
   start() {
     cancelAnimationFrame(this.raf); let last = 0;
     /* (성능) 얼굴 찾기는 1초에 약 20번만 */
-    const loop = (now) => { if (current !== "shoot") return; if (now - last > 48) { last = now; this.detectNow(); } this.raf = requestAnimationFrame(loop); };
+    const loop = (now) => { if (current !== "shoot" || !stream) { this.raf = null; return; } if (now - last > 48) { last = now; this.detectNow(); } this.raf = requestAnimationFrame(loop); };
     this.raf = requestAnimationFrame(loop);
   },
   stop() { cancelAnimationFrame(this.raf); this.raf = null; this.faces = []; this.clear(); },
@@ -1656,9 +1729,38 @@ function drawFaceFx(ctx, P, id, t) {
   ctx.restore();
 }
 
+/* 카운트다운 숫자: 톡 튀어나오는 효과 + 둥근 줄 */
+function setCount(n) {
+  const num = $("countNum"), ring = $("cdRing");
+  num.textContent = n; num.classList.remove("pop"); ring.classList.remove("run");
+  if (n === "" || n == null) { ring.hidden = true; return; }
+  void num.offsetWidth; num.classList.add("pop"); ring.hidden = false; ring.classList.add("run");
+}
+/* 찍은 사진이 화면에 잠깐 보였다가 아래 칸으로 날아감 */
+function flyShot(img, slot) {
+  return new Promise((res) => {
+    const frame = $("camFrame"), box = el("div", "shotFly"), c = makeCanvas(img.width, img.height);
+    c.getContext("2d").drawImage(img, 0, 0); box.appendChild(c); frame.appendChild(box);
+    const fr = frame.getBoundingClientRect();
+    if (slot) { const r = slot.getBoundingClientRect(); box.style.setProperty("--fx", (r.left + r.width / 2 - (fr.left + fr.width / 2)) + "px"); box.style.setProperty("--fy", (r.top + r.height / 2 - (fr.top + fr.height / 2)) + "px"); }
+    requestAnimationFrame(() => box.classList.add("go"));
+    setTimeout(() => { freeCanvas(c); box.remove(); res(); }, 880);
+  });
+}
+/* 카메라·촬영 실패: 다시 시도 / 처음으로 (90초 동안 아무도 안 누르면 처음으로) */
+let camErrTimer = null;
+function showCamError(msg) {
+  const box = $("camErr"); box.hidden = false; box.innerHTML = "";
+  box.appendChild(el("div", null, escapeHtml(msg)));
+  const row = el("div", "row"); row.style.marginTop = "18px"; row.style.justifyContent = "center";
+  const again = el("button", "big", "다시 시도"), home = el("button", "big gray", "처음으로");
+  again.onclick = () => { clearTimeout(camErrTimer); go("shoot"); }; home.onclick = () => { clearTimeout(camErrTimer); goHome(); };
+  row.appendChild(home); row.appendChild(again); box.appendChild(row);
+  clearTimeout(camErrTimer); camErrTimer = setTimeout(() => { if (current === "shoot" && !$("camErr").hidden) goHome(); }, 90000);
+}
 /* 기다리기 (⚡바로 찍기를 누르면 바로 끝남) */
 let skipNap = null, cdJump = false;
-function nap(ms) { return new Promise((res) => { const t = setTimeout(done, ms); function done() { clearTimeout(t); skipNap = null; res(); } skipNap = done; }); }
+function nap(ms) { return new Promise((res) => { const t = setTimeout(done, ms); function done() { clearTimeout(t); if (skipNap === done) skipNap = null; res(); } skipNap = done; }); }
 $("quickShot").addEventListener("click", () => { cdJump = true; if (skipNap) skipNap(); });
 /* 포즈 추천 (네컷 포즈 앱·포토부스에서 많이 하는 포즈) */
 const POSES = ["브이 ✌️", "손하트 🫶", "볼 하트 🥰", "꽃받침 🌼", "깜짝 놀란 표정 😲", "윙크 😉", "엄지 척 👍", "고양이 손 🐱", "메롱 😛", "볼 빵빵 🐡",
@@ -1669,15 +1771,19 @@ ENTER.shoot = async () => {
   const run = ++shootRun;
   releaseSession();
   session.shots = []; session.slots = new Array(LAYOUTS[session.layout].slots).fill(null); session.active = 0; session.filtered = {};
-  $("shootThumbs").innerHTML = ""; $("countNum").textContent = ""; $("camErr").hidden = true; $("camGuide").hidden = false;
+  $("shootThumbs").innerHTML = ""; $("countNum").textContent = ""; $("cdRing").hidden = true; $("camErr").hidden = true; $("camGuide").hidden = false;
   const total = shotsNeeded();
   $("shotCount").textContent = "1 / " + total;
+  /* 아래 줄에 찍을 칸을 미리 보여 주고 하나씩 채움 (몇 장 남았는지 한눈에) */
+  for (let k = 0; k < total; k++) { const d = el("div", "slot"); d.textContent = k + 1; $("shootThumbs").appendChild(d); }
   requestAnimationFrame(layoutCamFrame);
-  try { await startCamera(); } catch (e) {
-    $("camErr").hidden = false;
-    $("camErr").textContent = (e && e.name === "NotAllowedError") ? "카메라가 허용되지 않았어요. 사파리 주소창의 ‘가가’ 메뉴 → 웹사이트 설정 → 카메라를 ‘허용’으로 바꿔 주세요." : (e.message || "카메라를 열 수 없어요.");
+  let camOk = false;
+  try { camOk = await startCamera(); } catch (e) {
+    if (run !== shootRun) return;
+    showCamError((e && e.name === "NotAllowedError") ? "카메라가 허용되지 않았어요. 설정에서 카메라를 ‘허용’으로 바꿔 주세요." : (e.message || "카메라를 열 수 없어요."));
     return;
   }
+  if (!camOk || run !== shootRun) return;
   layoutCamFrame();
   buildBeautyBar(); LIVE_BEAUTY.start();
   FX.drawBar(); FX.start();
@@ -1698,41 +1804,47 @@ ENTER.shoot = async () => {
       if (cdJump && n > 3) n = 3;
       cdJump = false;
       $("quickShot").hidden = n <= 3;
-      $("countNum").textContent = n; if (n === 2 && cd > 2) startLive();
+      setCount(n); if (n === 2 && cd > 2) startLive();
       if (n <= 3 && S.voice) say(COUNT_KEYS[n]);
       else beep(n <= 3);
       if (n > 3) await nap(1000); else await sleep(1000);
     }
     $("quickShot").hidden = true; $("poseTip").hidden = true;
     if (run !== shootRun) { stopLive(); return; }
-    $("countNum").textContent = "";
+    setCount("");
     await ensureLive(2500); if (run !== shootRun) { stopLive(); return; }
     $("flash").classList.add("on"); shutterSound();
     FX.detectNow(true);
     let still = grabFrame(1600);
     for (let tries = 0; still && looksBlank(still) && tries < 3; tries++) { freeCanvas(still); await ensureLive(1500); still = grabFrame(1600); }   /* 검은 화면이 찍히면 다시 */
-    const fx = still ? grabFrame(1600, "fx") : null;
+    const fx = still ? grabFrame(1024, "fx") : null;
     const live = stopLive();
     await sleep(160); $("flash").classList.remove("on");
+    if (run !== shootRun) { freeCanvas(still); freeCanvas(fx); (live || []).forEach(freeCanvas); return; }
     if (still) {
       const thumb = downscale(still, 800), fxThumb = fx ? downscale(fx, 800) : null;
       session.shots.push({ still, thumb, fx, fxThumb, live });
       const sm = shotImg(session.shots.length - 1, "thumb");
-      const t = makeCanvas(sm.width, sm.height); t.getContext("2d").drawImage(sm, 0, 0); $("shootThumbs").appendChild(t);
+      const t = makeCanvas(sm.width, sm.height); t.getContext("2d").drawImage(sm, 0, 0);
+      const slot = $("shootThumbs").children[session.shots.length - 1];
+      await flyShot(sm, slot);
+      if (slot) { slot.textContent = ""; slot.classList.add("filled"); slot.appendChild(t); slot.scrollIntoView({ inline: "nearest", block: "nearest" }); }
     }
-    await sleep(600);
+    await sleep(250);
   }
   $("quickShot").hidden = true; $("poseTip").hidden = true;
   if (run !== shootRun) return;
-  stopCamera(); go("select");
+  stopCamera();
+  if (!session.shots.length) { showCamError("사진이 찍히지 않았어요. 카메라를 확인하고 다시 시도해 주세요."); return; }   /* 빈 사진으로 인쇄되지 않게 */
+  go("select");
 };
 $("stopShoot").addEventListener("click", async () => {
   shootRun++; stopLive(); stopCamera(); $("quickShot").hidden = true; $("poseTip").hidden = true;
-  const v = await ask("촬영을 멈췄어요", "어떻게 할까요?", [{ t: "처음으로", v: "home", cls: "gray" }, { t: "프레임 다시 고르기", v: "frame", cls: "gray" }, { t: "처음부터 다시 찍기", v: "shoot" }]);
+  const v = await ask("촬영을 멈췄어요", "어떻게 할까요?", [{ t: "처음으로", v: "home", cls: "gray" }, { t: "프레임 다시 고르기", v: "frame", cls: "gray" }, { t: "처음부터 다시 찍기", v: "shoot" }], 60, "home");
   if (v === "home") goHome(); else go(v);
 });
 $("selBack").addEventListener("click", async () => {
-  const v = await ask("다시 찍을까요?", "지금 찍은 사진은 지워지고 처음부터 다시 찍어요.", [{ t: "아니요", v: false, cls: "gray" }, { t: "다시 찍기", v: true }]);
+  const v = await ask("다시 찍을까요?", "지금 찍은 사진은 지워지고 처음부터 다시 찍어요.", [{ t: "아니요", v: false, cls: "gray" }, { t: "다시 찍기", v: true }], 45, false);
   if (v) go("shoot");
 });
 window.addEventListener("resize", () => { if (current === "shoot") layoutCamFrame(); if (current === "frame") drawFramePreview(); if (current === "select") drawSelect(); if (current === "deco") drawDeco(); });
@@ -1741,8 +1853,8 @@ window.addEventListener("resize", () => { if (current === "shoot") layoutCamFram
 function slotPhotos(useFiltered) {
   return session.slots.map((s) => {
     if (s == null || !session.shots[s]) return null;
-    if (useFiltered && session.filter !== "original") { const k = fkey(s, session.filter); return session.filtered[k] || shotImg(s, "thumb"); }
-    return shotImg(s, "thumb");
+    if (useFiltered && session.filter !== "original") { const k = fkey(s, session.filter); return session.filtered[k] || shotPrev(s); }
+    return shotPrev(s);
   });
 }
 function drawSelect() {
@@ -1754,11 +1866,11 @@ function drawSelect() {
     h.addEventListener("click", () => { session.active = i; drawSelect(); }); stage.appendChild(h);
   });
   const list = $("shotList"), a = cellAspect(S.paper, session.layout);
-  list.innerHTML = "";
+  list.querySelectorAll("canvas").forEach(freeCanvas); list.innerHTML = "";
   session.shots.forEach((sh, i) => {
     const used = session.slots.indexOf(i);
     const b = el("button", "shot" + (used >= 0 ? " used" : "")); b.style.aspectRatio = String(a);
-    const im = shotImg(i, "thumb"), t = makeCanvas(im.width, im.height); t.getContext("2d").drawImage(im, 0, 0); b.appendChild(t);
+    const im = shotPrev(i), t = makeCanvas(im.width, im.height); t.getContext("2d").drawImage(im, 0, 0); b.appendChild(t);
     if (used >= 0) b.appendChild(el("b", null, String(used + 1)));
     b.addEventListener("click", () => tapShot(i)); list.appendChild(b);
   });
@@ -1782,14 +1894,20 @@ function autoFill() {
 }
 ENTER.select = () => { say("select"); requestAnimationFrame(drawSelect); };
 $("autoFill").addEventListener("click", () => { autoFill(); drawSelect(); });
-$("selNext").addEventListener("click", () => go("deco"));
+$("selNext").addEventListener("click", () => {
+  session.shots.forEach((sh, i) => { if (session.slots.indexOf(i) < 0 && sh.live && sh.live.length) { sh.live.forEach(freeCanvas); sh.live = []; } });
+  go("deco");
+});
 
 /* ───────── 6. 꾸미기 ───────── */
 let selectedSticker = null, textColor = 0, hintShown = false;
 function fkey(s, id) { return [session.retouch, id, s].join(":"); }
 function ensureFiltered(id) {
+  /* 지금 필터가 아닌 저장본은 지움 (아이들이 필터를 다 눌러 봐도 메모리가 쌓이지 않게) */
+  const keepPre = session.retouch + ":" + id + ":";
+  Object.keys(session.filtered).forEach((k) => { if (!k.startsWith(keepPre)) { freeCanvas(session.filtered[k]); delete session.filtered[k]; } });
   if (id === "original") return;
-  session.slots.forEach((s) => { if (s == null) return; const k = fkey(s, id); if (!session.filtered[k]) session.filtered[k] = applyFilter(shotImg(s, "thumb"), id); });
+  session.slots.forEach((s) => { if (s == null) return; const k = fkey(s, id); if (!session.filtered[k]) session.filtered[k] = applyFilter(shotPrev(s), id); });
 }
 function drawDeco() {
   ensureFiltered(session.filter);
@@ -1799,21 +1917,32 @@ function drawDeco() {
 }
 function buildRetouch() {
   seg($("retouchSeg"), Object.keys(RETOUCH), () => session.retouch, (v) => {
-    session.retouch = v; $("decoStage").style.opacity = ".6";
+    session.retouch = v; dropOtherRetouch(v); $("decoStage").style.opacity = ".6";
     setTimeout(() => { buildFilters(); drawDeco(); $("decoStage").style.opacity = ""; }, 30);
   }, (v) => RETOUCH[v].name);
 }
-function buildFilters() {
-  const list = $("filterList"); list.innerHTML = "";
+/* 필터 미리보기: 버튼은 바로 보여 주고, 작은 그림은 한 장씩 나눠서 그림 (꾸미기 화면이 바로 뜨게) */
+let filterBuildTok = 0;
+async function buildFilters() {
+  const tok = ++filterBuildTok, list = $("filterList");
+  list.querySelectorAll("canvas").forEach(freeCanvas); list.innerHTML = "";
   const first = slotPhotos(false).find((x) => x);
-  const small = first ? downscale(first, 260) : null;
+  const small = first ? downscale(first, 220) : null;
+  const slots = [];
   FILTERS.forEach((f) => {
     const b = el("button", "flt" + (session.filter === f.id ? " on" : ""));
-    if (small) b.appendChild(applyFilter(small, f.id) === small ? (() => { const c = makeCanvas(small.width, small.height); c.getContext("2d").drawImage(small, 0, 0); return c; })() : applyFilter(small, f.id));
+    const c = small ? makeCanvas(small.width, small.height) : makeCanvas(4, 3); b.appendChild(c); slots.push([f.id, c]);
     b.appendChild(el("span", null, f.name));
     b.addEventListener("click", () => { session.filter = f.id; list.querySelectorAll(".flt").forEach((x) => x.classList.toggle("on", x === b)); drawDeco(); });
     list.appendChild(b);
   });
+  if (!small) return;
+  for (const [id, c] of slots) {
+    if (tok !== filterBuildTok || current !== "deco") break;
+    const g = applyFilter(small, id); c.getContext("2d").drawImage(g, 0, 0); if (g !== small) freeCanvas(g);
+    await new Promise((r) => requestAnimationFrame(r));
+  }
+  freeCanvas(small);
 }
 function addSticker(text, emoji) {
   const st = { id: Math.random().toString(36).slice(2), text, emoji, font: session.font, color: textColor, x: 0.5 + (Math.random() - 0.5) * 0.3, y: 0.45 + (Math.random() - 0.5) * 0.4, scale: emoji ? 0.16 : 0.09, rot: 0 };
@@ -1893,7 +2022,7 @@ function gEnd(e) {
     G.start = null; G.drag = false; G.tap = false;
   } else { G.drag = true; G.start = gSnapshot(); }
 }
-decoArea.addEventListener("pointerup", gEnd); decoArea.addEventListener("pointercancel", gEnd);
+decoArea.addEventListener("pointerup", gEnd); decoArea.addEventListener("pointercancel", gEnd); decoArea.addEventListener("lostpointercapture", gEnd);
 document.addEventListener("gesturestart", (e) => e.preventDefault());
 $("stkTools").addEventListener("click", (e) => {
   const btn = e.target.closest("button"); const st = session.stickers.find((s) => s.id === selectedSticker); if (!btn || !st) return;
@@ -1924,6 +2053,7 @@ function buildFonts() {
   });
 }
 ENTER.deco = () => {
+  G.pts.clear(); G.start = null; G.drag = false;
   selectedSticker = null; say("deco"); buildFonts();
   /* 꾸미기를 다시 하면 인쇄용 사진도 새로 만들어야 함 */
   printTok++; freeCanvas(session.finalCanvas); session.finalCanvas = null; session.finalBlob = null; session.printFile = null; session.liveBlob = null;
@@ -1938,6 +2068,7 @@ let printTok = 0;
 function waitFrameImg(ms) {
   const f = FRAMES[session.frame]; if (!f || !f.img || frameImgReady(f)) return Promise.resolve();
   const im = FRAME_IMG[f.img];
+  if (im.complete) return Promise.resolve();
   return new Promise((res) => { const t = setTimeout(res, ms); im.addEventListener("load", () => { clearTimeout(t); res(); }, { once: true }); im.addEventListener("error", () => { clearTimeout(t); res(); }, { once: true }); });
 }
 ENTER.print = async () => {
@@ -1949,7 +2080,8 @@ ENTER.print = async () => {
   printTexts();
   if (session.finalBlob) { readyToPrint(); return; }   /* '인쇄가 안 됐어요'로 돌아온 경우 */
   await sleep(50);
-  const ok = await buildPrintImage(tok);
+  let ok = false;
+  try { ok = await buildPrintImage(tok); } catch (e) { console.warn("build", e); ok = false; }
   if (tok !== printTok || current !== "print") return;   /* 만드는 동안 다른 화면으로 갔으면 여기서 멈춤 */
   if (!ok) {
     $("printMsg").textContent = "사진을 만들지 못했어요 😢";
@@ -1958,7 +2090,7 @@ ENTER.print = async () => {
     return;
   }
   readyToPrint();
-  makeLiveVideo(baseSpec({ stickers: session.stickers }), null).catch(() => {});
+  setTimeout(() => { if (tok === printTok) makeLiveVideo(baseSpec({ stickers: session.stickers }), tok).catch(() => {}); }, 1500);
 };
 /* 사진을 칸 크기에 맞게 가운데 기준으로 잘라 한 번에 줄임 */
 function fitCell(img, w, h) {
@@ -1988,17 +2120,19 @@ async function buildPrintImage(tok) {
     }
     freeCanvas(session.finalCanvas); session.finalCanvas = null;
     const bases = session.slots.map((s) => (s == null || !session.shots[s]) ? null : shotImg(s, "still"));
-    let photos = bases.map((b) => b ? applyFilter(b, session.filter) : null);
-    /* 화질 개선: 인쇄 칸 크기에 딱 맞게 한 번만 줄이고(여러 번 늘이고 줄이지 않음) 선명하게 */
+    /* 화질 개선: 인쇄 칸 크기에 딱 맞게 한 번만 줄이고 → 필터 → 선명하게 (줄인 뒤 필터라 계산도 빠름) */
+    let photos;
     {
       const [pw, ph] = panelSize(S.paper, session.layout), cell = layoutPanel(session.layout, 0, 0, pw, ph).cells[0];
       const cw = Math.round(cell.w), chh = Math.round(cell.h);
-      photos = photos.map((ph0, i) => {
-        if (!ph0) return null;
-        const c = fitCell(ph0, cw, chh); if (S.sharpen !== false) sharpen(c, 0.45);
-        if (ph0 !== bases[i]) freeCanvas(ph0);
-        return c;
-      });
+      photos = [];
+      for (const b0 of bases) {
+        if (!b0) { photos.push(null); continue; }
+        const fit = fitCell(b0, cw, chh), g = applyFilter(fit, session.filter);
+        if (g !== fit) freeCanvas(fit);
+        if (S.sharpen !== false) sharpen(g, 0.45);
+        photos.push(g); await sleep(0);
+      }
     }
     const final = render(baseSpec({ photos, stickers: session.stickers }), 1, false);
     photos.forEach((ph) => { if (ph) freeCanvas(ph); });
@@ -2080,7 +2214,7 @@ function doPrint() {
   const f = session.printFile;
   if (f && navigator.canShare && navigator.canShare({ files: [f] })) {
     navigator.share({ files: [f], title: "네컷 사진" })
-      .then(() => { if (S.printVia === "airprint") startPrinting(); else waitReturnThenProgress(); })
+      .then(() => { if (current !== "print" || !session.finalCanvas) return; if (S.printVia === "airprint") startPrinting(); else waitReturnThenProgress(); })
       .catch((e) => {
         if (e && e.name === "AbortError") {
           $("printMsg").textContent = "인쇄가 취소됐어요";
@@ -2104,7 +2238,7 @@ function waitReturnThenProgress() {
 function printViaSafari() { $("photoModal").hidden = false; }
 $("printAlt").addEventListener("click", printViaSafari);
 $("photoClose").addEventListener("click", () => { $("photoModal").hidden = true; });
-$("photoSent").addEventListener("click", () => { $("photoModal").hidden = true; startPrinting(); });
+$("photoSent").addEventListener("click", () => { $("photoModal").hidden = true; if (current === "print" && session.finalCanvas) startPrinting(); });
 /* 인쇄 순서: (카트리지 확인) → 앱이면 고른 방법으로 / 웹이면 (처음이면 프린터 연결 안내) → 공유 창의 프린트 */
 let pendingMode = null;
 function printFlow(mode) { if (NATIVE) runNativePrint(mode || printMode()); else if (!S.printerReady) openPrinterHelp(); else doPrint(); }
@@ -2113,9 +2247,9 @@ function setPrintButtons(on) { ["printBtn", "printAltBtn", "saveBtn2"].forEach((
 async function runNativePrint(mode) {
   if (!session.finalBlob || nativeBusy) return;
   nativeBusy = true; setPrintButtons(false); $("printErr").textContent = "";
-  let r = null;
-  const jpeg = await blobToB64(session.finalBlob);
+  let r = null; const sid = sessionId, tok = printTok;
   try {
+    const jpeg = await blobToB64(session.finalBlob);
     if (mode === "sheet") {
       $("printMsg").textContent = "인쇄 창을 여는 중…";
       r = await native({ cmd: "printSheet", jpeg, paper: S.paper }, 600000);
@@ -2127,7 +2261,9 @@ async function runNativePrint(mode) {
       r = await native({ cmd: "print", jpeg, copies: nativeCopies, paper: S.paper }, 45000);
     }
   } catch (e) { r = { ok: false, error: (e && e.message) || "error" }; }
-  nativeBusy = false; setPrintButtons(true);
+  finally { nativeBusy = false; }
+  if (sid !== sessionId || tok !== printTok || current !== "print") return;   /* 그사이 다른 화면·다음 사람으로 넘어감 */
+  setPrintButtons(true);
   const err = (r && r.error) || "";
   printLog(PRINT_MODES[mode].name + " → " + (r && r.ok ? "보냄" + (r.app ? " (" + r.app + ")" : "") : (err || "실패")));
   if (r && r.ok) {
@@ -2194,7 +2330,7 @@ function makeLayers() {
   return { blank, y: mk(false, false), m: mk(false, true), c: src, w, h };
 }
 let pgReturned = false, pgPreset = 0;
-function startPrinting(returned, copies) { pgReturned = !!returned; pgPreset = copies || 0; go("printing"); }
+function startPrinting(returned, copies) { if (!session.finalCanvas) return; pgReturned = !!returned; pgPreset = copies || 0; go("printing"); }
 ENTER.printing = () => {
   PG.copies = pgPreset || 1; PG.finished = false; clearTimeout(PG.autoTimer);
   document.querySelector("#s-printing .copiesPick").hidden = !!pgPreset;
@@ -2261,14 +2397,17 @@ $("pgSkip").addEventListener("click", () => go("done"));
 $("pgRetry").addEventListener("click", () => { cancelAnimationFrame(PG.raf); clearTimeout(PG.autoTimer); go("print"); });
 
 /* 움직이는 사진: 셔터 직전 장면을 이어 붙인 짧은 영상 */
-async function makeLiveVideo(spec, stillPhotos) {
+async function makeLiveVideo(spec, tok) {
   session.liveBlob = null;
   if (typeof MediaRecorder === "undefined" || !HTMLCanvasElement.prototype.captureStream) return;
-  const lives = session.slots.map((s, i) => {
-    if (s == null || !session.shots[s]) return [];
-    const arr = session.shots[s].live.length ? session.shots[s].live : [shotImg(s, "thumb")];
-    return arr.map((f) => { const g = applyFilter(f, session.filter); return g === f ? f : g; });
-  });
+  const fresh = [], lives = [];
+  for (const s of session.slots) {
+    if (s == null || !session.shots[s]) { lives.push([]); continue; }
+    const arr = session.shots[s].live.length ? session.shots[s].live : [shotPrev(s)];
+    lives.push(arr.map((f) => { const g = applyFilter(f, session.filter); if (g !== f) fresh.push(g); return g; }));
+    await sleep(0);   /* 화면이 멈추지 않게 한 칸씩 */
+    if (tok !== printTok) { fresh.forEach(freeCanvas); return; }
+  }
   const T = 12, frames = [];
   for (let k = 0; k < T; k++) {
     const photos = lives.map((arr) => arr.length ? arr[Math.min(arr.length - 1, Math.floor(k * arr.length / T))] : null);
@@ -2286,13 +2425,27 @@ async function makeLiveVideo(spec, stillPhotos) {
   rec.start();
   for (let rep = 0; rep < 3; rep++) for (const f of loop) { octx.drawImage(f, 0, 0); await sleep(100); }
   rec.stop(); await done;
-  frames.forEach(freeCanvas); freeCanvas(out);
-  lives.forEach((arr, i) => arr.forEach((g) => { const sh = session.shots[session.slots[i]]; if (sh && sh.live.indexOf(g) < 0 && g !== sh.thumb) freeCanvas(g); }));
+  frames.forEach(freeCanvas); freeCanvas(out); fresh.forEach(freeCanvas);   /* 새로 만든 것만 지움 (저장해 둔 사진은 그대로) */
+  if (tok !== printTok) return;
   session.liveBlob = new Blob(chunks, { type: type.split(";")[0] });
   if (current === "done") showLive();
 }
 
 /* ───────── 8. 완료 ───────── */
+/* 색종이 효과 (2.5초 동안만, 끝나면 그리기 멈춤) */
+function confetti() {
+  const cv = $("confetti"); if (matchMedia && matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+  const W = cv.width = innerWidth, H = cv.height = innerHeight, ctx = cv.getContext("2d"); cv.hidden = false;
+  const cols = ["#ffd133", "#ff78a0", "#6b3da8", "#46a0e6", "#3caa64", "#ff9f40"];
+  const P = Array.from({ length: 90 }, () => ({ x: Math.random() * W, y: -20 - Math.random() * H * 0.4, vx: (Math.random() - 0.5) * 2.2, vy: 2.5 + Math.random() * 3.5, r: Math.random() * 6.28, vr: (Math.random() - 0.5) * 0.3, w: 8 + Math.random() * 8, h: 5 + Math.random() * 6, c: cols[(Math.random() * cols.length) | 0] }));
+  const t0 = performance.now();
+  const tick = (now) => {
+    const t = now - t0; ctx.clearRect(0, 0, W, H);
+    for (const p of P) { p.x += p.vx; p.y += p.vy; p.vy += 0.04; p.r += p.vr; ctx.save(); ctx.translate(p.x, p.y); ctx.rotate(p.r); ctx.globalAlpha = Math.max(0, 1 - t / 2600); ctx.fillStyle = p.c; ctx.fillRect(-p.w / 2, -p.h / 2, p.w, p.h); ctx.restore(); }
+    if (t < 2600 && current === "done") requestAnimationFrame(tick); else { ctx.clearRect(0, 0, W, H); cv.hidden = true; cv.width = 0; }
+  };
+  requestAnimationFrame(tick);
+}
 function showLive() {
   const v = $("liveVideo");
   if (session.liveBlob) { v.src = trackURL(URL.createObjectURL(session.liveBlob)); v.hidden = false; $("doneImg").hidden = true; v.play().catch(() => {}); }
@@ -2302,8 +2455,8 @@ ENTER.done = () => {
   say("done");
   $("shareErr").textContent = "";
   $("doneImg").hidden = false; $("liveVideo").hidden = true;
-  if (session.finalBlob) $("doneImg").src = trackURL(URL.createObjectURL(session.finalBlob));
-  showLive();
+  if (session.finalBlob) $("doneImg").src = trackURL(URL.createObjectURL(session.finalBlob)); else $("doneImg").removeAttribute("src");
+  showLive(); confetti();
 };
 $("shareBtn").addEventListener("click", () => shareSave($("shareErr")));
 /* 사진 저장·보내기: 공유 창(사진 앱 저장, AirDrop, 메시지 등)으로 사진 + 움직이는 영상 */
@@ -2365,7 +2518,7 @@ function openAdmin() {
   toggle($("setDate"), "showDate"); toggle($("setTimers"), "timers"); toggle($("setCassette"), "cassette");
   toggle($("setSharpen"), "sharpen"); toggle($("setFaceFx"), "faceFx"); toggle($("setPoses"), "poses");
   { const sf = $("setFont"); sf.innerHTML = ""; FONTS.forEach((f) => { const o = el("option"); o.value = f.id; o.textContent = f.name; if ((S.font || "jua") === f.id) o.selected = true; sf.appendChild(o); }); sf.onchange = () => { S.font = sf.value; session.font = sf.value; }; } toggle($("setVoice"), "voice"); toggle($("setSound"), "sound");
-  $("setDate").addEventListener("click", drawCaptionPreview);
+  if (!openAdmin.bound) { $("setDate").addEventListener("click", drawCaptionPreview); openAdmin.bound = true; }
   if (!RETOUCH[S.retouch]) S.retouch = "natural";
   seg($("setRetouch"), Object.keys(RETOUCH), () => S.retouch, (v) => { S.retouch = v; }, (v) => RETOUCH[v].name);
   $("viaRow").hidden = NATIVE; $("nativePrinterRow").hidden = !NATIVE; $("modeRow").hidden = !NATIVE; $("logRow").hidden = !NATIVE; $("printLogBox").hidden = true;

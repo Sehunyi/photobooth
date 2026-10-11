@@ -21,8 +21,12 @@ final class BoothViewController: UIViewController, WKScriptMessageHandler, WKUID
         view.backgroundColor = UIColor(red: 0.42, green: 0.24, blue: 0.66, alpha: 1.0)
 
         // 무음 모드여도 효과음·안내 목소리가 나오게
-        try? AVAudioSession.sharedInstance().setCategory(.playback, mode: .default, options: [.mixWithOthers])
-        try? AVAudioSession.sharedInstance().setActive(true)
+        // (오디오 설정은 시간이 걸릴 수 있어 화면이 멈추지 않게 백그라운드에서 — Xcode 'Hang Risk' 경고 해결)
+        DispatchQueue.global(qos: .userInitiated).async {
+            let session = AVAudioSession.sharedInstance()
+            try? session.setCategory(.playback, mode: .default, options: [.mixWithOthers])
+            try? session.setActive(true)
+        }
         // 화면이 꺼지지 않게
         UIApplication.shared.isIdleTimerDisabled = true
 

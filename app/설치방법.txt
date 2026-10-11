@@ -63,3 +63,10 @@
       (mp 폴더의 selfie_multiclass_256x256.tflite 는 지워도 됨)
  - Xcode에서 ▶ 실행
  - v1.2: 글꼴이 앱 안에 들어가서 인터넷이 없어도(셀피 다이렉트 연결 중에도) 인쇄 글씨가 그대로 나옴
+
+[업데이트할 때 (v1.3)]
+ - 맥의 PhotoBooth.swiftpm 폴더에서 아래 2개만 덮어쓰기 (frames·fonts는 v1.2 그대로)
+   1) BoothViewController.swift — Xcode의 'AVAudioSession Hang Risk' 경고 해결(소리 설정을 백그라운드에서)
+   2) Web/index.html — 화면 전환 효과, 단계 표시, 카운트다운 링, 촬영 사진 날아가는 효과, 완료 축하 효과,
+      오류 화면(다시 시도/처음으로), 메모리·속도 최적화
+ - Xcode에서 ⇧⌘K (Clean Build Folder) 후 ▶ 실행
