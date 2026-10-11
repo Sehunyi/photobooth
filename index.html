@@ -111,7 +111,7 @@ button:focus-visible { outline: 3px solid var(--yellow); outline-offset: 2px; }
 .opt.on, .copy.on, .sw.on, .flt.on { border-color: var(--purple); }
 .swatches { display: grid; grid-template-columns: repeat(auto-fill, minmax(84px, 1fr)); gap: 10px; }
 .sw { background: var(--card); border-radius: 14px; padding: 6px; border: 4px solid transparent; display: flex; flex-direction: column; align-items: center; gap: 4px; font-size: 14px; font-family: var(--body); color: var(--ink); }
-.sw canvas { width: 62px; height: 80px; border-radius: 8px; }
+.sw canvas { height: 80px; width: auto; max-width: 72px; border-radius: 8px; }
 .swHead { grid-column: 1 / -1; font-family: var(--display); font-size: 18px; color: var(--purple-deep); margin: 8px 2px 0; }
 
 /* 4. 촬영 */
@@ -347,6 +347,11 @@ button:active:not(:disabled) { transform: scale(.96); }
 .qrBox b { display: block; font-family: var(--display); font-weight: 400; font-size: 22px; color: var(--purple-deep); margin-bottom: 4px; }
 .qrBox.small b { font-size: 19px; }
 .qrBox span { font-size: 15px; color: var(--muted); line-height: 1.45; }
+.myfList { display: flex; flex-wrap: wrap; gap: 8px; margin: -2px 0 8px; flex: none; }
+.myfList:empty { display: none; }
+.myfList .chip { display: flex; align-items: center; gap: 6px; background: var(--paper); border-radius: 10px; padding: 4px 6px 4px 4px; font-size: 14px; }
+.myfList .chip img { height: 46px; border-radius: 4px; background: #ccd; }
+.myfList .chip button { color: var(--danger); font-size: 18px; padding: 0 4px; }
 details.guide { text-align: left; background: var(--paper); border-radius: 12px; padding: 10px 14px; margin: 4px 0 10px; font-size: 15px; flex: none; }
 details.guide summary { font-size: 17px; color: var(--purple-deep); cursor: pointer; }
 details.guide ol { padding-left: 20px; margin: 8px 0; line-height: 1.55; }
@@ -644,6 +649,8 @@ details.guide p { margin: 4px 0; color: var(--muted); }
     <div class="field" id="qrRow" hidden><span>휴대폰 QR 받기 <small>(같은 와이파이의 휴대폰이 QR을 찍으면 사진 저장)</small></span><button class="toggle" id="setQr" aria-label="QR 받기"></button></div>
     <div class="field" id="wifiRow" hidden><span>와이파이 이름 <small>(QR 아래 안내, 비워도 됨)</small></span><input type="text" id="setWifi" maxlength="32" placeholder="예: StrangeEnglish_5G"></div>
     <div class="field"><span>앱 켤 때 시작 점검 <small>(카메라·프린터·소리 등 자동 확인)</small></span><button class="toggle" id="setStartCheck" aria-label="시작 점검"></button></div>
+    <div class="field"><span>내 프레임 <small>(Canva 등에서 만든 그림 · 사진 자리는 흰 네모로)</small></span><span style="display:flex;gap:8px"><button class="mini" id="myfAddBtn">그림 추가</button><input type="file" id="myfFile" accept="image/png,image/jpeg,image/webp" multiple hidden></span></div>
+    <div class="myfList" id="myfList"></div>
     <div class="field"><span>오늘 이용 <small id="statLine"></small></span><span></span></div>
     <div class="field"><span>점검 · 오류 기록</span><span style="display:flex;gap:8px"><button class="mini" id="openCheckBtn">지금 점검하기</button><button class="mini" id="errLogBtn">오류 보고서</button></span></div>
     <div class="field"><span>새 비밀번호 (숫자 4자리)</span><input type="password" id="setPin" inputmode="numeric" maxlength="4"></div>
@@ -676,7 +683,7 @@ details.guide p { margin: 4px 0; color: var(--muted); }
 
 <script>
 "use strict";
-const APP_VERSION = "1.8";
+const APP_VERSION = "1.9";
 /* 손님이 쓰는 중에 생긴 오류를 기록 → 시작 점검·관리자 '오류 보고서'에서 보여 줌 (관리자가 그대로 알려 주면 고칠 수 있게) */
 function errLog(msg) {
   try {
@@ -810,13 +817,99 @@ const FRAMES = [
   { cat: "3D 캐릭터", name: "판다", base: "#eef6ea", pattern: "theme", grad: ["#f7fbf4", "#d3ead0"], stk: ["panda", "four_leaf_clover", "sparkles"], overStk: ["panda", "blossom"] },
   { cat: "3D 캐릭터", name: "스트레인지", base: "#6b3da8", pattern: "theme", grad: ["#7b4bc0", "#4a2683"], stk: ["lion", "honeybee", "crown", "star"], overStk: ["lion", "trophy"], ink: "#ffd133" }
 ];
+/* 디자인 프레임: 미리 그려 둔 그림(art 폴더, 사진 칸은 투명) + 행사 이름을 멋진 글꼴로 그 위에 씀 */
+const ART_FRAMES = [{"cat": "디자인", "name": "할리우드 필름", "key": "film", "pattern": "art", "base": "#ffffff", "art": {"strip4": {"src": "art/film_s.webp", "w": 591, "h": 1748, "rects": [[0.13, 0.04, 0.74, 0.1885], [0.13, 0.2405, 0.74, 0.1885], [0.13, 0.441, 0.74, 0.1885], [0.13, 0.6415, 0.74, 0.1885]], "cap": [0.0, 0.83, 1.0, 0.17]}, "grid4": {"src": "art/film_g.webp", "w": 1181, "h": 1748, "rects": [[0.1, 0.045, 0.3875, 0.375], [0.5125, 0.045, 0.3875, 0.375], [0.1, 0.435, 0.3875, 0.375], [0.5125, 0.435, 0.3875, 0.375]], "cap": [0.0, 0.81, 1.0, 0.19]}}, "title": {"font": "abril", "color": "#f4ecd8", "size": 0.42, "upper": true, "ls": 0.04, "date": {"font": "bebas", "color": "#e8c46a"}, "ko": "songmyung"}, "radius": 2}, {"cat": "디자인", "name": "레디 포 슛", "key": "checker", "pattern": "art", "base": "#ffffff", "art": {"strip4": {"src": "art/checker_s.webp", "w": 591, "h": 1748, "rects": [[0.1, 0.055, 0.8, 0.17125], [0.1, 0.24625, 0.8, 0.17125], [0.1, 0.4375, 0.8, 0.17125], [0.1, 0.62875, 0.8, 0.17125]], "cap": [0.0, 0.8, 1.0, 0.2]}, "grid4": {"src": "art/checker_g.webp", "w": 1181, "h": 1748, "rects": [[0.08, 0.06, 0.405, 0.36], [0.515, 0.06, 0.405, 0.36], [0.08, 0.44, 0.405, 0.36], [0.515, 0.44, 0.405, 0.36]], "cap": [0.0, 0.8, 1.0, 0.2]}}, "title": {"font": "luckiest", "color": "#1f6b4f", "size": 0.26, "upper": true, "rot": -4, "dy": -0.04, "date": {"font": "bebas", "color": "#1f6b4f", "dy": 0.02}, "ko": "bagel"}, "radius": 0}, {"cat": "디자인", "name": "굿 바이브", "key": "vibes", "pattern": "art", "base": "#ffffff", "art": {"strip4": {"src": "art/vibes_s.webp", "w": 591, "h": 1748, "rects": [[0.1, 0.045, 0.8, 0.17675], [0.1, 0.23775, 0.8, 0.17675], [0.1, 0.4305, 0.8, 0.17675], [0.1, 0.62325, 0.8, 0.17675]], "cap": [0.0, 0.8, 1.0, 0.2]}, "grid4": {"src": "art/vibes_g.webp", "w": 1181, "h": 1748, "rects": [[0.085, 0.05, 0.4, 0.366], [0.515, 0.05, 0.4, 0.366], [0.085, 0.434, 0.4, 0.366], [0.515, 0.434, 0.4, 0.366]], "cap": [0.0, 0.8, 1.0, 0.2]}}, "title": {"font": "shrikhand", "color": "#f47c48", "size": 0.36, "shadow": {"dx": 0.012, "dy": 0.012, "color": "#f26b8a"}, "stroke": {"color": "#fff6e8", "w": 0.04}, "date": {"font": "righteous", "color": "#f26b8a"}, "ko": "bagel"}, "radius": 12}, {"cat": "디자인", "name": "나이트 파티", "key": "night", "pattern": "art", "base": "#ffffff", "art": {"strip4": {"src": "art/night_s.webp", "w": 591, "h": 1748, "rects": [[0.08, 0.04, 0.84, 0.182], [0.08, 0.236, 0.84, 0.182], [0.08, 0.432, 0.84, 0.182], [0.08, 0.628, 0.84, 0.182]], "cap": [0.0, 0.81, 1.0, 0.19]}, "grid4": {"src": "art/night_g.webp", "w": 1181, "h": 1748, "rects": [[0.06, 0.045, 0.4275, 0.3745], [0.5125, 0.045, 0.4275, 0.3745], [0.06, 0.4355, 0.4275, 0.3745], [0.5125, 0.4355, 0.4275, 0.3745]], "cap": [0.0, 0.81, 1.0, 0.19]}}, "title": {"font": "lobster", "color": "#ffffff", "size": 0.5, "glow": "#ff5fd2", "date": {"font": "righteous", "color": "#ffd6fb"}, "ko": "dokdo"}, "radius": 8}, {"cat": "디자인", "name": "가을 축제", "key": "fall", "pattern": "art", "base": "#ffffff", "art": {"strip4": {"src": "art/fall_s.webp", "w": 591, "h": 1748, "rects": [[0.07, 0.04, 0.86, 0.1795], [0.07, 0.2335, 0.86, 0.1795], [0.07, 0.427, 0.86, 0.1795], [0.07, 0.6205, 0.86, 0.1795]], "cap": [0.0, 0.8, 1.0, 0.2]}, "grid4": {"src": "art/fall_g.webp", "w": 1181, "h": 1748, "rects": [[0.055, 0.045, 0.4325, 0.3695], [0.5125, 0.045, 0.4325, 0.3695], [0.055, 0.4305, 0.4325, 0.3695], [0.5125, 0.4305, 0.4325, 0.3695]], "cap": [0.0, 0.8, 1.0, 0.2]}}, "title": {"font": "abril", "color": "#b8432f", "size": 0.38, "upper": true, "date": {"font": "bebas", "color": "#8a5a2b"}, "ko": "songmyung"}, "radius": 4}, {"cat": "디자인", "name": "그라데이션", "key": "mesh", "pattern": "art", "base": "#ffffff", "art": {"strip4": {"src": "art/mesh_s.webp", "w": 591, "h": 1748, "rects": [[0.085, 0.05, 0.83, 0.174], [0.085, 0.242, 0.83, 0.174], [0.085, 0.434, 0.83, 0.174], [0.085, 0.626, 0.83, 0.174]], "cap": [0.0, 0.8, 1.0, 0.2]}, "grid4": {"src": "art/mesh_g.webp", "w": 1181, "h": 1748, "rects": [[0.07, 0.05, 0.415, 0.365], [0.515, 0.05, 0.415, 0.365], [0.07, 0.435, 0.415, 0.365], [0.515, 0.435, 0.415, 0.365]], "cap": [0.0, 0.8, 1.0, 0.2]}}, "title": {"font": "righteous", "color": "#1d1d1d", "size": 0.32, "align": "left", "x": 0.12, "date": {"font": "gowun", "color": "#1d1d1d"}, "ko": "gugi"}, "radius": 0}, {"cat": "디자인", "name": "하늘 패션", "key": "sky", "pattern": "art", "base": "#ffffff", "art": {"strip4": {"src": "art/sky_s.webp", "w": 591, "h": 1748, "rects": [[0.08, 0.045, 0.84, 0.17675], [0.08, 0.23775, 0.84, 0.17675], [0.08, 0.4305, 0.84, 0.17675], [0.08, 0.62325, 0.84, 0.17675]], "cap": [0.0, 0.8, 1.0, 0.2]}, "grid4": {"src": "art/sky_g.webp", "w": 1181, "h": 1748, "rects": [[0.065, 0.05, 0.421, 0.366], [0.514, 0.05, 0.421, 0.366], [0.065, 0.434, 0.421, 0.366], [0.514, 0.434, 0.421, 0.366]], "cap": [0.0, 0.8, 1.0, 0.2]}}, "title": {"font": "rubikmono", "color": "#f7f34a", "size": 0.34, "upper": true, "shadow": {"dx": 0.006, "dy": 0.006, "color": "#5aa0e0"}, "date": {"font": "righteous", "color": "#ffffff"}, "ko": "blackhan"}, "radius": 0}, {"cat": "디자인", "name": "굿바이 파티", "key": "disco", "pattern": "art", "base": "#ffffff", "art": {"strip4": {"src": "art/disco_s.webp", "w": 591, "h": 1748, "rects": [[0.08, 0.04, 0.84, 0.173], [0.08, 0.229, 0.84, 0.173], [0.08, 0.418, 0.84, 0.173], [0.08, 0.607, 0.84, 0.173]], "cap": [0.0, 0.78, 1.0, 0.22]}, "grid4": {"src": "art/disco_g.webp", "w": 1181, "h": 1748, "rects": [[0.065, 0.045, 0.421, 0.3585], [0.514, 0.045, 0.421, 0.3585], [0.065, 0.4215, 0.421, 0.3585], [0.514, 0.4215, 0.421, 0.3585]], "cap": [0.0, 0.78, 1.0, 0.22]}}, "title": {"font": "abril", "color": "#3a0d24", "size": 0.4, "date": {"font": "bebas", "color": "#fff1e0"}, "ko": "songmyung"}, "radius": 0}, {"cat": "디자인", "name": "디저트 페스티벌", "key": "dessert", "pattern": "art", "base": "#ffffff", "art": {"strip4": {"src": "art/dessert_s.webp", "w": 591, "h": 1748, "rects": [[0.075, 0.04, 0.85, 0.173], [0.075, 0.229, 0.85, 0.173], [0.075, 0.418, 0.85, 0.173], [0.075, 0.607, 0.85, 0.173]], "cap": [0.0, 0.78, 1.0, 0.22]}, "grid4": {"src": "art/dessert_g.webp", "w": 1181, "h": 1748, "rects": [[0.06, 0.045, 0.426, 0.3585], [0.514, 0.045, 0.426, 0.3585], [0.06, 0.4215, 0.426, 0.3585], [0.514, 0.4215, 0.426, 0.3585]], "cap": [0.0, 0.78, 1.0, 0.22]}}, "title": {"font": "lobster", "color": "#c2456b", "size": 0.34, "date": {"font": "righteous", "color": "#8a5a40", "box": "#ffd9e2"}, "dy": -0.06, "ko": "bagel"}, "radius": 6}, {"cat": "디자인", "name": "해피 할로윈", "key": "halloween", "pattern": "art", "base": "#ffffff", "art": {"strip4": {"src": "art/halloween_s.webp", "w": 591, "h": 1748, "rects": [[0.085, 0.045, 0.83, 0.16675], [0.085, 0.22775, 0.83, 0.16675], [0.085, 0.4105, 0.83, 0.16675], [0.085, 0.59325, 0.83, 0.16675]], "cap": [0.0, 0.76, 1.0, 0.24]}, "grid4": {"src": "art/halloween_g.webp", "w": 1181, "h": 1748, "rects": [[0.065, 0.05, 0.421, 0.346], [0.514, 0.05, 0.421, 0.346], [0.065, 0.414, 0.421, 0.346], [0.514, 0.414, 0.421, 0.346]], "cap": [0.0, 0.76, 1.0, 0.24]}}, "title": {"font": "luckiest", "color": "#ffffff", "size": 0.32, "upper": true, "shadow": {"dx": 0.008, "dy": 0.008, "color": "#ff7a1a"}, "date": {"font": "bungee", "color": "#ffb15e"}, "ko": "gasoek"}, "radius": 0}, {"cat": "디자인", "name": "여름 페스티벌", "key": "summer", "pattern": "art", "base": "#ffffff", "art": {"strip4": {"src": "art/summer_s.webp", "w": 591, "h": 1748, "rects": [[0.08, 0.045, 0.84, 0.16675], [0.08, 0.22775, 0.84, 0.16675], [0.08, 0.4105, 0.84, 0.16675], [0.08, 0.59325, 0.84, 0.16675]], "cap": [0.0, 0.76, 1.0, 0.24]}, "grid4": {"src": "art/summer_g.webp", "w": 1181, "h": 1748, "rects": [[0.065, 0.05, 0.421, 0.346], [0.514, 0.05, 0.421, 0.346], [0.065, 0.414, 0.421, 0.346], [0.514, 0.414, 0.421, 0.346]], "cap": [0.0, 0.76, 1.0, 0.24]}}, "title": {"font": "bungee", "color": "#ffffff", "size": 0.34, "upper": true, "shadow": {"dx": 0.006, "dy": 0.006, "color": "#1d4fa3"}, "dy": -0.12, "date": {"font": "righteous", "color": "#fffbe0"}, "ko": "blackhan"}, "radius": 0}, {"cat": "디자인", "name": "모먼트 레트로", "key": "moment", "pattern": "art", "base": "#ffffff", "art": {"strip4": {"src": "art/moment_s.webp", "w": 591, "h": 1748, "rects": [[0.085, 0.045, 0.83, 0.16675], [0.085, 0.22775, 0.83, 0.16675], [0.085, 0.4105, 0.83, 0.16675], [0.085, 0.59325, 0.83, 0.16675]], "cap": [0.0, 0.76, 1.0, 0.24]}, "grid4": {"src": "art/moment_g.webp", "w": 1181, "h": 1748, "rects": [[0.065, 0.05, 0.421, 0.346], [0.514, 0.05, 0.421, 0.346], [0.065, 0.414, 0.421, 0.346], [0.514, 0.414, 0.421, 0.346]], "cap": [0.0, 0.76, 1.0, 0.24]}}, "title": {"font": "bowlby", "color": "#2346a8", "size": 0.34, "upper": true, "dy": -0.04, "date": {"font": "bebas", "color": "#2346a8"}, "ko": "blackhan"}, "radius": 0}, {"cat": "디자인", "name": "전통시장 축제", "key": "market", "pattern": "art", "base": "#ffffff", "art": {"strip4": {"src": "art/market_s.webp", "w": 591, "h": 1748, "rects": [[0.08, 0.045, 0.84, 0.17475], [0.08, 0.23175, 0.84, 0.17475], [0.08, 0.4185, 0.84, 0.17475], [0.08, 0.60525, 0.84, 0.17475]], "cap": [0.0, 0.78, 1.0, 0.22]}, "grid4": {"src": "art/market_g.webp", "w": 1181, "h": 1748, "rects": [[0.06, 0.045, 0.43, 0.3615], [0.51, 0.045, 0.43, 0.3615], [0.06, 0.4185, 0.43, 0.3615], [0.51, 0.4185, 0.43, 0.3615]], "cap": [0.0, 0.78, 1.0, 0.22]}}, "title": {"font": "gasoek", "color": "#e2552f", "size": 0.38, "stroke": {"color": "#1b1714", "w": 0.03}, "shadow": {"dx": 0.006, "dy": 0.008, "color": "#f2d6a0"}, "dy": 0.06, "date": {"font": "gowun", "color": "#f2d6a0"}}, "radius": 0}, {"cat": "디자인", "name": "궁궐 야행", "key": "palace", "pattern": "art", "base": "#ffffff", "art": {"strip4": {"src": "art/palace_s.webp", "w": 591, "h": 1748, "rects": [[0.085, 0.04, 0.83, 0.1745], [0.085, 0.2285, 0.83, 0.1745], [0.085, 0.417, 0.83, 0.1745], [0.085, 0.6055, 0.83, 0.1745]], "cap": [0.0, 0.78, 1.0, 0.22]}, "grid4": {"src": "art/palace_g.webp", "w": 1181, "h": 1748, "rects": [[0.065, 0.045, 0.425, 0.3605], [0.51, 0.045, 0.425, 0.3605], [0.065, 0.4195, 0.425, 0.3605], [0.51, 0.4195, 0.425, 0.3605]], "cap": [0.0, 0.78, 1.0, 0.22]}}, "title": {"font": "brush", "color": "#ffffff", "size": 0.5, "glow": "#ffb35c", "align": "left", "x": 0.1, "dy": -0.05, "date": {"font": "gowun", "color": "#fff7e0"}}, "radius": 0}, {"cat": "디자인", "name": "캠퍼스 친구들", "key": "campus", "pattern": "art", "base": "#ffffff", "art": {"strip4": {"src": "art/campus_s.webp", "w": 591, "h": 1748, "rects": [[0.085, 0.04, 0.83, 0.1645], [0.085, 0.2185, 0.83, 0.1645], [0.085, 0.397, 0.83, 0.1645], [0.085, 0.5755, 0.83, 0.1645]], "cap": [0.0, 0.74, 1.0, 0.26]}, "grid4": {"src": "art/campus_g.webp", "w": 1181, "h": 1748, "rects": [[0.06, 0.04, 0.43, 0.343], [0.51, 0.04, 0.43, 0.343], [0.06, 0.397, 0.43, 0.343], [0.51, 0.397, 0.43, 0.343]], "cap": [0.0, 0.74, 1.0, 0.26]}}, "title": {"font": "bagel", "color": "#ffffff", "size": 0.2, "dy": 0.33, "date": {"font": "gowun", "color": "#ffe3ea"}}, "radius": 10}, {"cat": "디자인", "name": "웨딩 스카이", "key": "wedding", "pattern": "art", "base": "#ffffff", "art": {"strip4": {"src": "art/wedding_s.webp", "w": 591, "h": 1748, "rects": [[0.1, 0.035, 0.8, 0.17575], [0.1, 0.22475, 0.8, 0.17575], [0.1, 0.4145, 0.8, 0.17575], [0.1, 0.60425, 0.8, 0.17575]], "cap": [0.0, 0.78, 1.0, 0.22]}, "grid4": {"src": "art/wedding_g.webp", "w": 1181, "h": 1748, "rects": [[0.075, 0.04, 0.4125, 0.362], [0.5125, 0.04, 0.4125, 0.362], [0.075, 0.418, 0.4125, 0.362], [0.5125, 0.418, 0.4125, 0.362]], "cap": [0.0, 0.78, 1.0, 0.22]}}, "title": {"font": "songmyung", "color": "#ffffff", "size": 0.2, "dy": 0.22, "shadow": {"dx": 0.003, "dy": 0.003, "color": "#3c5a2e"}, "date": {"font": "songmyung", "color": "#ffffff"}}, "radius": 0}, {"cat": "디자인", "name": "가을 감나무", "key": "persimmon", "pattern": "art", "base": "#ffffff", "art": {"strip4": {"src": "art/persimmon_s.webp", "w": 591, "h": 1748, "rects": [[0.085, 0.04, 0.83, 0.1695], [0.085, 0.2235, 0.83, 0.1695], [0.085, 0.407, 0.83, 0.1695], [0.085, 0.5905, 0.83, 0.1695]], "cap": [0.0, 0.76, 1.0, 0.24]}, "grid4": {"src": "art/persimmon_g.webp", "w": 1181, "h": 1748, "rects": [[0.065, 0.045, 0.4225, 0.3495], [0.5125, 0.045, 0.4225, 0.3495], [0.065, 0.4105, 0.4225, 0.3495], [0.5125, 0.4105, 0.4225, 0.3495]], "cap": [0.0, 0.76, 1.0, 0.24]}}, "title": {"font": "bagel", "color": "#ef3f86", "size": 0.34, "stroke": {"color": "#ffffff", "w": 0.06}, "dy": -0.06, "date": {"font": "jua", "color": "#8a4a1a"}}, "radius": 0}, {"cat": "디자인", "name": "빈티지 레드", "key": "retrored", "pattern": "art", "base": "#ffffff", "art": {"strip4": {"src": "art/retrored_s.webp", "w": 591, "h": 1748, "rects": [[0.08, 0.035, 0.84, 0.17425], [0.08, 0.22525, 0.84, 0.17425], [0.08, 0.4155, 0.84, 0.17425], [0.08, 0.60575, 0.84, 0.17425]], "cap": [0.0, 0.78, 1.0, 0.22]}, "grid4": {"src": "art/retrored_g.webp", "w": 1181, "h": 1748, "rects": [[0.06, 0.04, 0.4275, 0.362], [0.5125, 0.04, 0.4275, 0.362], [0.06, 0.418, 0.4275, 0.362], [0.5125, 0.418, 0.4275, 0.362]], "cap": [0.0, 0.78, 1.0, 0.22]}}, "title": {"font": "gasoek", "color": "#ffe14d", "size": 0.38, "stroke": {"color": "#3a0a0a", "w": 0.05}, "dy": -0.05, "date": {"font": "jua", "color": "#ffe9b0", "box": "#c8962a"}}, "radius": 0}];
+ART_FRAMES.push({"cat": "디자인", "name": "나이트 파티 (Canva)", "key": "canva_night", "pattern": "art", "base": "#2a0f4a", "noCaption": true, "title": {}, "art": {"grid4": {"src": "art/canva_night_g.webp", "w": 1240, "h": 1748, "rects": [[0.17742, 0.03719, 0.64435, 0.16991], [0.17742, 0.23913, 0.64435, 0.16991], [0.17742, 0.43764, 0.64435, 0.16991], [0.17742, 0.63616, 0.64435, 0.17048]], "cap": [0, 0.85, 1, 0.15]}}});
+/* 디자인 프레임은 '기본' 바로 뒤에 (가장 먼저 눈에 띄게) */
+FRAMES.splice(FRAMES.findIndex((f) => f.cat !== "기본"), 0, ...ART_FRAMES);
+/* 디자인 그림 불러오기 (처음 쓸 때 한 번) */
+const ART_IMG = {};
+let artRedraw = null;
+function artImg(src) {
+  let im = ART_IMG[src];
+  if (!im) {
+    im = new Image(); im.decoding = "async";
+    im.onload = () => { clearTimeout(artRedraw); artRedraw = setTimeout(() => { if (typeof current === "undefined") return; if (current === "frame") { buildSwatches($("frameList"), onFramePick); drawFramePreview(); } else if (current === "deco") { buildSwatches($("frameList2"), drawDeco, session.layout); drawDeco(); } }, 150); };
+    im.src = src; ART_IMG[src] = im;
+  }
+  return im;
+}
+function artFor(f, layout) { return f && f.art ? f.art[layout] || null : null; }
+function frameFits(f, layout) { return !f || !f.art || !!f.art[layout]; }
+/* ── 내 프레임 가져오기 (Canva 등에서 만든 그림) ──
+   사진 들어갈 자리를 흰색(또는 투명) 네모로 둔 그림이면 칸을 자동으로 찾아 투명하게 뚫음.
+   칸 4개 + 세로로 긴 그림 → 네컷 스트립 / 칸 4개 엽서 비율 → 2×2(또는 세로 4칸) / 6개 → 여섯컷 / 1개 → 한컷.
+   아이패드 안(IndexedDB)에 저장 → 앱을 다시 켜도 남아 있음 */
+const MYF = { db: null };
+function myfDB() {
+  if (MYF.db) return Promise.resolve(MYF.db);
+  return new Promise((res, rej) => {
+    let rq; try { rq = indexedDB.open("booth", 1); } catch (e) { rej(e); return; }
+    rq.onupgradeneeded = () => { const db = rq.result; if (!db.objectStoreNames.contains("frames")) db.createObjectStore("frames", { keyPath: "id" }); };
+    rq.onsuccess = () => { MYF.db = rq.result; res(MYF.db); }; rq.onerror = () => rej(rq.error);
+  });
+}
+async function myfAll() { const db = await myfDB(); return new Promise((res, rej) => { const rq = db.transaction("frames").objectStore("frames").getAll(); rq.onsuccess = () => res(rq.result || []); rq.onerror = () => rej(rq.error); }); }
+async function myfPut(rec) { const db = await myfDB(); return new Promise((res, rej) => { const tx = db.transaction("frames", "readwrite"); tx.objectStore("frames").put(rec); tx.oncomplete = res; tx.onerror = () => rej(tx.error); }); }
+async function myfDel(id) { const db = await myfDB(); return new Promise((res, rej) => { const tx = db.transaction("frames", "readwrite"); tx.objectStore("frames").delete(id); tx.oncomplete = res; tx.onerror = () => rej(tx.error); }); }
+function myfToFrame(rec) {
+  return { cat: "내 프레임", name: rec.name, key: rec.id, mine: true, pattern: "art", base: rec.base || "#ffffff", noCaption: true, title: {},
+    art: { [rec.layout]: { src: URL.createObjectURL(rec.png), w: rec.w, h: rec.h, rects: rec.rects, cap: [0, 1, 1, 0] } } };
+}
+async function myfLoad() {
+  try {
+    FRAMES.filter((f) => f.mine).forEach((f) => { Object.values(f.art).forEach((a) => { try { URL.revokeObjectURL(a.src); } catch (e) {} }); });
+    for (let i = FRAMES.length - 1; i >= 0; i--) if (FRAMES[i].mine) FRAMES.splice(i, 1);
+    const all = await myfAll(); all.sort((a, b) => a.t - b.t).forEach((r) => FRAMES.push(myfToFrame(r)));
+    if (!FRAMES[session.frame]) session.frame = 0;
+    return all;
+  } catch (e) { errLog("내 프레임 불러오기 실패: " + (e && e.message)); return []; }
+}
+/* 그림에서 사진 칸(흰색·투명 네모) 찾기 */
+async function analyzeFrameImage(file) {
+  const url = URL.createObjectURL(file), im = new Image(); im.src = url;
+  try { await im.decode(); } catch (e) { URL.revokeObjectURL(url); throw new Error("그림을 열 수 없어요"); }
+  const H = 1748, W = Math.round(im.naturalWidth * H / im.naturalHeight), c = makeCanvas(W, H), ctx = c.getContext("2d");
+  ctx.drawImage(im, 0, 0, W, H); URL.revokeObjectURL(url);
+  const sW = 200, sH = Math.round(H * sW / W), sm = makeCanvas(sW, sH), sx = sm.getContext("2d"); sx.drawImage(c, 0, 0, sW, sH);
+  const d = sx.getImageData(0, 0, sW, sH).data, N = sW * sH, mask = new Uint8Array(N), seen = new Uint8Array(N);
+  for (let i = 0; i < N; i++) { const r = d[i * 4], g = d[i * 4 + 1], b = d[i * 4 + 2], a = d[i * 4 + 3]; mask[i] = (a < 30 || (r > 235 && g > 235 && b > 235)) ? 1 : 0; }
+  const comps = [], q = new Int32Array(N);
+  for (let s0 = 0; s0 < N; s0++) {
+    if (!mask[s0] || seen[s0]) continue;
+    let qh = 0, qt = 0, area = 0, x0 = sW, y0 = sH, x1 = 0, y1 = 0; q[qt++] = s0; seen[s0] = 1;
+    while (qh < qt) {
+      const p = q[qh++], x = p % sW, y = (p / sW) | 0; area++;
+      if (x < x0) x0 = x; if (x > x1) x1 = x; if (y < y0) y0 = y; if (y > y1) y1 = y;
+      const nb = [x > 0 ? p - 1 : -1, x < sW - 1 ? p + 1 : -1, y > 0 ? p - sW : -1, y < sH - 1 ? p + sW : -1];
+      for (const n of nb) if (n >= 0 && mask[n] && !seen[n]) { seen[n] = 1; q[qt++] = n; }
+    }
+    const bw = x1 - x0 + 1, bh = y1 - y0 + 1;
+    if (area >= 0.01 * N && bw >= 0.12 * sW && bh >= 0.06 * sH && area / (bw * bh) >= 0.8) comps.push([x0, y0, bw, bh]);
+  }
+  freeCanvas(sm);
+  comps.sort((a, b) => (Math.round(a[1] / (sH * 0.05)) - Math.round(b[1] / (sH * 0.05))) || (a[0] - b[0]));
+  const n = comps.length, aspect = W / H;
+  const layout = n === 4 ? (aspect < 0.45 ? "strip4" : "grid4") : n === 6 ? "grid6" : n === 1 ? "single" : null;
+  if (!layout) { freeCanvas(c); throw new Error("사진 칸을 " + n + "개 찾았어요. 흰색 네모 칸이 1·4·6개인 그림만 쓸 수 있어요"); }
+  /* 칸을 투명하게 뚫기 */
+  const img = ctx.getImageData(0, 0, W, H), D = img.data, rects = [];
+  for (const [x0, y0, bw, bh] of comps) {
+    const X0 = Math.max(0, Math.floor(x0 * W / sW) - 3), Y0 = Math.max(0, Math.floor(y0 * H / sH) - 3), X1 = Math.min(W, Math.ceil((x0 + bw) * W / sW) + 3), Y1 = Math.min(H, Math.ceil((y0 + bh) * H / sH) + 3);
+    for (let y = Y0; y < Y1; y++) for (let x = X0; x < X1; x++) { const i = (y * W + x) * 4; if (D[i + 3] < 30 || (D[i] > 225 && D[i + 1] > 225 && D[i + 2] > 225)) D[i + 3] = 0; }
+    rects.push([X0 / W, Y0 / H, (X1 - X0) / W, (Y1 - Y0) / H]);
+  }
+  ctx.putImageData(img, 0, 0);
+  const png = await canvasToBlob(c, "image/png"); freeCanvas(c);
+  return { layout, rects, w: W, h: H, png };
+}
 /* 사진 테마 배경 그림 불러오기 (앱 안 frames 폴더) — 다 불러오면 보이는 화면을 다시 그림 */
 const FRAME_IMG = {};
 let frameImgRedraw = null;
 FRAMES.forEach((f) => {
   if (!f.img || FRAME_IMG[f.img]) return;
   const im = new Image(); im.decoding = "async";
-  im.onload = () => { clearTimeout(frameImgRedraw); frameImgRedraw = setTimeout(() => { if (typeof current === "undefined") return; if (current === "frame") { buildSwatches($("frameList"), drawFramePreview); drawFramePreview(); } else if (current === "deco") { buildSwatches($("frameList2"), drawDeco); drawDeco(); } }, 120); };
+  im.onload = () => { clearTimeout(frameImgRedraw); frameImgRedraw = setTimeout(() => { if (typeof current === "undefined") return; if (current === "frame") { buildSwatches($("frameList"), onFramePick); drawFramePreview(); } else if (current === "deco") { buildSwatches($("frameList2"), drawDeco, session.layout); drawDeco(); } }, 120); };
   im.src = "frames/" + f.img + ".jpg"; FRAME_IMG[f.img] = im;
 });
 function frameImgReady(f) { const im = f && f.img && FRAME_IMG[f.img]; return !!(im && im.complete && im.naturalWidth); }
@@ -847,7 +940,7 @@ function stkImg(key) {
   let im = STK_IMG[key];
   if (!im) {
     im = new Image(); im.decoding = "async";
-    im.onload = () => { clearTimeout(stkRedraw); stkRedraw = setTimeout(() => { if (typeof current === "undefined") return; if (current === "frame") { buildSwatches($("frameList"), () => { buildLayouts(); drawFramePreview(); }); drawFramePreview(); } else if (current === "deco") { buildSwatches($("frameList2"), drawDeco); drawDeco(); } }, 150); };
+    im.onload = () => { clearTimeout(stkRedraw); stkRedraw = setTimeout(() => { if (typeof current === "undefined") return; if (current === "frame") { buildSwatches($("frameList"), onFramePick); drawFramePreview(); } else if (current === "deco") { buildSwatches($("frameList2"), drawDeco, session.layout); drawDeco(); } }, 150); };
     im.src = "stickers/" + key + ".webp"; STK_IMG[key] = im;
   }
   return im;
@@ -883,11 +976,30 @@ const FONTS = [
   { id: "singleday", name: "싱글데이", fam: "Single Day", file: "SingleDay-Regular" },
   { id: "cute", name: "귀여운", fam: "Cute Font", file: "CuteFont-Regular", scale: 1.25 },
   { id: "pacifico", name: "Pacifico", fam: "Pacifico", file: "Pacifico-Regular", latin: true },
-  { id: "bebas", name: "BEBAS", fam: "Bebas Neue", file: "BebasNeue-Regular", latin: true, scale: 1.1 }
+  { id: "bebas", name: "BEBAS", fam: "Bebas Neue", file: "BebasNeue-Regular", latin: true, scale: 1.1 },
+  /* 디자인 프레임 제목용 멋진 글꼴 (모두 무료 OFL) */
+  { id: "gasoek", name: "가속 굵은체", fam: "Gasoek One", file: "GasoekOne-Regular" },
+  { id: "bagel", name: "베이글", fam: "Bagel Fat One", file: "BagelFatOne-Regular" },
+  { id: "gugi", name: "구기", fam: "Gugi", file: "Gugi-Regular" },
+  { id: "brush", name: "나눔 붓글씨", fam: "Nanum Brush Script", file: "NanumBrushScript-Regular", scale: 1.25 },
+  { id: "dokdo", name: "동해 독도", fam: "East Sea Dokdo", file: "EastSeaDokdo-Regular", scale: 1.3 },
+  { id: "songmyung", name: "송명 명조", fam: "Song Myung", file: "SongMyung-Regular" },
+  { id: "orbit", name: "오르빗", fam: "Orbit", file: "Orbit-Regular" },
+  { id: "bwpic", name: "흑백사진", fam: "Black And White Picture", file: "BlackAndWhitePicture-Regular", scale: 1.2 },
+  { id: "gowun", name: "고운 돋움", fam: "Gowun Dodum", file: "GowunDodum-Regular" },
+  { id: "abril", name: "Abril", fam: "Abril Fatface", file: "AbrilFatface-Regular", latin: true },
+  { id: "shrikhand", name: "Shrikhand", fam: "Shrikhand", file: "Shrikhand-Regular", latin: true },
+  { id: "lobster", name: "Lobster", fam: "Lobster", file: "Lobster-Regular", latin: true },
+  { id: "luckiest", name: "LUCKIEST", fam: "Luckiest Guy", file: "LuckiestGuy-Regular", latin: true },
+  { id: "bungee", name: "BUNGEE", fam: "Bungee", file: "Bungee-Regular", latin: true },
+  { id: "righteous", name: "Righteous", fam: "Righteous", file: "Righteous-Regular", latin: true },
+  { id: "rubikmono", name: "RUBIK", fam: "Rubik Mono One", file: "RubikMonoOne-Regular", latin: true, scale: .9 },
+  { id: "bowlby", name: "BOWLBY", fam: "Bowlby One SC", file: "BowlbyOneSC-Regular", latin: true },
+  { id: "monoton", name: "MONOTON", fam: "Monoton", file: "Monoton-Regular", latin: true }
 ];
 const FONT_BY = Object.fromEntries(FONTS.map((f) => [f.id, f]));
 (function addFontFaces() {
-  const css = FONTS.concat([{ fam: "Gowun Dodum", file: "GowunDodum-Regular" }]).map((f) => '@font-face{font-family:"' + f.fam + '";src:url("fonts/' + f.file + '.woff2") format("woff2");font-display:swap}').join("\n");
+  const css = FONTS.map((f) => '@font-face{font-family:"' + f.fam + '";src:url("fonts/' + f.file + '.woff2") format("woff2");font-display:swap}').join("\n");
   document.getElementById("fontFaces").textContent = css;
 })();
 function fontCss(id) { const f = FONT_BY[id] || FONT_BY.jua; return '"' + f.fam + '","Jua","Apple SD Gothic Neo",sans-serif'; }
@@ -954,7 +1066,7 @@ function blobImageOK(blob, w, h) {
 let sessionId = 0;
 let retakeOf = null, retakeDone = false;   /* 고르기 화면에서 '이 사진만 다시 찍기' 중인 사진 번호 */
 function resetSession() {
-  sessionId++; session.retake = null; session.share = null; session.shareErr = null; retakeOf = null;
+  sessionId++; session.fontPicked = false; session.retake = null; session.share = null; session.shareErr = null; retakeOf = null;
   releaseSession();
   hintShown = false;
   Object.assign(session, { copies: 1, layout: "strip4", frame: 0, font: (FONT_BY[S.font] ? S.font : "jua"), shots: [], slots: [null, null, null, null], active: 0,
@@ -980,7 +1092,13 @@ function paperPx(paper) { const mm = PAPERS[paper].mm; return [Math.round(mm[0] 
    잘린 뒤에도 사방 테두리가 똑같이 보이게 함. 네컷 스트립은 가운데 선을 따라 자르면 두 줄이 똑같은 모양. */
 function bleedPx(scale) { return Math.max(0, Number(S.bleed) || 0) / 25.4 * DPI * (scale || 1); }
 function panelSize(paper, layout) { const [w, h] = paperPx(paper), B = bleedPx(); return LAYOUTS[layout].strip ? [w / 2 - B, h - 2 * B] : [w - 2 * B, h - 2 * B]; }
-function layoutPanel(layout, x, y, w, h) {
+function layoutPanel(layout, x, y, w, h, frameIdx) {
+  const A = artFor(FRAMES[frameIdx == null ? session.frame : frameIdx], layout);
+  if (A) {
+    /* 디자인 프레임: 그림에 정해진 사진 칸 자리 */
+    const cells = A.rects.map(([rx, ry, rw, rh]) => ({ x: x + rx * w, y: y + ry * h, w: rw * w, h: rh * h }));
+    return { cells, caption: { x: x + A.cap[0] * w, y: y + A.cap[1] * h, w: A.cap[2] * w, h: A.cap[3] * h } };
+  }
   const L = LAYOUTS[layout], n = L.slots, cols = L.cols, rows = Math.ceil(n / cols);
   const m = w * (L.strip ? 0.06 : 0.045), capH = h * 0.10, gap = m * 0.6;
   const ax = x + m, ay = y + m, aw = w - 2 * m, ah = h - m - capH;
@@ -989,8 +1107,8 @@ function layoutPanel(layout, x, y, w, h) {
   for (let i = 0; i < n; i++) { const r = Math.floor(i / cols), c = i % cols; cells.push({ x: ax + c * (cw + gap), y: ay + r * (ch + gap), w: cw, h: ch }); }
   return { cells, caption: { x: x, y: ay + ah, w: w, h: capH } };
 }
-function cellAspect(paper, layout) { const [w, h] = panelSize(paper, layout); const c = layoutPanel(layout, 0, 0, w, h).cells[0]; return c.w / c.h; }
-function slotRectsNorm(paper, layout) { const [w, h] = panelSize(paper, layout); return layoutPanel(layout, 0, 0, w, h).cells.map((c) => ({ x: c.x / w, y: c.y / h, w: c.w / w, h: c.h / h })); }
+function cellAspect(paper, layout, fi) { const [w, h] = panelSize(paper, layout); const c = layoutPanel(layout, 0, 0, w, h, fi).cells[0]; return c.w / c.h; }
+function slotRectsNorm(paper, layout, fi) { const [w, h] = panelSize(paper, layout); return layoutPanel(layout, 0, 0, w, h, fi).cells.map((c) => ({ x: c.x / w, y: c.y / h, w: c.w / w, h: c.h / h })); }
 
 function seeded(seed) { let s0 = seed; return () => { s0 = (s0 * 9301 + 49297) % 233280; return s0 / 233280; }; }
 function drawBackground(ctx, f, x, y, w, h, panel) {
@@ -1067,8 +1185,55 @@ function drawEmpty(ctx, r, num, show) {
   ctx.fillStyle = "#9a9a9a"; ctx.font = (Math.min(r.w, r.h) * 0.35) + "px " + DISPLAY_FONT;
   ctx.textAlign = "center"; ctx.textBaseline = "middle"; ctx.fillText(String(num), r.x + r.w / 2, r.y + r.h / 2);
 }
+/* 디자인 프레임 제목: 프레임마다 정해진 글꼴·색·외곽선·그림자·빛 */
+function drawStyledCaption(ctx, spec, r, T) {
+  const title0 = (spec.title || "").trim(), title = T.upper ? title0.toUpperCase() : title0, date = spec.showDate ? dateString() : "";
+  if (!title && !date) return;
+  /* 영문 전용 글꼴인데 한글 제목이면 그 디자인에 어울리는 한글 글꼴로 */
+  const fid = spec.fontPicked ? spec.font : ((T.ko && /[\u3131-\uD79D]/.test(title)) ? T.ko : (T.font || spec.font || "jua")), fs = fontScale(fid);
+  let size = r.h * (T.size || 0.34) * fs;
+  ctx.save();
+  const ls = (T.ls || 0);
+  const measure = (t, sz) => { ctx.font = sz + "px " + fontCss(fid); return ctx.measureText(t).width + Math.max(0, t.length - 1) * ls * sz; };
+  const maxW = r.w * (T.align === "left" ? 0.8 : 0.86);
+  while (title && measure(title, size) > maxW && size > 8) size *= 0.94;
+  const dsize = Math.min(r.h * 0.12, Math.max(r.h * 0.085, size * 0.32));
+  const cx = T.align === "left" ? r.x + r.w * (T.x || 0.1) : r.x + r.w / 2;
+  let cy = r.y + r.h * (0.5 + (T.dy || 0)) - (date && title ? dsize * 0.7 : 0);
+  ctx.textAlign = T.align === "left" ? "left" : "center"; ctx.textBaseline = "middle"; ctx.lineJoin = "round";
+  const drawText = (t, x, y, sz) => {
+    if (!ls) { ctx.fillText(t, x, y); return; }
+    const total = measure(t, sz); let px = T.align === "left" ? x : x - total / 2; const al = ctx.textAlign; ctx.textAlign = "left";
+    for (const ch of t) { ctx.fillText(ch, px, y); px += ctx.measureText(ch).width + ls * sz; }
+    ctx.textAlign = al;
+  };
+  const strokeText = (t, x, y, sz) => {
+    if (!ls) { ctx.strokeText(t, x, y); return; }
+    const total = measure(t, sz); let px = T.align === "left" ? x : x - total / 2; const al = ctx.textAlign; ctx.textAlign = "left";
+    for (const ch of t) { ctx.strokeText(ch, px, y); px += ctx.measureText(ch).width + ls * sz; }
+    ctx.textAlign = al;
+  };
+  if (title) {
+    ctx.save(); ctx.translate(cx, cy); if (T.rot) ctx.rotate(T.rot * Math.PI / 180);
+    ctx.font = size + "px " + fontCss(fid);
+    if (T.shadow) { ctx.fillStyle = T.shadow.color; drawText(title, r.w * T.shadow.dx, r.w * T.shadow.dy, size); }
+    if (T.stroke) { ctx.lineWidth = size * T.stroke.w * 2; ctx.strokeStyle = T.stroke.color; strokeText(title, 0, 0, size); }
+    if (T.glow) { ctx.shadowColor = T.glow; ctx.shadowBlur = size * 0.35; }
+    ctx.fillStyle = T.color || "#191919"; drawText(title, 0, 0, size);
+    if (T.glow) { ctx.shadowBlur = size * 0.12; drawText(title, 0, 0, size); }
+    ctx.restore();
+  }
+  if (date) {
+    const D = T.date || {}, dfid = D.font || "bebas", dy = cy + (title ? size * 0.62 + dsize * 0.75 : 0) + r.h * (D.dy || 0);
+    ctx.font = (dsize * fontScale(dfid)) + "px " + fontCss(dfid);
+    if (D.box) { const w = ctx.measureText(date).width + dsize * 1.2, x0 = T.align === "left" ? cx - dsize * 0.2 : cx - w / 2; ctx.fillStyle = D.box; rrect(ctx, x0, dy - dsize * 0.75, w, dsize * 1.5, dsize * 0.75); ctx.fill(); }
+    ctx.fillStyle = D.color || T.color || "#191919"; ctx.fillText(date, D.box && T.align === "left" ? cx + dsize * 0.4 : cx, dy);
+  }
+  ctx.restore();
+}
 function drawCaption(ctx, spec, r) {
   const f = FRAMES[spec.frame], title = (spec.title || "").trim(), date = spec.showDate ? dateString() : "";
+  if (f && f.title && typeof f.title === "object") { if (!f.noCaption) drawStyledCaption(ctx, spec, r, f.title); return; }
   if (!title && !date) return;
   const bottom = (f.grad && f.grad[1]) || f.base;
   const color = f.ink || (luminance(bottom) > 0.6 ? "#191919" : "#ffffff"), outline = luminance(color) > 0.6 ? "#191919" : "#ffffff";
@@ -1172,9 +1337,11 @@ function render(spec, scale, single) {
       : [{ bg: { x: 0, y: 0, w: W, h: H }, p: { x: B, y: B, w: W - 2 * B, h: H - 2 * B } }];
   }
   const c = makeCanvas(W, H), ctx = c.getContext("2d");
+  const A = artFor(f, spec.layout), aim = A ? artImg(A.src) : null;
   for (const { bg, p } of areas) {
     drawBackground(ctx, f, bg.x, bg.y, bg.w, bg.h, p);
-    const lay = layoutPanel(spec.layout, p.x, p.y, p.w, p.h);
+    /* 디자인 프레임은 그림 전체(잘리는 가장자리 포함)를 기준으로 사진 칸을 놓음 */
+    const lay = A ? layoutPanel(spec.layout, bg.x, bg.y, bg.w, bg.h, spec.frame) : layoutPanel(spec.layout, p.x, p.y, p.w, p.h, spec.frame);
     if (f.cellBorder) {
       ctx.save(); ctx.fillStyle = f.cellBorder; ctx.shadowColor = "rgba(0,0,0,.18)"; ctx.shadowBlur = p.w * 0.012;
       lay.cells.forEach((r) => { const k = Math.max(2, r.w * 0.028); ctx.fillRect(r.x - k, r.y - k, r.w + 2 * k, r.h + 2 * k); });
@@ -1185,6 +1352,10 @@ function render(spec, scale, single) {
       if (img) drawCover(ctx, img, r); else drawEmpty(ctx, r, i + 1, spec.numbers);
       if (spec.active === i) { ctx.strokeStyle = "#ffd133"; ctx.lineWidth = Math.max(4, r.w * 0.03); const k = ctx.lineWidth / 2; ctx.strokeRect(r.x + k, r.y + k, r.w - 2 * k, r.h - 2 * k); }
     });
+    if (A) {
+      if (aim && aim.complete && aim.naturalWidth) { ctx.save(); ctx.beginPath(); ctx.rect(bg.x, bg.y, bg.w, bg.h); ctx.clip(); ctx.drawImage(aim, bg.x, bg.y, bg.w, bg.h); ctx.restore(); }
+      if (spec.active != null && lay.cells[spec.active]) { const r = lay.cells[spec.active]; ctx.strokeStyle = "#ffd133"; ctx.lineWidth = Math.max(4, r.w * 0.03); const k = ctx.lineWidth / 2; ctx.strokeRect(r.x + k, r.y + k, r.w - 2 * k, r.h - 2 * k); }
+    }
     drawOverlay(ctx, f, p, lay);
     drawCaption(ctx, spec, lay.caption);
     for (const st of (spec.stickers || [])) drawSticker(ctx, st, p);
@@ -1217,7 +1388,7 @@ function makeCalibration() {
   return c;
 }
 function baseSpec(extra) {
-  return Object.assign({ paper: S.paper, layout: session.layout, frame: session.frame, font: session.font, photos: [], stickers: [], title: S.title, showDate: S.showDate, numbers: false, active: null }, extra || {});
+  return Object.assign({ paper: S.paper, layout: session.layout, frame: session.frame, font: session.font, fontPicked: !!session.fontPicked, photos: [], stickers: [], title: S.title, showDate: S.showDate, numbers: false, active: null }, extra || {});
 }
 
 /* ───────── 뽀샤시 보정 (GPU, 촬영 화면에서 실시간) ─────────
@@ -1636,15 +1807,25 @@ $("adminCorner").addEventListener("click", (e) => {
 
 /* ───────── 3. 프레임 ───────── */
 function swatchCanvas(f) {
+  if (f.art) {
+    /* 디자인 프레임: 실제 그림 + 회색 사진 칸 + 제목 미리보기 */
+    const A = f.art.grid4 || f.art.strip4 || Object.values(f.art)[0], H = 160, W = Math.round(H * A.w / A.h), c = makeCanvas(W, H), ctx = c.getContext("2d");
+    ctx.fillStyle = f.base || "#fff"; ctx.fillRect(0, 0, W, H);
+    ctx.fillStyle = "#cfd6de"; A.rects.forEach(([x, y, w, h]) => ctx.fillRect(x * W, y * H, w * W, h * H));
+    const im = artImg(A.src); if (im.complete && im.naturalWidth) ctx.drawImage(im, 0, 0, W, H);
+    if (f.title && typeof f.title === "object" && !f.noCaption) drawStyledCaption(ctx, { title: S.title || "PHOTO BOOTH", showDate: false, font: "jua" }, { x: A.cap[0] * W, y: A.cap[1] * H, w: A.cap[2] * W, h: A.cap[3] * H }, f.title);
+    return c;
+  }
   const c = makeCanvas(124, 160), ctx = c.getContext("2d"), p = { x: 0, y: 0, w: 124, h: 160 }, cell = { x: 26, y: 30, w: 72, h: 100 };
   drawBackground(ctx, f, 0, 0, 124, 160, p);
   if (f.cellBorder) { ctx.fillStyle = f.cellBorder; ctx.fillRect(cell.x - 3, cell.y - 3, cell.w + 6, cell.h + 6); }
   ctx.fillStyle = "#dbdbdb"; ctx.fillRect(cell.x, cell.y, cell.w, cell.h);
   drawOverlay(ctx, f, p, { cells: [cell] }); return c;
 }
-function buildSwatches(list, onPick) {
+function buildSwatches(list, onPick, onlyLayout) {
   list.innerHTML = ""; let cat = null;
   FRAMES.forEach((f, i) => {
+    if (onlyLayout && !frameFits(f, onlyLayout)) return;   /* 찍은 뒤에는 지금 모양에 맞는 디자인만 */
     if (f.cat !== cat) { cat = f.cat; list.appendChild(el("div", "swHead", cat)); }
     const b = el("button", "sw" + (session.frame === i ? " on" : "")); b.dataset.i = i; b.appendChild(swatchCanvas(f)); b.appendChild(el("span", null, f.name));
     b.addEventListener("click", () => { session.frame = i; list.querySelectorAll(".sw").forEach((x) => x.classList.toggle("on", Number(x.dataset.i) === i)); onPick(); });
@@ -1662,12 +1843,21 @@ function buildLayouts() {
     b.appendChild(render(baseSpec({ layout: k, photos: [], numbers: true }), 0.08, true)); b.appendChild(el("span", null, LAYOUTS[k].name));
     b.addEventListener("click", () => {
       session.layout = k; session.slots = new Array(LAYOUTS[k].slots).fill(null); session.active = 0;
+      /* 이 모양이 없는 디자인 프레임이었으면 기본 프레임으로 */
+      if (!frameFits(FRAMES[session.frame], k)) { session.frame = 0; buildSwatches($("frameList"), onFramePick); }
       list.querySelectorAll(".opt").forEach((x) => x.classList.toggle("on", x === b)); drawFramePreview();
     });
     list.appendChild(b);
   });
 }
-ENTER.frame = () => { say("frame"); buildLayouts(); buildSwatches($("frameList"), () => { buildLayouts(); drawFramePreview(); }); requestAnimationFrame(drawFramePreview); };
+/* 디자인 프레임을 고르면 그 디자인이 가진 모양(네컷 스트립·2×2)으로 자동으로 바꿈 */
+function fixLayoutForFrame() {
+  const f = FRAMES[session.frame]; if (frameFits(f, session.layout)) return;
+  const ks = Object.keys(f.art), k = ks.includes(session.layout) ? session.layout : (session.layout === "strip4" && ks.includes("strip4") ? "strip4" : (ks.includes("grid4") ? "grid4" : ks[0]));
+  session.layout = k; session.slots = new Array(LAYOUTS[k].slots).fill(null); session.active = 0;
+}
+function onFramePick() { fixLayoutForFrame(); buildLayouts(); drawFramePreview(); }
+ENTER.frame = () => { say("frame"); buildLayouts(); buildSwatches($("frameList"), onFramePick); requestAnimationFrame(drawFramePreview); };
 $("startShoot").addEventListener("click", () => go("shoot"));
 
 /* ───────── 4. 카메라 · 촬영 ───────── */
@@ -2820,7 +3010,7 @@ function buildFonts() {
     loadFont(f.id);
     const b = el("button", session.font === f.id ? "on" : ""); b.innerHTML = '<b style="font-family:' + fontCss(f.id).replace(/"/g, "'") + '">' + (f.latin ? "Happy" : "가나다") + "</b><small>" + f.name + "</small>";
     b.addEventListener("click", async () => {
-      session.font = f.id; list.querySelectorAll("button").forEach((x) => x.classList.toggle("on", x === b));
+      session.font = f.id; session.fontPicked = true; list.querySelectorAll("button").forEach((x) => x.classList.toggle("on", x === b));
       const st = session.stickers.find((x) => x.id === selectedSticker); if (st && !st.emoji && !st.img) st.font = f.id;
       await loadFont(f.id); drawDeco(); if (stkCat === STK_CATS.length) buildStickerPane();
     });
@@ -2832,7 +3022,7 @@ ENTER.deco = () => {
   selectedSticker = null; say("deco"); buildFonts(); buildStickerPane();
   /* 꾸미기를 다시 하면 인쇄용 사진도 새로 만들어야 함 */
   printTok++; freeCanvas(session.finalCanvas); session.finalCanvas = null; session.finalBlob = null; session.printFile = null; session.liveBlob = null; session.share = null;
-  buildRetouch(); buildFilters(); buildSwatches($("frameList2"), drawDeco);
+  buildRetouch(); buildFilters(); buildSwatches($("frameList2"), drawDeco, session.layout);
   requestAnimationFrame(drawDeco);
 };
 $("decoNext").addEventListener("click", () => { selectedSticker = null; go("print"); });
@@ -3404,6 +3594,7 @@ function openAdmin() {
   toggle($("setDate"), "showDate"); toggle($("setTimers"), "timers"); toggle($("setStartCheck"), "startCheck");
   toggle($("setSharpen"), "sharpen"); toggle($("setFaceFx"), "faceFx"); toggle($("setPoses"), "poses"); toggle($("setQr"), "qr");
   { const t = statToday(); $("statLine").textContent = "(" + t.teams + "팀 · 인쇄 " + t.prints + "번 · QR " + t.qr + "번)"; }
+  drawMyfList();
   $("qrRow").hidden = !NATIVE; $("wifiRow").hidden = !NATIVE; $("setWifi").value = S.wifiName || "";
   { const sf = $("setFont"); sf.innerHTML = ""; FONTS.forEach((f) => { const o = el("option"); o.value = f.id; o.textContent = f.name; if ((S.font || "jua") === f.id) o.selected = true; sf.appendChild(o); }); sf.onchange = () => { S.font = sf.value; session.font = sf.value; }; } toggle($("setVoice"), "voice"); toggle($("setSound"), "sound");
   if (!openAdmin.bound) { $("setDate").addEventListener("click", drawCaptionPreview); openAdmin.bound = true; }
@@ -3422,6 +3613,32 @@ function openAdmin() {
   $("setPin").value = "";
   $("adminModal").hidden = false;
 }
+async function drawMyfList() {
+  const box = $("myfList"); box.innerHTML = "";
+  FRAMES.filter((f) => f.mine).forEach((f) => {
+    const a = Object.values(f.art)[0], ch = el("div", "chip"), im = new Image(); im.src = a.src; ch.appendChild(im);
+    ch.appendChild(el("span", null, escapeHtml(f.name) + " · " + LAYOUTS[Object.keys(f.art)[0]].name));
+    const del = el("button", null, "✕"); del.setAttribute("aria-label", "지우기");
+    del.onclick = async () => { const v = await ask("이 프레임을 지울까요?", escapeHtml(f.name), [{ t: "아니요", v: false, cls: "gray" }, { t: "지우기", v: true }]); if (!v) return; await myfDel(f.key); session.frame = 0; await myfLoad(); drawMyfList(); };
+    ch.appendChild(del); box.appendChild(ch);
+  });
+}
+$("myfAddBtn").addEventListener("click", () => $("myfFile").click());
+$("myfFile").addEventListener("change", async (e) => {
+  const files = [...(e.target.files || [])]; e.target.value = "";
+  const b = $("myfAddBtn"); b.disabled = true; b.textContent = "분석 중…";
+  const msgs = [];
+  for (const file of files) {
+    try {
+      const r = await analyzeFrameImage(file), name = (file.name || "내 프레임").replace(/\.[a-z0-9]+$/i, "").slice(0, 24);
+      await myfPut({ id: "my" + Date.now().toString(36) + Math.random().toString(36).slice(2, 6), name, t: Date.now(), ...r });
+      msgs.push("✅ " + escapeHtml(name) + " — " + LAYOUTS[r.layout].name + " (칸 " + r.rects.length + "개)");
+    } catch (err) { msgs.push("❌ " + escapeHtml(file.name || "그림") + " — " + escapeHtml((err && err.message) || "오류")); }
+  }
+  await myfLoad(); drawMyfList();
+  b.disabled = false; b.textContent = "그림 추가";
+  ask("프레임 가져오기", msgs.join("<br>") + "<br><small>프레임 화면의 ‘내 프레임’에서 고를 수 있어요.</small>", [{ t: "확인", v: true }]);
+});
 function drawCaptionPreview() {
   const t = $("setTitle").value.trim(), d = S.showDate ? dateString() : "";
   $("captionPreview").innerHTML = ((t ? escapeHtml(t) : "") + (d ? "<small>" + d + "</small>" : "")) || "<small>(사진 아래 글자 없음)</small>";
@@ -3567,10 +3784,10 @@ async function runChecks() {
     return bad.length ? [bad.length > 3 ? "fail" : "warn", "안 불러와진 글꼴: " + bad.map((f) => f.name).join(", ")] : ["ok", "모두 준비됨"];
   });
   await step("images", async () => {
-    const frameIms = Object.entries(FRAME_IMG), stk = [].concat(...STK_CATS.map((c) => c.keys)).map((k) => [k, stkImg(k)]);
+    const frameIms = Object.entries(FRAME_IMG).concat([].concat(...ART_FRAMES.map((f) => Object.values(f.art).map((a) => [f.name, artImg(a.src)])))), stk = [].concat(...STK_CATS.map((c) => c.keys)).map((k) => [k, stkImg(k)]);
     await waitImgs(frameIms.map((x) => x[1]).concat(stk.map((x) => x[1])), 10000);
     const bad = frameIms.concat(stk).filter(([, im]) => !(im.complete && im.naturalWidth)).map(([k]) => k);
-    return bad.length ? ["fail", bad.length + "개 그림을 못 불러옴: " + bad.slice(0, 8).join(", ") + (bad.length > 8 ? " …" : "") + " (Web 폴더에 frames·stickers 폴더가 있는지 확인)"] : ["ok", "배경 " + frameIms.length + "장 · 스티커 " + stk.length + "개"];
+    return bad.length ? ["fail", bad.length + "개 그림을 못 불러옴: " + bad.slice(0, 8).join(", ") + (bad.length > 8 ? " …" : "") + " (Web 폴더에 frames·stickers 폴더가 있는지 확인)"] : ["ok", "배경·디자인 " + frameIms.length + "장 · 스티커 " + stk.length + "개"];
   });
   await step("voice", async () => {
     const ok = await new Promise((res) => { const a = new Audio(); const t = setTimeout(() => res(false), 5000); a.oncanplaythrough = a.onloadedmetadata = () => { clearTimeout(t); res(true); }; a.onerror = () => { clearTimeout(t); res(false); }; a.preload = "auto"; a.src = "voice/m_b00.mp3"; a.load(); });
@@ -3735,6 +3952,7 @@ $("errLogBtn").addEventListener("click", () => { showReport("오류 보고서");
 /* 앱 안에서 카메라를 쓸 수 없는 주소로 열렸으면 인터넷 주소로 바꿔 달라고 앱에 요청 */
 if (NATIVE && !window.isSecureContext) native({ cmd: "useRemote" }).catch(() => {});
 go(S.startCheck !== false ? "check" : "attract");
+myfLoad();
 if (document.fonts && document.fonts.load) { document.fonts.load('40px "Jua"').catch(() => {}); }
 </script>
 </body>
