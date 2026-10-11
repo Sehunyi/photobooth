@@ -11,6 +11,8 @@ final class BoothViewController: UIViewController, WKScriptMessageHandler, WKUID
     /// 휴대폰 QR 받기용 서버 (같은 와이파이)
     private let sharePort: UInt16 = 8724
     private lazy var shareServer = ShareServer(port: sharePort)
+    /// 셀피 바로 인쇄 (Canon PRINT 앱과 같은 방식)
+    private let selphy = SelphyDirect()
     /// 앱 안의 화면을 못 찾을 때만 쓰는 인터넷 주소
     private let remoteURL = URL(string: "https://sehunyi.github.io/photobooth/")!
     /// 인쇄할 용지 크기(포인트). 기본: 엽서 100 x 148 mm
@@ -202,6 +204,35 @@ final class BoothViewController: UIViewController, WKScriptMessageHandler, WKUID
                     replyHandler(["ok": available, "error": available ? "" : "unavailable"] as [String: Any], nil)
                 }
             }
+
+        case "selphyFind":
+            // 같은 Wi-Fi에서 셀피 찾기 (Canon PRINT 앱처럼)
+            let prefer = body["ip"] as? String
+            selphy.find(preferIP: prefer) { list, me in
+                DispatchQueue.main.async {
+                    replyHandler(["ok": true, "printers": list, "me": me] as [String: Any], nil)
+                }
+            }
+
+        case "selphyPrint":
+            // 셀피에 사진을 직접 보내 인쇄 (AirPrint를 거치지 않음)
+            guard let b64 = body["jpeg"] as? String, let data = Data(base64Encoded: b64), let ip = body["ip"] as? String, !ip.isEmpty else {
+                replyHandler(["ok": false, "error": "bad-request"] as [String: Any], nil)
+                return
+            }
+            let copies = max(1, min(6, (body["copies"] as? NSNumber)?.intValue ?? 1))
+            let w = (body["w"] as? NSNumber)?.intValue ?? 0
+            let h = (body["h"] as? NSNumber)?.intValue ?? 0
+            let borderless = (body["borderless"] as? Bool) ?? true
+            selphy.printJPEG(data, ip: ip, width: w, height: h, copies: copies, borderless: borderless, progress: { [weak self] step in
+                DispatchQueue.main.async {
+                    self?.webView.evaluateJavaScript("window.__selphyProgress && window.__selphyProgress(\"\(step)\");", completionHandler: nil)
+                }
+            }, done: { ok, err, trace in
+                DispatchQueue.main.async {
+                    replyHandler(["ok": ok, "error": err ?? "", "trace": trace] as [String: Any], nil)
+                }
+            })
 
         case "lanShare":
             // 완성 사진을 같은 와이파이의 휴대폰이 QR로 받아 갈 수 있게 올려 두고, 주소와 QR 그림을 돌려줌

@@ -633,6 +633,7 @@ details.guide p { margin: 4px 0; color: var(--muted); }
     <div class="field"><span>화질 개선 <small>(인쇄 사진을 선명하게)</small></span><button class="toggle" id="setSharpen" aria-label="화질 개선"></button></div>
     <div class="field"><span>뽀샤시 보정 기본값 <small>(촬영 화면에서 바꿀 수 있음)</small></span><div class="seg" id="setRetouch"></div></div>
     <div class="field" id="modeRow" hidden><span>인쇄 방법</span><div class="seg" id="setMode"></div></div>
+    <div class="field" id="selphyRow" hidden><span>셀피 <small id="selphyName">(아직 못 찾음)</small></span><span style="display:flex;gap:8px;align-items:center"><input type="text" id="setSelphyIP" inputmode="decimal" placeholder="자동" style="width:140px"><button class="mini" id="selphyFindBtn">셀피 찾기</button></span></div>
     <div class="field" id="nativePrinterRow" hidden><span>프린터 <small id="nativePrinterName">(선택 안 됨)</small></span><span style="display:flex;gap:8px"><button class="mini" id="checkPrinterBtn">연결 확인</button><button class="mini" id="pickPrinterBtn">프린터 선택</button></span></div>
     <div class="field" id="logRow" hidden><span>최근 인쇄 기록 <small>(문제 찾기용)</small></span><button class="mini" id="logBtn">보기</button></div>
     <pre id="printLogBox" hidden style="flex:none;white-space:pre-wrap;font-size:14px;background:var(--paper);border-radius:10px;padding:10px;margin:0 0 8px;max-height:180px;overflow:auto"></pre>
@@ -675,7 +676,7 @@ details.guide p { margin: 4px 0; color: var(--muted); }
 
 <script>
 "use strict";
-const APP_VERSION = "1.7";
+const APP_VERSION = "1.8";
 /* 손님이 쓰는 중에 생긴 오류를 기록 → 시작 점검·관리자 '오류 보고서'에서 보여 줌 (관리자가 그대로 알려 주면 고칠 수 있게) */
 function errLog(msg) {
   try {
@@ -898,8 +899,10 @@ function loadFont(id) {
   return fontLoaded[f.id];
 }
 
-const DEFAULTS = { paper: "postcard", extra: 2, countdown: 7, zoom: 1, attractTitle: "PHOTO BOOTH", title: "PHOTO BOOTH", showDate: true, timers: true, cassette: true, printerReady: false, printVia: "canon", printMode: "sheet", bleed: 2, retouch: "natural", faceFx: true, poses: true, font: "jua", sharpen: true, voice: true, voiceName: "", sound: true, pin: "0000", qr: true, wifiName: "", poseVoice: "m", posePack: "b", startCheck: true };
+const DEFAULTS = { paper: "postcard", extra: 2, countdown: 7, zoom: 1, attractTitle: "PHOTO BOOTH", title: "PHOTO BOOTH", showDate: true, timers: true, cassette: true, printerReady: false, printVia: "canon", printMode: "selphy", printModeV: 2, selphyIP: "", selphyName: "", bleed: 2, retouch: "natural", faceFx: true, poses: true, font: "jua", sharpen: true, voice: true, voiceName: "", sound: true, pin: "0000", qr: true, wifiName: "", poseVoice: "m", posePack: "b", startCheck: true };
 let S = loadSettings();
+/* v1.8: 기본 인쇄 방법을 '셀피 바로 인쇄'로 한 번 바꿈 (관리자 설정에서 다시 바꿀 수 있음) */
+if ((S.printModeV || 0) < 2) { S.printMode = "selphy"; S.printModeV = 2; try { localStorage.setItem("booth.settings", JSON.stringify(S)); } catch (e) {} }
 function loadSettings() {
   try { const raw = localStorage.getItem("booth.settings"); if (raw) { const o = Object.assign({}, DEFAULTS, JSON.parse(raw)); delete o.shots; delete o.maxCopies; return o; } } catch (e) {}
   return Object.assign({}, DEFAULTS);
@@ -2971,6 +2974,9 @@ let nativeCopies = 1;
    canon  : 사진을 Canon PRINT 앱으로 넘겨 인쇄 (셀피 '다이렉트 연결'일 때, AirPrint가 안 될 때)
    direct : 창 없이 바로 보내기 (iOS 16 이후 두 번째 인쇄부터 백지가 나오는 문제가 알려져 있어 실험용) */
 const PRINT_MODES = {
+  selphy: { name: "셀피 바로 인쇄 (캐논 방식)", btn: "🖨️ 인쇄하기",
+            steps: ["몇 장 뽑을지 고르기", "<b>인쇄하기</b>를 누르면 셀피로 바로 보내요", "프린터 앞에서 사진 기다리기"],
+            note: "Canon PRINT 앱과 같은 방식으로 셀피에 바로 보내요 (인쇄 창 없음)." },
   sheet:  { name: "인쇄 창 (AirPrint)", btn: "🖨️ 인쇄하기",
             steps: ["<b>인쇄하기</b>를 눌러요", "창에서 프린터가 <b>SELPHY CP1300</b>인지 보고 <b>매수</b> 정하기", "오른쪽 위 <b>프린트</b>!"],
             note: "SELPHY와 아이패드가 같은 Wi-Fi에 있어야 해요." },
@@ -2981,8 +2987,55 @@ const PRINT_MODES = {
             steps: ["몇 장 뽑을지 고르기", "<b>바로 인쇄하기</b>를 누르면 창 없이 인쇄", "프린터 앞에서 사진 기다리기"],
             note: "안 되면 자동으로 인쇄 창을 열어요." }
 };
-function printMode() { return PRINT_MODES[S.printMode] ? S.printMode : "sheet"; }
-function altMode() { return printMode() === "canon" ? "sheet" : "canon"; }
+function printMode() { return PRINT_MODES[S.printMode] ? S.printMode : "selphy"; }
+function altMode() { return printMode() === "canon" ? "selphy" : "canon"; }
+/* ── 셀피 바로 인쇄 (앱 전용): Canon PRINT 앱과 같은 셀피 전용 통신으로 사진을 직접 보냄 ── */
+async function selphyFind() {
+  let r = await native({ cmd: "selphyFind", ip: S.selphyIP || "" }, 20000);
+  /* 처음 한 번은 '로컬 네트워크' 허용 창 때문에 못 찾을 수 있어 잠시 뒤 한 번 더 */
+  if (!(r && r.printers && r.printers.length)) { await sleep(2500); r = await native({ cmd: "selphyFind", ip: S.selphyIP || "" }, 20000); }
+  const list = (r && r.printers) || [];
+  printLog("셀피 찾기: " + (list.length ? list.map((p) => (p.name || "SELPHY") + " " + p.ip).join(", ") : "없음") + (r && r.me ? " (아이패드 " + r.me + ")" : ""));
+  return { list, me: (r && r.me) || "" };
+}
+function selphyPick(list) { return list.find((p) => p.ip === S.selphyIP) || list.find((p) => /selphy|cp\d/i.test(p.name || "")) || list[0]; }
+/* onSent: 셀피가 사진을 다 받았을 때 (실제 인쇄는 그 뒤 약 50초) */
+async function selphyPrint(blob, copies, onSent, onStep) {
+  const jpeg = await blobToB64(blob), [w, h] = paperPx(S.paper);
+  let sentOnce = false;
+  window.__selphyProgress = (st) => {
+    if (st === "sent") { if (!sentOnce) { sentOnce = true; if (onSent) onSent(); } return; }
+    if (onStep) onStep(st);
+  };
+  const send = (ip) => native({ cmd: "selphyPrint", jpeg, ip, copies, w, h, borderless: true }, 300000 * copies + 30000);
+  let ip = S.selphyIP;
+  if (!ip) {
+    if (onStep) onStep("find");
+    const f = await selphyFind(), p = selphyPick(f.list);
+    if (!p) return { ok: false, error: "not-found" };
+    ip = p.ip; S.selphyIP = p.ip; S.selphyName = p.name || "SELPHY"; saveSettings();
+  }
+  let r = await send(ip).catch((e) => ({ ok: false, error: (e && e.message) || "error" }));
+  /* 셀피 주소가 바뀌었으면(공유기가 새 주소를 줌) 다시 찾아서 한 번 더 */
+  if (r && !r.ok && r.error === "no-reply") {
+    if (onStep) onStep("find");
+    const f = await selphyFind(), p = selphyPick(f.list);
+    if (p && p.ip !== ip) { S.selphyIP = p.ip; S.selphyName = p.name || "SELPHY"; saveSettings(); r = await send(p.ip).catch((e) => ({ ok: false, error: (e && e.message) || "error" })); }
+    else if (!p) r = { ok: false, error: "not-found" };
+  }
+  window.__selphyProgress = null;
+  if (r && !r.ok && r.trace && r.trace.length) printLog("셀피 기록: " + r.trace.slice(-4).join(" / "));
+  return r || { ok: false, error: "error" };
+}
+const SELPHY_ERR = {
+  "not-found": "셀피를 찾지 못했어요. 셀피 전원이 켜져 있고 아이패드와 <b>같은 Wi-Fi</b>인지 확인해 주세요. 처음이라면 ‘로컬 네트워크’ 허용 창에서 <b>허용</b>을 눌러야 해요 (설정 › PhotoBooth › 로컬 네트워크).",
+  "no-reply": "셀피가 대답하지 않아요. 셀피 화면이 켜져 있는지, 같은 Wi-Fi인지 확인해 주세요.",
+  busy: "셀피가 다른 인쇄 중이거나 준비가 안 됐어요. 잉크·용지 카세트와 셀피 화면의 오류를 확인해 주세요.",
+  "busy-app": "앞 사진을 아직 보내는 중이에요. 잠시 뒤 다시 눌러 주세요.",
+  "tcp-connect": "셀피와 연결하지 못했어요. 셀피를 껐다 켜고 다시 시도해 주세요.",
+  "tcp-lost": "보내는 중에 연결이 끊겼어요. 다시 시도해 주세요.",
+  timeout: "셀피가 너무 오래 응답하지 않아요. 셀피 화면의 오류(용지·잉크)를 확인해 주세요."
+};
 /* 인쇄 기록 (관리자 화면에서 확인 → 무엇이 문제인지 알 수 있게) */
 function printLog(what) {
   try {
@@ -2992,7 +3045,7 @@ function printLog(what) {
   } catch (e) {}
 }
 function printTexts() {
-  $("nativeCopies").hidden = !(NATIVE && printMode() === "direct");
+  $("nativeCopies").hidden = !(NATIVE && (printMode() === "direct" || printMode() === "selphy"));
   $("printAltBtn").hidden = !NATIVE;
   if (NATIVE) {
     const M = PRINT_MODES[printMode()];
@@ -3063,6 +3116,21 @@ async function runNativePrint(mode) {
     if (mode === "sheet") {
       $("printMsg").textContent = "인쇄 창을 여는 중…";
       r = await native({ cmd: "printSheet", jpeg, paper: S.paper }, 600000);
+    } else if (mode === "selphy") {
+      $("printMsg").textContent = "셀피로 보내는 중…";
+      const copies = nativeCopies;
+      r = await selphyPrint(session.finalBlob, copies, () => {
+        /* 셀피가 사진을 다 받으면 바로 '인쇄 중' 화면으로 (셀피가 인쇄하는 동안) */
+        if (sid === sessionId && tok === printTok && current === "print") { nativeBusy = false; setPrintButtons(true); printLog("셀피 바로 인쇄 → 보냄 (" + copies + "장)"); startPrinting(true, copies); }
+      }, (st) => {
+        if (current !== "print") return;
+        if (st === "find") $("printMsg").textContent = "셀피를 찾는 중…";
+        else if (st === "wait") $("printMsg").textContent = "셀피가 준비되길 기다리는 중…";
+        else if (st.startsWith("send:")) $("printMsg").textContent = "셀피로 보내는 중… " + st.slice(5) + "%";
+        else if (st.startsWith("copy:")) $("printMsg").textContent = st.slice(5) + "번째 장 보내는 중…";
+      });
+      if (r && r.ok) { if (current !== "print") return; }
+      else if (current !== "print" || sid !== sessionId) { printLog("셀피 바로 인쇄 오류(보낸 뒤): " + ((r && r.error) || "?")); errLog("셀피 바로 인쇄 오류: " + ((r && r.error) || "?")); return; }
     } else if (mode === "canon") {
       $("printMsg").textContent = "캐논 앱으로 보내는 중…";
       r = await native({ cmd: "openIn", jpeg }, 600000);
@@ -3078,7 +3146,7 @@ async function runNativePrint(mode) {
   printLog(PRINT_MODES[mode].name + " → " + (r && r.ok ? "보냄" + (r.app ? " (" + r.app + ")" : "") : (err || "실패")));
   if (r && r.ok) {
     if (mode === "canon") { waitReturnThenProgress(); return; }
-    startPrinting(false, mode === "direct" ? nativeCopies : 0); return;
+    startPrinting(mode === "selphy", (mode === "direct" || mode === "selphy") ? nativeCopies : 0); return;
   }
   if (err === "cancelled") {
     $("printMsg").textContent = "인쇄를 취소했어요";
@@ -3090,6 +3158,12 @@ async function runNativePrint(mode) {
       $("printMsg").textContent = "Canon PRINT 앱을 찾지 못했어요";
       $("printNote").innerHTML = "앱스토어에서 <b>Canon PRINT</b>를 설치하고 셀피를 한 번 등록해 주세요. 지금은 <b>인쇄 창으로 인쇄</b>를 써 보세요.";
     } else { $("printMsg").textContent = "캐논 앱으로 보내지 못했어요"; $("printNote").textContent = "다시 눌러 주세요. (" + err + ")"; }
+    return;
+  }
+  if (mode === "selphy") {
+    errLog("셀피 바로 인쇄 실패: " + err);
+    $("printMsg").textContent = "셀피로 보내지 못했어요";
+    $("printNote").innerHTML = (SELPHY_ERR[err] || "다시 눌러 주세요. (" + escapeHtml(err) + ")") + "<br>급하면 아래 <b>캐논 앱으로 인쇄</b>를 눌러 주세요.";
     return;
   }
   /* 인쇄 창·바로 인쇄가 안 되면 → 다른 방법으로 자동으로 넘어감 (화면이 멈추지 않게) */
@@ -3337,8 +3411,9 @@ function openAdmin() {
   seg($("setRetouch"), Object.keys(RETOUCH), () => S.retouch, (v) => { S.retouch = v; }, (v) => RETOUCH[v].name);
   seg($("setPoseVoice"), ["m", "f", "off"], () => (S.poseVoice || "off"), (v) => { S.poseVoice = v; if (v !== "off") { poseUnlock(); const was = S.poses; S.poses = true; playPose(poseInfo({ p: posePack().id, i: Math.floor(Math.random() * posePack().list.length) }).file); S.poses = was; } }, (v) => ({ m: "사진작가 (남)", f: "진행자 (여)", off: "끄기" })[v]);
   { const sp = $("setPosePack"); sp.innerHTML = ""; POSE_PACKS.forEach((pk) => { const o = el("option"); o.value = pk.id; o.textContent = pk.emoji + " " + pk.name + (pk.id === "b" ? "" : " (+기본 섞기)"); if (posePack().id === pk.id) o.selected = true; sp.appendChild(o); }); sp.onchange = () => { S.posePack = sp.value; poseBag = []; }; }
+  $("selphyRow").hidden = !(NATIVE && printMode() === "selphy"); $("setSelphyIP").value = S.selphyIP || ""; $("selphyName").textContent = S.selphyIP ? "(" + (S.selphyName || "SELPHY") + ")" : "(아직 못 찾음)";
   $("viaRow").hidden = NATIVE; $("nativePrinterRow").hidden = !NATIVE; $("modeRow").hidden = !NATIVE; $("logRow").hidden = !NATIVE; $("printLogBox").hidden = true;
-  seg($("setMode"), ["sheet", "canon", "direct"], () => printMode(), (v) => { S.printMode = v; }, (v) => ({ sheet: "인쇄 창 (추천)", canon: "캐논 앱", direct: "바로 (실험)" })[v]);
+  seg($("setMode"), ["selphy", "sheet", "canon", "direct"], () => printMode(), (v) => { S.printMode = v; $("selphyRow").hidden = v !== "selphy"; }, (v) => ({ selphy: "셀피 바로 (추천)", sheet: "인쇄 창", canon: "캐논 앱", direct: "바로 (실험)" })[v]);
   if (NATIVE) native({ cmd: "info" }).then((i) => { $("nativePrinterName").textContent = (i && i.printer) ? "(" + i.printer + ")" : "(선택 안 됨)"; }).catch(() => {});
   seg($("setVia"), ["canon", "airprint"], () => S.printVia, (v) => { S.printVia = v; S.printerReady = false; }, (v) => v === "canon" ? "캐논 앱" : "AirPrint");
   seg($("setBleed"), [0, 1, 2, 3, 4], () => Number(S.bleed), (v) => { S.bleed = v; }, (v) => v + "mm");
@@ -3355,6 +3430,19 @@ function escapeHtml(t) { return t.replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<"
 $("logBtn").addEventListener("click", () => {
   let L = []; try { L = JSON.parse(localStorage.getItem("booth.printlog") || "[]"); } catch (e) {}
   const box = $("printLogBox"); box.textContent = L.length ? L.join("\n") : "(기록 없음)"; box.hidden = !box.hidden;
+});
+$("selphyFindBtn").addEventListener("click", async () => {
+  const b = $("selphyFindBtn"); b.textContent = "찾는 중…"; b.disabled = true;
+  try {
+    const f = await selphyFind();
+    if (!f.list.length) { $("selphyName").textContent = "(못 찾음 — 같은 Wi-Fi·로컬 네트워크 허용 확인)"; }
+    else {
+      let p = f.list[0];
+      if (f.list.length > 1) { const v = await ask("셀피를 골라 주세요", "같은 Wi-Fi에서 " + f.list.length + "대를 찾았어요.", f.list.map((x, i) => ({ t: (x.name || "SELPHY") + " · " + x.ip, v: i }))); p = f.list[v] || p; }
+      S.selphyIP = p.ip; S.selphyName = p.name || "SELPHY"; $("setSelphyIP").value = p.ip; $("selphyName").textContent = "(" + S.selphyName + ")";
+    }
+  } catch (e) { $("selphyName").textContent = "(찾기 오류: " + ((e && e.message) || "?") + ")"; }
+  b.textContent = "셀피 찾기"; b.disabled = false;
 });
 $("checkPrinterBtn").addEventListener("click", async () => {
   const b = $("checkPrinterBtn"); b.textContent = "확인 중…";
@@ -3378,6 +3466,7 @@ $("voiceTest").addEventListener("click", async () => {
 });
 $("adminClose").addEventListener("click", () => {
   S.wifiName = $("setWifi").value.trim();
+  { const ipv = $("setSelphyIP").value.trim(); if (!ipv) S.selphyIP = ""; else if (/^\d{1,3}(\.\d{1,3}){3}$/.test(ipv)) S.selphyIP = ipv; }
   S.title = $("setTitle").value.trim(); S.attractTitle = $("setAttract").value.trim() || "PHOTO BOOTH";
   const np = $("setPin").value.trim(); if (/^\d{4}$/.test(np)) S.pin = np;
   saveSettings(); $("adminModal").hidden = true; go("attract");
@@ -3523,6 +3612,12 @@ async function runChecks() {
     const mode = NATIVE ? printMode() : (S.printVia || "canon"), name = (PRINT_MODES[mode] && PRINT_MODES[mode].name) || mode;
     if (!NATIVE) return ["skip", "브라우저: 인쇄할 때 공유 창으로 보내요"];
     if (mode === "canon") return ["ok", "인쇄 방법: " + name + " (Canon PRINT 앱이 설치·등록되어 있어야 해요)"];
+    if (mode === "selphy") {
+      const f = await selphyFind(), p = selphyPick(f.list);
+      if (!p) return ["fail", "셀피를 찾지 못했어요 → 셀피 전원·같은 Wi-Fi(아이패드 " + (f.me || "?") + ") 확인, 처음이면 ‘로컬 네트워크’ 허용 (설정 › PhotoBooth)"];
+      if (p.ip !== S.selphyIP) { S.selphyIP = p.ip; S.selphyName = p.name || "SELPHY"; saveSettings(); }
+      return ["ok", (p.name || "SELPHY") + " · " + p.ip + " 응답함 · 인쇄 방법: " + name];
+    }
     if (!info || !info.printer) return ["warn", "프린터를 아직 고르지 않았어요 → 관리자 설정 ‘프린터 고르기’ (인쇄 창에서 골라도 돼요)"];
     const r = await ckTimeout(native({ cmd: "contact" }), 12000, "프린터 응답 시간 초과").catch((e) => ({ ok: false, error: e.message }));
     return r && r.ok ? ["ok", info.printer + " 연결됨 · 인쇄 방법: " + name] : ["fail", info.printer + "가 응답하지 않아요 (전원·와이파이·같은 공유기인지 확인) [" + ((r && r.error) || "?") + "]"];
@@ -3564,7 +3659,7 @@ function buildReport() {
   const lines = ["[네컷 포토부스 점검 보고서] v" + APP_VERSION,
     "날짜: " + d.getFullYear() + "-" + pad2(d.getMonth() + 1) + "-" + pad2(d.getDate()) + " " + pad2(d.getHours()) + ":" + pad2(d.getMinutes()),
     "실행: " + (NATIVE ? "아이패드 앱" : "브라우저") + " · 화면 " + innerWidth + "×" + innerHeight + " · " + navigator.userAgent.replace(/^Mozilla\/5\.0 /, "").slice(0, 120),
-    "설정: 인쇄방법=" + (NATIVE ? printMode() : S.printVia) + ", 용지=" + S.paper + ", 여유컷=" + S.extra + ", 카운트다운=" + S.countdown + ", 보정=" + S.retouch + ", 포즈목소리=" + S.poseVoice + ", 포즈묶음=" + posePack().name + ", QR=" + (S.qr ? "켬" : "끔") + ", 가장자리=" + S.bleed + "mm"];
+    "설정: 인쇄방법=" + (NATIVE ? printMode() : S.printVia) + ", 용지=" + S.paper + ", 여유컷=" + S.extra + ", 카운트다운=" + S.countdown + ", 보정=" + S.retouch + ", 포즈목소리=" + S.poseVoice + ", 포즈묶음=" + posePack().name + ", QR=" + (S.qr ? "켬" : "끔") + ", 가장자리=" + S.bleed + "mm, 셀피=" + (S.selphyIP ? (S.selphyName || "SELPHY") + " " + S.selphyIP : "없음")];
   if (Object.keys(CK.rows).length) {
     lines.push("", "결과: 문제 " + c.fail + " · 주의 " + c.warn + " · 정상 " + c.ok);
     ["fail", "warn", "ok", "skip", "wait"].forEach((stt) => Object.values(CK.rows).filter((r) => r.status === stt).forEach((r) => lines.push(CK_ICON[stt] + " " + r.name + (r.detail ? " — " + r.detail : ""))));
@@ -3620,7 +3715,8 @@ $("ckPrint").addEventListener("click", async () => {
   try {
     if (NATIVE) {
       const mode = printMode(), cmd = mode === "canon" ? "openIn" : mode === "direct" ? "print" : "printSheet";
-      const r = await native({ cmd, jpeg: await blobToB64(CK.testBlob), copies: 1, paper: S.paper }, 600000);
+      const r = mode === "selphy" ? await selphyPrint(CK.testBlob, 1, null, (st) => { if (st.startsWith("send:")) ckSet("print", "run", "셀피로 보내는 중 " + st.slice(5) + "%"); })
+        : await native({ cmd, jpeg: await blobToB64(CK.testBlob), copies: 1, paper: S.paper }, 600000);
       if (r && r.ok === false) { ckSet("print", "fail", "인쇄를 보내지 못했어요 [" + (r.error || "?") + "] → 인쇄 방법을 바꿔 다시 시도"); printLog("점검 인쇄 실패: " + (r.error || "?")); ckSummary(false); return; }
     } else {
       const f = new File([CK.testBlob], "test.jpg", { type: "image/jpeg" });
