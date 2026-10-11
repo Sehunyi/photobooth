@@ -343,7 +343,7 @@ final class ShareServer {
         return """
         <!doctype html><html lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
         <title>사진 없음</title>\(style)</head><body>
-        <h1>사진을 찾을 수 없어요</h1><p>행사가 끝났거나 오래되어 지워졌어요.<br>포토부스 선생님께 말씀해 주세요.</p>
+        <h1>사진을 찾을 수 없어요</h1><p>행사가 끝났거나 오래되어 지워졌어요.<br>포토부스 담당자에게 말씀해 주세요.</p>
         </body></html>
         """
     }
