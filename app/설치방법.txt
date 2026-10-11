@@ -56,8 +56,10 @@
  - 인쇄: 인쇄 창(SELPHY 미리 선택, 엽서 용지 지정) 또는 Canon PRINT 앱으로 넘기기
  - 화면 꺼짐 방지, 무음 모드여도 소리 나옴, 상태 바 숨김
 
-[업데이트할 때 (v1.1)]
- - 맥의 PhotoBooth.swiftpm 폴더에서 아래 두 가지만 바꿔 넣으세요 (폴더 전체를 바꾸면 Team 설정이 풀림)
-   1) BoothViewController.swift 파일
-   2) Web 폴더 안의 index.html (mp 폴더의 selfie_multiclass_256x256.tflite 는 지워도 됨 — 배경 바꾸기 삭제)
+[업데이트할 때 (v1.2)]
+ - 맥의 PhotoBooth.swiftpm 폴더에서 아래만 바꿔 넣으세요 (폴더 전체를 바꾸면 Team 설정이 풀림)
+   1) BoothViewController.swift 파일 (v1.1과 같음 — 이미 바꿨으면 그대로)
+   2) Web 폴더 안에: index.html, frames 폴더, fonts 폴더, CREDITS.txt 를 넣기(덮어쓰기)
+      (mp 폴더의 selfie_multiclass_256x256.tflite 는 지워도 됨)
  - Xcode에서 ▶ 실행
+ - v1.2: 글꼴이 앱 안에 들어가서 인터넷이 없어도(셀피 다이렉트 연결 중에도) 인쇄 글씨가 그대로 나옴

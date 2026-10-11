@@ -7,9 +7,7 @@
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <title>네컷 포토부스</title>
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Jua&family=Gowun+Dodum&display=swap">
+<style id="fontFaces"></style>
 <style>
 /* 키오스크형 한 화면 앱: 왼쪽 큰 미리보기 + 오른쪽 조작 패널, 세로로 두면 위아래로 쌓임 */
 :root {
@@ -40,9 +38,19 @@ button:focus-visible { outline: 3px solid var(--yellow); outline-offset: 2px; }
 .screen { position: absolute; inset: 0; display: flex; flex-direction: column; padding: env(safe-area-inset-top, 0px) 0 env(safe-area-inset-bottom, 0px); }
 
 /* 상단바 */
-.head { display: grid; grid-template-columns: 64px 1fr 64px; align-items: center; gap: 12px; padding: 16px 24px 8px; }
+.head { display: grid; grid-template-columns: 200px 1fr 200px; align-items: center; gap: 12px; padding: 16px 24px 8px; }
 .head h1 { margin: 0; text-align: center; font-family: var(--display); font-weight: 400; font-size: 34px; text-wrap: balance; }
 .head p { margin: 4px 0 0; text-align: center; color: var(--muted); font-size: 18px; }
+.navL { display: flex; gap: 10px; align-items: center; }
+.nav { height: 54px; padding: 0 18px; border-radius: 999px; background: var(--card); color: var(--purple); font-family: var(--display); font-size: 21px; box-shadow: 0 2px 0 var(--line); white-space: nowrap; }
+.nav.home { padding: 0 16px; }
+.quickShot { position: absolute; right: 16px; bottom: 16px; padding: 14px 22px; border-radius: 999px; background: var(--yellow); color: #3a2a00; font-family: var(--display); font-size: 24px; box-shadow: 0 4px 14px rgba(0,0,0,.35); z-index: 3; }
+.poseTip { position: absolute; left: 50%; top: 14px; transform: translateX(-50%); padding: 10px 22px; border-radius: 999px; background: rgba(255,255,255,.9); color: #3a2060; font-family: var(--display); font-size: 26px; box-shadow: 0 3px 12px rgba(0,0,0,.3); white-space: nowrap; z-index: 3; }
+.fonts { display: grid; grid-template-columns: repeat(auto-fill, minmax(118px, 1fr)); gap: 8px; margin-bottom: 12px; }
+.fonts button { background: var(--card); border-radius: 12px; padding: 8px 4px; border: 3px solid transparent; color: var(--ink); line-height: 1.15; }
+.fonts button b { display: block; font-weight: 400; font-size: 26px; }
+.fonts button small { font-size: 13px; color: var(--muted); font-family: var(--body); }
+.fonts button.on { border-color: var(--purple); }
 .back { width: 60px; height: 60px; border-radius: 50%; background: var(--card); color: var(--purple); font-size: 28px; box-shadow: 0 2px 0 var(--line); }
 .timer { width: 60px; height: 60px; border-radius: 50%; display: grid; place-items: center; background: var(--purple); color: #fff; font-family: var(--display); font-size: 24px; font-variant-numeric: tabular-nums; justify-self: end; }
 .timer.low { background: var(--danger); }
@@ -281,7 +289,7 @@ button:focus-visible { outline: 3px solid var(--yellow); outline-offset: 2px; }
 
 <!-- 3. 프레임 -->
 <section class="screen" id="s-frame" hidden>
-  <div class="head"><button class="back" data-back="attract" aria-label="처음으로">‹</button><div><h1>프레임을 골라 주세요</h1><p>모양과 디자인을 고르고 촬영 시작!</p></div><div class="timer" data-timer></div></div>
+  <div class="head"><div class="navL"><button class="nav" data-back="attract">‹ 처음</button></div><div><h1>프레임을 골라 주세요</h1><p>모양과 디자인을 고르고 촬영 시작!</p></div><div class="timer" data-timer></div></div>
   <div class="body2">
     <div class="stageWrap" id="frameStageWrap"><div class="stage" id="frameStage"><canvas id="frameCanvas"></canvas></div></div>
     <div class="panel">
@@ -303,6 +311,8 @@ button:focus-visible { outline: 3px solid var(--yellow); outline-offset: 2px; }
       <canvas id="beautyView" hidden></canvas>
       <canvas id="fxCanvas"></canvas>
       <div class="num" id="countNum"></div>
+      <div class="poseTip" id="poseTip" hidden></div>
+      <button class="quickShot" id="quickShot" hidden>⚡ 바로 찍기</button>
       <div class="guide" id="camGuide">카메라를 보세요!</div>
       <div class="camErr" id="camErr" hidden></div>
     </div>
@@ -313,7 +323,7 @@ button:focus-visible { outline: 3px solid var(--yellow); outline-offset: 2px; }
 
 <!-- 5. 사진 고르기 -->
 <section class="screen" id="s-select" hidden>
-  <div class="head"><div></div><div><h1>사진을 골라 주세요</h1><p>칸을 누르고, 넣고 싶은 사진을 눌러요</p></div><div class="timer" data-timer></div></div>
+  <div class="head"><div class="navL"><button class="nav" id="selBack">‹ 다시 찍기</button><button class="nav home" data-home aria-label="처음으로">⌂</button></div><div><h1>사진을 골라 주세요</h1><p>칸을 누르고, 넣고 싶은 사진을 눌러요</p></div><div class="timer" data-timer></div></div>
   <div class="body2">
     <div class="stageWrap" id="selStageWrap"><div class="stage" id="selStage"><canvas id="selCanvas"></canvas></div></div>
     <div class="panel">
@@ -325,7 +335,7 @@ button:focus-visible { outline: 3px solid var(--yellow); outline-offset: 2px; }
 
 <!-- 6. 꾸미기 -->
 <section class="screen" id="s-deco" hidden>
-  <div class="head"><div></div><div><h1>예쁘게 꾸며 볼까요?</h1></div><div class="timer" data-timer></div></div>
+  <div class="head"><div class="navL"><button class="nav" data-back="select">‹ 사진 고르기</button><button class="nav home" data-home aria-label="처음으로">⌂</button></div><div><h1>예쁘게 꾸며 볼까요?</h1></div><div class="timer" data-timer></div></div>
   <div class="body2">
     <div class="stageWrap" id="decoStageWrap"><div class="stage" id="decoStage"><canvas id="decoCanvas"></canvas><div id="stkLayer" style="position:absolute;inset:0;overflow:hidden"></div></div></div>
     <div class="panel">
@@ -342,6 +352,8 @@ button:focus-visible { outline: 3px solid var(--yellow); outline-offset: 2px; }
         <div data-pane="frame" hidden><div class="swatches" id="frameList2"></div></div>
         <div data-pane="emoji" hidden><div class="emojis" id="emojiList"></div></div>
         <div data-pane="text" hidden>
+          <div class="label" style="font-size:18px;margin-bottom:8px">글자 모양 <small style="font-family:var(--body);font-size:14px;color:var(--muted)">(사진 아래 글자와 넣는 글자에 적용)</small></div>
+          <div class="fonts" id="fontList"></div>
           <div class="textIn"><input id="textInput" type="text" maxlength="20" placeholder="글자를 입력하세요" autocomplete="off"><button id="textAdd">넣기</button></div>
           <div class="colors" id="colorList"></div>
           <div class="label" style="font-size:18px;margin-bottom:8px">추천 문구</div>
@@ -359,7 +371,7 @@ button:focus-visible { outline: 3px solid var(--yellow); outline-offset: 2px; }
 
 <!-- 7. 출력 -->
 <section class="screen" id="s-print" hidden>
-  <div class="head"><button class="back" data-home aria-label="처음으로">⌂</button><div><h1>이제 인쇄해 볼까요?</h1></div><div class="timer" data-timer></div></div>
+  <div class="head"><div class="navL"><button class="nav" data-back="deco">‹ 꾸미기</button><button class="nav home" data-home aria-label="처음으로">⌂</button></div><div><h1>이제 인쇄해 볼까요?</h1></div><div class="timer" data-timer></div></div>
   <div class="result">
     <div class="resultImg"><img id="printPreview" alt="완성된 네컷 사진"></div>
     <div class="side">
@@ -382,7 +394,7 @@ button:focus-visible { outline: 3px solid var(--yellow); outline-offset: 2px; }
 
 <!-- 7-1. 인쇄 진행 -->
 <section class="screen" id="s-printing" hidden>
-  <div class="head"><button class="back" data-home aria-label="처음으로">⌂</button><div><h1 id="pgTitle">사진을 인쇄하고 있어요</h1><p id="pgSub">프린터 앞에서 조금만 기다려 주세요</p></div><div></div></div>
+  <div class="head"><div class="navL"><button class="nav" data-back="print">‹ 인쇄 화면</button><button class="nav home" data-home aria-label="처음으로">⌂</button></div><div><h1 id="pgTitle">사진을 인쇄하고 있어요</h1><p id="pgSub">프린터 앞에서 조금만 기다려 주세요</p></div><div></div></div>
   <div class="result">
     <div class="pgStage">
       <div class="printer">
@@ -409,7 +421,7 @@ button:focus-visible { outline: 3px solid var(--yellow); outline-offset: 2px; }
 
 <!-- 8. 완료 -->
 <section class="screen" id="s-done" hidden>
-  <div class="head"><div></div><div><h1>고마워요!</h1><p>사진을 꼭 챙겨 가세요</p></div><div class="timer" data-timer></div></div>
+  <div class="head"><div class="navL"><button class="nav" data-back="print">‹ 한 장 더 인쇄</button></div><div><h1>고마워요!</h1><p>사진을 꼭 챙겨 가세요</p></div><div class="timer" data-timer></div></div>
   <div class="result">
     <div class="resultImg"><video id="liveVideo" playsinline muted loop autoplay hidden></video><img id="doneImg" alt="완성된 네컷 사진"></div>
     <div class="side">
@@ -428,6 +440,15 @@ button:focus-visible { outline: 3px solid var(--yellow); outline-offset: 2px; }
     <h3>선생님 확인</h3>
     <p id="cassetteText"></p>
     <div class="row"><button class="big gray" id="cassetteNo">취소</button><button class="big" id="cassetteYes">맞아요</button></div>
+  </div>
+</div>
+
+<!-- 모달: 공용 확인 (뒤로 가기 · 처음으로) -->
+<div class="modal" id="askModal" hidden>
+  <div class="sheet">
+    <h3 id="askTitle"></h3>
+    <p id="askMsg"></p>
+    <div class="row" id="askBtns"></div>
   </div>
 </div>
 
@@ -478,6 +499,8 @@ button:focus-visible { outline: 3px solid var(--yellow); outline-offset: 2px; }
     <div class="field"><span>음성 안내 (3, 2, 1 · 안내 말)</span><button class="toggle" id="setVoice" aria-label="음성 안내"></button></div>
     <div class="field"><span>목소리·소리 확인</span><button class="mini" id="voiceTest">들어보기</button></div>
     <div class="field"><span>효과음 (찰칵 · 삐)</span><button class="toggle" id="setSound" aria-label="효과음"></button></div>
+    <div class="field"><span>포즈 추천 <small>(찍을 때마다 포즈 아이디어)</small></span><button class="toggle" id="setPoses" aria-label="포즈 추천"></button></div>
+    <div class="field"><span>사진 아래 글자 기본 글꼴</span><select id="setFont"></select></div>
     <div class="field"><span>얼굴 따라다니는 효과</span><button class="toggle" id="setFaceFx" aria-label="얼굴 효과"></button></div>
     <div class="field"><span>화질 개선 <small>(인쇄 사진을 선명하게)</small></span><button class="toggle" id="setSharpen" aria-label="화질 개선"></button></div>
     <div class="field"><span>뽀샤시 보정 기본값 <small>(촬영 화면에서 바꿀 수 있음)</small></span><div class="seg" id="setRetouch"></div></div>
@@ -582,8 +605,35 @@ const FRAMES = [
   { cat: "계절·행사", name: "눈 오는 날", base: "#dff0ff", pattern: "theme", grad: ["#f4faff", "#bcdcf7"], emojis: ["❄️", "⛄️", "🧤", "❄️"], over: ["⛄️", "❄️"] },
   { cat: "계절·행사", name: "생일", base: "#fff3c9", pattern: "theme", grad: ["#fff8dc", "#ffd6e7"], emojis: ["🎂", "🎈", "🎉", "🎁", "🥳"], over: ["🎈", "🎂"] },
   { cat: "계절·행사", name: "졸업·축하", base: "#1f2a4d", pattern: "theme", grad: ["#24325c", "#141c38"], emojis: ["🎓", "🌟", "🎊", "💐"], over: ["🎓", "💐"], ink: "#ffd76a" },
-  { cat: "계절·행사", name: "스트레인지", base: "#6b3da8", pattern: "theme", grad: ["#7b4bc0", "#4a2683"], emojis: ["🦁", "🐝", "🔥", "🛡️"], over: ["🦁", "🐝"], ink: "#ffd133" }
+  { cat: "계절·행사", name: "스트레인지", base: "#6b3da8", pattern: "theme", grad: ["#7b4bc0", "#4a2683"], emojis: ["🦁", "🐝", "🔥", "🛡️"], over: ["🦁", "🐝"], ink: "#ffd133" },
+  /* 사진 테마: 무료(CC0) 사진을 배경으로 + 사진 칸에 흰 테두리 + 글자 뒤 반투명 띠 (출처: CREDITS.txt) */
+  { cat: "사진 테마", name: "벚꽃", img: "cherry", base: "#e8b4c0", pattern: "photo", cellBorder: "#ffffff", capBox: "rgba(255,255,255,.82)", ink: "#7a3550" },
+  { cat: "사진 테마", name: "핑크 꽃", img: "pinkflower", base: "#d987ad", pattern: "photo", cellBorder: "#ffffff", capBox: "rgba(255,255,255,.82)", ink: "#8a2d5c" },
+  { cat: "사진 테마", name: "데이지", img: "daisy", base: "#6d8a52", pattern: "photo", cellBorder: "#ffffff", capBox: "rgba(255,255,255,.85)", ink: "#3d5a24" },
+  { cat: "사진 테마", name: "해바라기", img: "sunflower", base: "#c9a43a", pattern: "photo", cellBorder: "#ffffff", capBox: "rgba(255,255,255,.85)", ink: "#7a5a00" },
+  { cat: "사진 테마", name: "레몬", img: "lemon", base: "#f6f1df", pattern: "photo", cellBorder: "#ffffff", capBox: "rgba(255,248,200,.9)", ink: "#8a6d00", tint: "rgba(255,255,255,.15)" },
+  { cat: "사진 테마", name: "파란 하늘", img: "sky", base: "#bedbee", pattern: "photo", cellBorder: "#ffffff", capBox: "rgba(255,255,255,.85)", ink: "#2c5d88" },
+  { cat: "사진 테마", name: "노을 바다", img: "sunset", base: "#b7a2cc", pattern: "photo", cellBorder: "#ffffff", capBox: "rgba(255,255,255,.8)", ink: "#5b3f86" },
+  { cat: "사진 테마", name: "에메랄드 바다", img: "ocean", base: "#0aa0ab", pattern: "photo", cellBorder: "#ffffff", capBox: "rgba(255,255,255,.85)", ink: "#006a73" },
+  { cat: "사진 테마", name: "가을 단풍", img: "autumn", base: "#b0743f", pattern: "photo", cellBorder: "#fff7ec", capBox: "rgba(255,247,236,.88)", ink: "#8a3b12" },
+  { cat: "사진 테마", name: "눈꽃", img: "snow", base: "#cfd7df", pattern: "photo", cellBorder: "#ffffff", capBox: "rgba(255,255,255,.85)", ink: "#3c5a78" },
+  { cat: "사진 테마", name: "은하수", img: "galaxy", base: "#2d2a3a", pattern: "photo", cellBorder: "#ffffff", capBox: "rgba(10,8,30,.55)", ink: "#ffffff" },
+  { cat: "사진 테마", name: "핑크 반짝이", img: "glitter", base: "#a3304f", pattern: "photo", cellBorder: "#ffffff", capBox: "rgba(255,255,255,.85)", ink: "#a3304f" },
+  { cat: "사진 테마", name: "골드 조명", img: "gold", base: "#6b4a1f", pattern: "photo", cellBorder: "#fff4d6", capBox: "rgba(30,18,0,.5)", ink: "#ffe39a" },
+  { cat: "사진 테마", name: "알록달록 조명", img: "lights", base: "#b44d40", pattern: "photo", cellBorder: "#ffffff", capBox: "rgba(255,255,255,.85)", ink: "#b0303a" },
+  { cat: "사진 테마", name: "크라프트지", img: "kraft", base: "#c9ab84", pattern: "photo", cellBorder: "#fffaf0", capBox: "rgba(255,250,240,.75)", ink: "#5a3b1a" },
+  { cat: "사진 테마", name: "원목", img: "wood", base: "#a77b4d", pattern: "photo", cellBorder: "#ffffff", capBox: "rgba(255,255,255,.82)", ink: "#5a3815" }
 ];
+/* 사진 테마 배경 그림 불러오기 (앱 안 frames 폴더) — 다 불러오면 보이는 화면을 다시 그림 */
+const FRAME_IMG = {};
+let frameImgRedraw = null;
+FRAMES.forEach((f) => {
+  if (!f.img || FRAME_IMG[f.img]) return;
+  const im = new Image(); im.decoding = "async";
+  im.onload = () => { clearTimeout(frameImgRedraw); frameImgRedraw = setTimeout(() => { if (typeof current === "undefined") return; if (current === "frame") { buildSwatches($("frameList"), drawFramePreview); drawFramePreview(); } else if (current === "deco") { buildSwatches($("frameList2"), drawDeco); drawDeco(); } }, 120); };
+  im.src = "frames/" + f.img + ".jpg"; FRAME_IMG[f.img] = im;
+});
+function frameImgReady(f) { const im = f && f.img && FRAME_IMG[f.img]; return !!(im && im.complete && im.naturalWidth); }
 /* 필터: 한국 포토부스·my4cut에서 많이 쓰는 느낌 (소프트·핑크·필름 카메라·일회용 플래시·2000년대 디카·흑백) */
 const FILTERS = [
   { id: "original", name: "원본" }, { id: "soft", name: "소프트" }, { id: "pink", name: "핑크" },
@@ -600,8 +650,37 @@ const TEXT_COLORS = ["#ffffff", "#191919", "#6b3da8", "#ffd133", "#ff78a0", "#46
 const DPI = 300;
 const EMOJI_FONT = '"Apple Color Emoji","Segoe UI Emoji","Noto Color Emoji",sans-serif';
 const DISPLAY_FONT = '"Jua","Apple SD Gothic Neo",sans-serif';
+/* 글꼴: 모두 무료(OFL) 글꼴을 앱 안에 넣음(fonts 폴더) → 인터넷 없이도 인쇄에 그대로 나옴.
+   한국 포토부스·네컷 앱 프레임에서 많이 쓰는 느낌: 둥근 제목체, 손글씨, 붓글씨, 굵은 포스터체, 영문 필기체 */
+const FONTS = [
+  { id: "jua", name: "주아", fam: "Jua", file: "Jua-Regular" },
+  { id: "gaegu", name: "개구 손글씨", fam: "Gaegu", file: "Gaegu-Bold" },
+  { id: "gamja", name: "감자꽃", fam: "Gamja Flower", file: "GamjaFlower-Regular" },
+  { id: "pen", name: "나눔 펜글씨", fam: "Nanum Pen Script", file: "NanumPenScript-Regular" },
+  { id: "dohyeon", name: "도현", fam: "Do Hyeon", file: "DoHyeon-Regular" },
+  { id: "blackhan", name: "검은고딕", fam: "Black Han Sans", file: "BlackHanSans-Regular" },
+  { id: "dongle", name: "동글", fam: "Dongle", file: "Dongle-Regular", scale: 1.35 },
+  { id: "yeonsung", name: "연성 붓글씨", fam: "Yeon Sung", file: "YeonSung-Regular" },
+  { id: "singleday", name: "싱글데이", fam: "Single Day", file: "SingleDay-Regular" },
+  { id: "cute", name: "귀여운", fam: "Cute Font", file: "CuteFont-Regular", scale: 1.25 },
+  { id: "pacifico", name: "Pacifico", fam: "Pacifico", file: "Pacifico-Regular", latin: true },
+  { id: "bebas", name: "BEBAS", fam: "Bebas Neue", file: "BebasNeue-Regular", latin: true, scale: 1.1 }
+];
+const FONT_BY = Object.fromEntries(FONTS.map((f) => [f.id, f]));
+(function addFontFaces() {
+  const css = FONTS.concat([{ fam: "Gowun Dodum", file: "GowunDodum-Regular" }]).map((f) => '@font-face{font-family:"' + f.fam + '";src:url("fonts/' + f.file + '.woff2") format("woff2");font-display:swap}').join("\n");
+  document.getElementById("fontFaces").textContent = css;
+})();
+function fontCss(id) { const f = FONT_BY[id] || FONT_BY.jua; return '"' + f.fam + '","Jua","Apple SD Gothic Neo",sans-serif'; }
+function fontScale(id) { const f = FONT_BY[id]; return (f && f.scale) || 1; }
+const fontLoaded = {};
+function loadFont(id) {
+  const f = FONT_BY[id] || FONT_BY.jua;
+  if (!fontLoaded[f.id]) fontLoaded[f.id] = (document.fonts && document.fonts.load ? document.fonts.load('40px "' + f.fam + '"', "가A") : Promise.resolve()).catch(() => {});
+  return fontLoaded[f.id];
+}
 
-const DEFAULTS = { paper: "postcard", extra: 2, countdown: 7, zoom: 1, attractTitle: "PHOTO BOOTH", title: "PHOTO BOOTH", showDate: true, timers: true, cassette: true, printerReady: false, printVia: "canon", printMode: "sheet", bleed: 2, retouch: "natural", faceFx: true, sharpen: true, voice: true, voiceName: "", sound: true, pin: "0000" };
+const DEFAULTS = { paper: "postcard", extra: 2, countdown: 7, zoom: 1, attractTitle: "PHOTO BOOTH", title: "PHOTO BOOTH", showDate: true, timers: true, cassette: true, printerReady: false, printVia: "canon", printMode: "sheet", bleed: 2, retouch: "natural", faceFx: true, poses: true, font: "jua", sharpen: true, voice: true, voiceName: "", sound: true, pin: "0000" };
 let S = loadSettings();
 function loadSettings() {
   try { const raw = localStorage.getItem("booth.settings"); if (raw) { const o = Object.assign({}, DEFAULTS, JSON.parse(raw)); delete o.shots; delete o.maxCopies; return o; } } catch (e) {}
@@ -611,7 +690,7 @@ function saveSettings() { try { localStorage.setItem("booth.settings", JSON.stri
 
 /* ───────── 한 팀의 촬영 데이터 ───────── */
 const session = {
-  copies: 1, layout: "strip4", frame: 0, shots: [], slots: [null, null, null, null], active: 0,
+  copies: 1, layout: "strip4", frame: 0, font: "jua", shots: [], slots: [null, null, null, null], active: 0,
   filter: "original", retouch: "natural", stickers: [], finalCanvas: null, finalBlob: null, liveBlob: null, filtered: {}
 };
 /* ── 메모리 관리 ──
@@ -652,7 +731,7 @@ function blobImageOK(blob, w, h) {
 function resetSession() {
   releaseSession();
   hintShown = false;
-  Object.assign(session, { copies: 1, layout: "strip4", frame: 0, shots: [], slots: [null, null, null, null], active: 0,
+  Object.assign(session, { copies: 1, layout: "strip4", frame: 0, font: (FONT_BY[S.font] ? S.font : "jua"), shots: [], slots: [null, null, null, null], active: 0,
     filter: "original", retouch: (RETOUCH[S.retouch] ? S.retouch : "natural"), stickers: [], finalCanvas: null, finalBlob: null, liveBlob: null, filtered: {} });
 }
 
@@ -693,6 +772,11 @@ function drawBackground(ctx, f, x, y, w, h, panel) {
   if (f.pattern === "theme" && f.grad) { const g = ctx.createLinearGradient(0, y, 0, y + h); g.addColorStop(0, f.grad[0]); g.addColorStop(1, f.grad[1]); ctx.fillStyle = g; }
   else ctx.fillStyle = f.base;
   ctx.fillRect(x, y, w, h);
+  if (f.pattern === "photo") {
+    if (frameImgReady(f)) { const im = FRAME_IMG[f.img]; drawCover(ctx, { width: im.naturalWidth, height: im.naturalHeight, el: im }, { x, y, w, h }); }
+    if (f.tint) { ctx.fillStyle = f.tint; ctx.fillRect(x, y, w, h); }
+    ctx.restore(); return;
+  }
   if (f.pattern === "solid" || w < 4 || h < 4) { ctx.restore(); return; }
   ctx.fillStyle = f.accent || "#fff";
   if (f.pattern === "dots") {
@@ -741,7 +825,7 @@ function drawCover(ctx, img, r) {
   const iw = img.width, ih = img.height; if (!iw || !ih) return;
   const s = Math.max(r.w / iw, r.h / ih), w = iw * s, h = ih * s;
   ctx.save(); ctx.beginPath(); ctx.rect(r.x, r.y, r.w, r.h); ctx.clip();
-  ctx.drawImage(img, r.x + (r.w - w) / 2, r.y + (r.h - h) / 2, w, h); ctx.restore();
+  ctx.drawImage(img.el || img, r.x + (r.w - w) / 2, r.y + (r.h - h) / 2, w, h); ctx.restore();
 }
 function drawEmpty(ctx, r, num, show) {
   ctx.fillStyle = "#dbdbdb"; ctx.fillRect(r.x, r.y, r.w, r.h);
@@ -760,11 +844,18 @@ function drawCaption(ctx, spec, r) {
   const total = lines.reduce((a, l) => a + l.size * 1.2, 0);
   let y = r.y + r.h / 2 - total / 2;
   ctx.textAlign = "center"; ctx.textBaseline = "middle";
+  const fid = spec.font || "jua", fs = fontScale(fid);
+  if (f.capBox) {
+    /* 사진 테마 프레임: 글자 뒤에 반투명 띠 → 사진 배경 위에서도 잘 읽힘 */
+    let wMax = 0; for (const l of lines) { ctx.font = (l.size * fs) + "px " + fontCss(fid); wMax = Math.max(wMax, ctx.measureText(l.t).width); }
+    const bw = Math.min(r.w * 0.92, wMax + r.h * 0.5), bh = total + r.h * 0.18, bx = r.x + (r.w - bw) / 2, by = r.y + r.h / 2 - bh / 2;
+    ctx.save(); ctx.fillStyle = f.capBox; ctx.beginPath(); if (ctx.roundRect) ctx.roundRect(bx, by, bw, bh, bh * 0.3); else ctx.rect(bx, by, bw, bh); ctx.fill(); ctx.restore();
+  }
   for (const l of lines) {
-    ctx.font = l.size + "px " + DISPLAY_FONT;
+    ctx.font = (l.size * fs) + "px " + fontCss(fid);
     const cy = y + l.size * 0.6, cx = r.x + r.w / 2;
     let txt = l.t; while (ctx.measureText(txt).width > r.w * 0.9 && txt.length > 1) txt = txt.slice(0, -1);
-    if (f.pattern !== "solid") { ctx.lineWidth = l.size * 0.16; ctx.strokeStyle = outline; ctx.lineJoin = "round"; ctx.strokeText(txt, cx, cy); }
+    if (f.pattern !== "solid" && !f.capBox) { ctx.lineWidth = l.size * 0.16; ctx.strokeStyle = outline; ctx.lineJoin = "round"; ctx.strokeText(txt, cx, cy); }
     ctx.fillStyle = color; ctx.fillText(txt, cx, cy);
     y += l.size * 1.2;
   }
@@ -776,7 +867,7 @@ function drawSticker(ctx, st, p) {
   if (st.emoji) { ctx.font = size + "px " + EMOJI_FONT; ctx.fillText(st.text, 0, 0); }
   else {
     const color = TEXT_COLORS[st.color] || "#ffffff", outline = luminance(color) > 0.6 ? "#191919" : "#ffffff";
-    ctx.font = size + "px " + DISPLAY_FONT; ctx.lineJoin = "round"; ctx.lineWidth = size * 0.16; ctx.strokeStyle = outline;
+    ctx.font = (size * fontScale(st.font)) + "px " + fontCss(st.font); ctx.lineJoin = "round"; ctx.lineWidth = size * 0.16; ctx.strokeStyle = outline;
     ctx.strokeText(st.text, 0, 0); ctx.fillStyle = color; ctx.fillText(st.text, 0, 0);
   }
   ctx.restore();
@@ -802,6 +893,11 @@ function render(spec, scale, single) {
   for (const { bg, p } of areas) {
     drawBackground(ctx, f, bg.x, bg.y, bg.w, bg.h, p);
     const lay = layoutPanel(spec.layout, p.x, p.y, p.w, p.h);
+    if (f.cellBorder) {
+      ctx.save(); ctx.fillStyle = f.cellBorder; ctx.shadowColor = "rgba(0,0,0,.18)"; ctx.shadowBlur = p.w * 0.012;
+      lay.cells.forEach((r) => { const k = Math.max(2, r.w * 0.028); ctx.fillRect(r.x - k, r.y - k, r.w + 2 * k, r.h + 2 * k); });
+      ctx.restore();
+    }
     lay.cells.forEach((r, i) => {
       const img = spec.photos[i];
       if (img) drawCover(ctx, img, r); else drawEmpty(ctx, r, i + 1, spec.numbers);
@@ -839,7 +935,7 @@ function makeCalibration() {
   return c;
 }
 function baseSpec(extra) {
-  return Object.assign({ paper: S.paper, layout: session.layout, frame: session.frame, photos: [], stickers: [], title: S.title, showDate: S.showDate, numbers: false, active: null }, extra || {});
+  return Object.assign({ paper: S.paper, layout: session.layout, frame: session.frame, font: session.font, photos: [], stickers: [], title: S.title, showDate: S.showDate, numbers: false, active: null }, extra || {});
 }
 
 /* ───────── 뽀샤시 보정 (GPU, 촬영 화면에서 실시간) ─────────
@@ -1145,7 +1241,23 @@ function go(name) {
   }
   if (ENTER[name]) ENTER[name]();
 }
-document.addEventListener("click", (e) => { if (e.target.closest && e.target.closest("[data-home]")) { nativeBusy = false; goHome(); } });
+/* 공용 확인 창: ask("제목", "설명", [{t:"글", v:값, cls:"gray"}]) → 누른 버튼의 값 */
+function ask(title, msg, btns) {
+  return new Promise((res) => {
+    $("askTitle").textContent = title; $("askMsg").innerHTML = msg || ""; const row = $("askBtns"); row.innerHTML = "";
+    btns.forEach((b) => { const x = el("button", "big " + (b.cls || "")); x.textContent = b.t; x.addEventListener("click", () => { $("askModal").hidden = true; res(b.v); }); row.appendChild(x); });
+    $("askModal").hidden = false;
+  });
+}
+/* 처음으로: 찍은 사진이 있으면 한 번 물어봄 (실수로 눌러도 사진이 사라지지 않게) */
+document.addEventListener("click", async (e) => {
+  if (!(e.target.closest && e.target.closest("[data-home]"))) return;
+  if (["select", "deco", "print"].includes(current) && session.shots.length) {
+    const v = await ask("처음으로 갈까요?", "지금까지 찍은 사진과 꾸민 내용이 사라져요.", [{ t: "계속하기", v: false, cls: "gray" }, { t: "처음으로", v: true }]);
+    if (!v) return;
+  }
+  nativeBusy = false; goHome();
+});
 function goHome() { stopCamera(); resetSession(); go("attract"); }
 document.querySelectorAll("[data-back]").forEach((b) => b.addEventListener("click", () => go(b.dataset.back)));
 
@@ -1174,7 +1286,9 @@ $("adminCorner").addEventListener("click", (e) => {
 /* ───────── 3. 프레임 ───────── */
 function swatchCanvas(f) {
   const c = makeCanvas(124, 160), ctx = c.getContext("2d"), p = { x: 0, y: 0, w: 124, h: 160 }, cell = { x: 26, y: 30, w: 72, h: 100 };
-  drawBackground(ctx, f, 0, 0, 124, 160, p); ctx.fillStyle = "#dbdbdb"; ctx.fillRect(cell.x, cell.y, cell.w, cell.h);
+  drawBackground(ctx, f, 0, 0, 124, 160, p);
+  if (f.cellBorder) { ctx.fillStyle = f.cellBorder; ctx.fillRect(cell.x - 3, cell.y - 3, cell.w + 6, cell.h + 6); }
+  ctx.fillStyle = "#dbdbdb"; ctx.fillRect(cell.x, cell.y, cell.w, cell.h);
   drawOverlay(ctx, f, p, { cells: [cell] }); return c;
 }
 function buildSwatches(list, onPick) {
@@ -1542,6 +1656,15 @@ function drawFaceFx(ctx, P, id, t) {
   ctx.restore();
 }
 
+/* 기다리기 (⚡바로 찍기를 누르면 바로 끝남) */
+let skipNap = null, cdJump = false;
+function nap(ms) { return new Promise((res) => { const t = setTimeout(done, ms); function done() { clearTimeout(t); skipNap = null; res(); } skipNap = done; }); }
+$("quickShot").addEventListener("click", () => { cdJump = true; if (skipNap) skipNap(); });
+/* 포즈 추천 (네컷 포즈 앱·포토부스에서 많이 하는 포즈) */
+const POSES = ["브이 ✌️", "손하트 🫶", "볼 하트 🥰", "꽃받침 🌼", "깜짝 놀란 표정 😲", "윙크 😉", "엄지 척 👍", "고양이 손 🐱", "메롱 😛", "볼 빵빵 🐡",
+  "토끼 귀 🐰", "멋진 척 😎", "머리 위 하트 💕", "서로 바라보기 👀", "볼 콕 ☝️", "주먹 꽉 화이팅 💪", "턱 괴기 🤔", "만세 🙌", "얼굴 가리고 빼꼼 🙈", "제일 웃긴 표정 🤪"];
+let poseBag = [];
+function nextPose() { if (!poseBag.length) poseBag = POSES.slice().sort(() => Math.random() - 0.5); return poseBag.pop(); }
 ENTER.shoot = async () => {
   const run = ++shootRun;
   releaseSession();
@@ -1560,19 +1683,27 @@ ENTER.shoot = async () => {
   FX.drawBar(); FX.start();
   if (!FX.lm) setTimeout(() => FX.load(), 300);   /* 얼굴 효과는 촬영 화면에서 처음 한 번만 불러옴 */
   say("look");
-  await sleep(2200); if (run !== shootRun) return;
+  cdJump = false; $("quickShot").hidden = false;
+  await nap(2200); if (run !== shootRun) return;
   $("camGuide").hidden = true;
   const cd = Math.max(1, S.countdown);
   for (let i = 0; i < total; i++) {
     $("shotCount").textContent = (i + 1) + " / " + total;
+    const pose = S.poses ? nextPose() : ""; $("poseTip").textContent = pose ? "💡 " + pose : ""; $("poseTip").hidden = !pose;
     if (cd <= 2) startLive();
+    cdJump = false;
     for (let n = cd; n >= 1; n--) {
       if (run !== shootRun) { stopLive(); return; }
+      /* ⚡ 바로 찍기: 남은 시간을 3초로 줄임 */
+      if (cdJump && n > 3) n = 3;
+      cdJump = false;
+      $("quickShot").hidden = n <= 3;
       $("countNum").textContent = n; if (n === 2 && cd > 2) startLive();
       if (n <= 3 && S.voice) say(COUNT_KEYS[n]);
       else beep(n <= 3);
-      await sleep(1000);
+      if (n > 3) await nap(1000); else await sleep(1000);
     }
+    $("quickShot").hidden = true; $("poseTip").hidden = true;
     if (run !== shootRun) { stopLive(); return; }
     $("countNum").textContent = "";
     await ensureLive(2500); if (run !== shootRun) { stopLive(); return; }
@@ -1591,10 +1722,19 @@ ENTER.shoot = async () => {
     }
     await sleep(600);
   }
+  $("quickShot").hidden = true; $("poseTip").hidden = true;
   if (run !== shootRun) return;
   stopCamera(); go("select");
 };
-$("stopShoot").addEventListener("click", () => { shootRun++; stopLive(); goHome(); });
+$("stopShoot").addEventListener("click", async () => {
+  shootRun++; stopLive(); stopCamera(); $("quickShot").hidden = true; $("poseTip").hidden = true;
+  const v = await ask("촬영을 멈췄어요", "어떻게 할까요?", [{ t: "처음으로", v: "home", cls: "gray" }, { t: "프레임 다시 고르기", v: "frame", cls: "gray" }, { t: "처음부터 다시 찍기", v: "shoot" }]);
+  if (v === "home") goHome(); else go(v);
+});
+$("selBack").addEventListener("click", async () => {
+  const v = await ask("다시 찍을까요?", "지금 찍은 사진은 지워지고 처음부터 다시 찍어요.", [{ t: "아니요", v: false, cls: "gray" }, { t: "다시 찍기", v: true }]);
+  if (v) go("shoot");
+});
 window.addEventListener("resize", () => { if (current === "shoot") layoutCamFrame(); if (current === "frame") drawFramePreview(); if (current === "select") drawSelect(); if (current === "deco") drawDeco(); });
 
 /* ───────── 5. 사진 고르기 ───────── */
@@ -1676,7 +1816,7 @@ function buildFilters() {
   });
 }
 function addSticker(text, emoji) {
-  const st = { id: Math.random().toString(36).slice(2), text, emoji, color: textColor, x: 0.5 + (Math.random() - 0.5) * 0.3, y: 0.45 + (Math.random() - 0.5) * 0.4, scale: emoji ? 0.16 : 0.09, rot: 0 };
+  const st = { id: Math.random().toString(36).slice(2), text, emoji, font: session.font, color: textColor, x: 0.5 + (Math.random() - 0.5) * 0.3, y: 0.45 + (Math.random() - 0.5) * 0.4, scale: emoji ? 0.16 : 0.09, rot: 0 };
   session.stickers.push(st); selectedSticker = st.id; renderStickers();
   if (!hintShown) { hintShown = true; say("pinch"); }
 }
@@ -1692,7 +1832,8 @@ function renderStickers() {
   $("stkTools").hidden = !session.stickers.some((s) => s.id === selectedSticker);
 }
 function placeSticker(d, st, W) {
-  d.style.fontSize = Math.max(4, st.scale * W) + "px";
+  d.style.fontSize = Math.max(4, st.scale * W * (st.emoji ? 1 : fontScale(st.font))) + "px";
+  if (!st.emoji) d.style.fontFamily = fontCss(st.font);
   if (!st.emoji) d.style.webkitTextStroke = Math.max(1, st.scale * W * 0.08) + "px " + d.dataset.outline;
   d.style.left = st.x * 100 + "%"; d.style.top = st.y * 100 + "%";
   d.style.transform = "translate(-50%,-50%) rotate(" + st.rot + "rad)";
@@ -1769,8 +1910,23 @@ TEXT_COLORS.forEach((c, i) => { const b = el("button", i === 0 ? "on" : ""); b.s
 function addTyped() { const t = $("textInput").value.trim(); if (t) addSticker(t, false); $("textInput").value = ""; $("textInput").blur(); }
 $("textAdd").addEventListener("click", addTyped);
 $("textInput").addEventListener("keydown", (e) => { if (e.key === "Enter") addTyped(); });
+function buildFonts() {
+  const list = $("fontList"); list.innerHTML = "";
+  FONTS.forEach((f) => {
+    loadFont(f.id);
+    const b = el("button", session.font === f.id ? "on" : ""); b.innerHTML = '<b style="font-family:' + fontCss(f.id).replace(/"/g, "'") + '">' + (f.latin ? "Happy" : "가나다") + "</b><small>" + f.name + "</small>";
+    b.addEventListener("click", async () => {
+      session.font = f.id; list.querySelectorAll("button").forEach((x) => x.classList.toggle("on", x === b));
+      const st = session.stickers.find((x) => x.id === selectedSticker); if (st && !st.emoji) st.font = f.id;
+      await loadFont(f.id); drawDeco();
+    });
+    list.appendChild(b);
+  });
+}
 ENTER.deco = () => {
-  selectedSticker = null; say("deco");
+  selectedSticker = null; say("deco"); buildFonts();
+  /* 꾸미기를 다시 하면 인쇄용 사진도 새로 만들어야 함 */
+  printTok++; freeCanvas(session.finalCanvas); session.finalCanvas = null; session.finalBlob = null; session.printFile = null; session.liveBlob = null;
   buildRetouch(); buildFilters(); buildSwatches($("frameList2"), drawDeco);
   requestAnimationFrame(drawDeco);
 };
@@ -1778,12 +1934,23 @@ $("decoNext").addEventListener("click", () => { selectedSticker = null; go("prin
 
 /* ───────── 7. 출력 ───────── */
 function canvasToBlob(c, type, q) { return new Promise((res) => c.toBlob((b) => res(b), type, q)); }
+let printTok = 0;
+function waitFrameImg(ms) {
+  const f = FRAMES[session.frame]; if (!f || !f.img || frameImgReady(f)) return Promise.resolve();
+  const im = FRAME_IMG[f.img];
+  return new Promise((res) => { const t = setTimeout(res, ms); im.addEventListener("load", () => { clearTimeout(t); res(); }, { once: true }); im.addEventListener("error", () => { clearTimeout(t); res(); }, { once: true }); });
+}
 ENTER.print = async () => {
+  const tok = ++printTok;
+  nativeBusy = false;
+  await Promise.all([loadFont(session.font), waitFrameImg(4000)].concat(session.stickers.filter((x) => !x.emoji).map((x) => loadFont(x.font))));
+  if (tok !== printTok || current !== "print") return;
   $("printBtn").disabled = true; $("printAlt").disabled = true; $("saveBtn2").disabled = true; $("printAltBtn").disabled = true; $("printMsg").textContent = "사진을 만들고 있어요…"; $("printPreview").removeAttribute("src");
   printTexts();
   if (session.finalBlob) { readyToPrint(); return; }   /* '인쇄가 안 됐어요'로 돌아온 경우 */
   await sleep(50);
-  const ok = await buildPrintImage();
+  const ok = await buildPrintImage(tok);
+  if (tok !== printTok || current !== "print") return;   /* 만드는 동안 다른 화면으로 갔으면 여기서 멈춤 */
   if (!ok) {
     $("printMsg").textContent = "사진을 만들지 못했어요 😢";
     $("printNote").innerHTML = "용지 낭비를 막으려고 인쇄를 멈췄어요. <b>다시 만들기</b>를 눌러 주세요.<br>계속 안 되면 Safari를 새로고침한 뒤 다시 찍어 주세요.";
@@ -1810,7 +1977,7 @@ function sharpen(c, k) {
 }
 /* 인쇄용 사진 만들기: 만든 뒤 반드시 검사하고, 비어 있으면 메모리를 비우고 다시 만듦(최대 3번).
    검사를 통과한 사진만 인쇄할 수 있음 → 백지 인쇄 방지 */
-async function buildPrintImage() {
+async function buildPrintImage(tok) {
   const [W, H] = paperPx(S.paper);
   for (let attempt = 0; attempt < 3; attempt++) {
     if (attempt > 0) {
@@ -1838,6 +2005,7 @@ async function buildPrintImage() {
     if (final.width !== W || final.height !== H || looksBlank(final)) { freeCanvas(final); continue; }
     const blob = await canvasToBlob(final, "image/jpeg", 0.92);
     if (!(await blobImageOK(blob, W, H))) { freeCanvas(final); continue; }
+    if (tok != null && tok !== printTok) { freeCanvas(final); return false; }   /* 그사이 꾸미기를 다시 했으면 버림 */
     session.finalCanvas = final; session.finalBlob = blob;
     session.printFile = new File([blob], "photobooth.jpg", { type: "image/jpeg" });
     return true;
@@ -2195,7 +2363,8 @@ function openAdmin() {
   $("setTitle").value = S.title; $("setAttract").value = S.attractTitle;
   $("setTitle").oninput = drawCaptionPreview; drawCaptionPreview();
   toggle($("setDate"), "showDate"); toggle($("setTimers"), "timers"); toggle($("setCassette"), "cassette");
-  toggle($("setSharpen"), "sharpen"); toggle($("setFaceFx"), "faceFx"); toggle($("setVoice"), "voice"); toggle($("setSound"), "sound");
+  toggle($("setSharpen"), "sharpen"); toggle($("setFaceFx"), "faceFx"); toggle($("setPoses"), "poses");
+  { const sf = $("setFont"); sf.innerHTML = ""; FONTS.forEach((f) => { const o = el("option"); o.value = f.id; o.textContent = f.name; if ((S.font || "jua") === f.id) o.selected = true; sf.appendChild(o); }); sf.onchange = () => { S.font = sf.value; session.font = sf.value; }; } toggle($("setVoice"), "voice"); toggle($("setSound"), "sound");
   $("setDate").addEventListener("click", drawCaptionPreview);
   if (!RETOUCH[S.retouch]) S.retouch = "natural";
   seg($("setRetouch"), Object.keys(RETOUCH), () => S.retouch, (v) => { S.retouch = v; }, (v) => RETOUCH[v].name);
