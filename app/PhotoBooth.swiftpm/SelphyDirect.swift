@@ -14,6 +14,25 @@ final class SelphyDirect {
     private let findQueue = DispatchQueue(label: "photobooth.selphy.find")
     private let lock = NSLock()
     private var busy = false
+    private var cancelled = false
+
+    /// 인쇄 취소 (손님이 실수로 눌렀을 때).
+    /// - 셀피가 사진을 다 받기 전이면 그 장은 보내지 않고 멈춤 (용지 안 씀)
+    /// - 이미 다 받은 장은 셀피가 인쇄 중이라 멈추지 않고, 남은 장만 취소
+    /// 돌려주는 값: 지금 보내는 중이던 일이 있었는지
+    @discardableResult
+    func cancel() -> Bool {
+        lock.lock()
+        defer { lock.unlock() }
+        if busy { cancelled = true }
+        return busy
+    }
+
+    private func isCancelled() -> Bool {
+        lock.lock()
+        defer { lock.unlock() }
+        return cancelled
+    }
 
     // MARK: - 패킷
 
@@ -224,6 +243,7 @@ final class SelphyDirect {
             return
         }
         busy = true
+        cancelled = false
         lock.unlock()
         // 사진 크기를 안 보냈으면 JPEG에서 읽음
         var w = width, h = height
@@ -238,8 +258,14 @@ final class SelphyDirect {
             var ok = true
             var err: String? = nil
             for c in 0..<max(1, copies) {
+                if self.isCancelled() {
+                    trace.append("cancelled before copy \(c + 1)")
+                    ok = false
+                    err = "cancelled"
+                    break
+                }
                 if copies > 1 { progress("copy:\(c + 1)") }
-                let r = SelphyDirect.runJob(Array(jpeg), ip: ip, width: fw, height: fh, borderless: borderless, progress: progress, trace: &trace)
+                let r = SelphyDirect.runJob(Array(jpeg), ip: ip, width: fw, height: fh, borderless: borderless, progress: progress, isCancelled: { [weak self] in self?.isCancelled() ?? false }, trace: &trace)
                 if let e = r {
                     ok = false
                     err = e
@@ -248,6 +274,7 @@ final class SelphyDirect {
             }
             self.lock.lock()
             self.busy = false
+            self.cancelled = false
             self.lock.unlock()
             done(ok, err, Array(trace.suffix(30)))
         }
@@ -255,7 +282,7 @@ final class SelphyDirect {
 
     /// 한 장 인쇄. 실패하면 오류 이름을 돌려줌 (성공이면 nil)
     static func runJob(_ file: [UInt8], ip: String, width: Int, height: Int, borderless: Bool,
-                       progress: (String) -> Void, trace: inout [String]) -> String? {
+                       progress: (String) -> Void, isCancelled: () -> Bool = { false }, trace: inout [String]) -> String? {
         guard let ufd = udpSocket(timeoutMs: 800) else { return "socket" }
         defer { close(ufd) }
         var seq: UInt16 = 10
@@ -295,6 +322,7 @@ final class SelphyDirect {
         let startDeadline = Date().addingTimeInterval(120)
         var attempt = 0
         while Date() < startDeadline {
+            if isCancelled() { trace.append("cancelled while waiting"); return "cancelled" }
             attempt += 1
             if let r = udpAsk(0x0110, start) {
                 job = UInt16(be16(r.head, 10))
@@ -307,6 +335,7 @@ final class SelphyDirect {
             progress("wait")
             usleep(1_500_000)
         }
+        if isCancelled() { trace.append("cancelled before send"); return "cancelled" }
         if tcpPort == 0 { return "busy" }
         trace.append("tcp port \(tcpPort) job \(job)")
 
@@ -398,6 +427,8 @@ final class SelphyDirect {
         var sameCount = 0
         let deadline = Date().addingTimeInterval(240)
         while Date() < deadline {
+            // 사진을 다 보내기 전에만 멈춤 (다 받은 뒤에는 셀피가 인쇄 중이라 끝까지 기다림)
+            if !sentReported && isCancelled() { trace.append("cancelled while sending \(sentBytes)/\(file.count)"); return "cancelled" }
             guard let st = tcpAsk(0x0120, []) else {
                 trace.append("status: connection lost")
                 return sentReported ? "lost-after-send" : "tcp-lost"
@@ -447,6 +478,7 @@ final class SelphyDirect {
                 if chunk.count < head.count + length { chunk += [UInt8](repeating: 0, count: head.count + length - chunk.count) }
                 var pos = 0
                 while pos < chunk.count {
+                    if !sentReported && isCancelled() { trace.append("cancelled while sending \(sentBytes)/\(file.count)"); return "cancelled" }
                     let n = min(4096, chunk.count - pos)
                     if tcpAsk(0x0121, Array(chunk[pos..<(pos + n)])) == nil { return "tcp-lost" }
                     pos += n

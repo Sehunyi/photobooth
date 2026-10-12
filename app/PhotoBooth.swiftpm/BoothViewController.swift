@@ -234,6 +234,11 @@ final class BoothViewController: UIViewController, WKScriptMessageHandler, WKUID
                 }
             })
 
+        case "selphyCancel":
+            // 인쇄 취소: 아직 셀피가 다 받지 않은 장과 남은 장을 보내지 않음
+            let wasBusy = selphy.cancel()
+            replyHandler(["ok": true, "busy": wasBusy] as [String: Any], nil)
+
         case "lanShare":
             // 완성 사진을 같은 와이파이의 휴대폰이 QR로 받아 갈 수 있게 올려 두고, 주소와 QR 그림을 돌려줌
             guard let b64 = body["jpeg"] as? String, let data = Data(base64Encoded: b64) else {
