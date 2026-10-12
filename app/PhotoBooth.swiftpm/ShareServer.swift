@@ -18,6 +18,7 @@ final class ShareServer {
     private var tokens: [String] = []
     private var titles: [String: String] = [:]
     private var videoExts: [String: String] = [:]
+    private var gifs: Set<String> = []
     private let maxItems = 80
 
     init(port: UInt16) {
@@ -92,13 +93,13 @@ final class ShareServer {
     // MARK: - 사진 넣기
 
     /// 사진(과 움직이는 사진)을 저장하고 토큰을 돌려줌. token을 주면 같은 주소의 내용을 바꿈 (움직이는 사진 추가 등)
-    func add(photo: Data, video: Data?, videoExt: String, title: String, token: String?, done: @escaping (String?) -> Void) {
+    func add(photo: Data, video: Data?, videoExt: String, gif: Data?, title: String, token: String?, done: @escaping (String?) -> Void) {
         queue.async {
-            self.addOnQueue(photo: photo, video: video, videoExt: videoExt, title: title, token: token, waited: 0, done: done)
+            self.addOnQueue(photo: photo, video: video, videoExt: videoExt, gif: gif, title: title, token: token, waited: 0, done: done)
         }
     }
 
-    private func addOnQueue(photo: Data, video: Data?, videoExt: String, title: String, token: String?, waited: Int, done: @escaping (String?) -> Void) {
+    private func addOnQueue(photo: Data, video: Data?, videoExt: String, gif: Data?, title: String, token: String?, waited: Int, done: @escaping (String?) -> Void) {
         // 서버가 막 켜지는 중이면 잠깐(최대 3초) 기다림. 끝내 안 켜지면(포트 문제 등) 안 되는 QR을 보여 주지 않게 실패로 알림
         if !self.listenerReady {
             if waited >= 10 {
@@ -106,7 +107,7 @@ final class ShareServer {
                 return
             }
             self.queue.asyncAfter(deadline: .now() + 0.3) {
-                self.addOnQueue(photo: photo, video: video, videoExt: videoExt, title: title, token: token, waited: waited + 1, done: done)
+                self.addOnQueue(photo: photo, video: video, videoExt: videoExt, gif: gif, title: title, token: token, waited: waited + 1, done: done)
             }
             return
         }
@@ -119,6 +120,10 @@ final class ShareServer {
             if let video = video, !video.isEmpty {
                 try video.write(to: self.dir.appendingPathComponent(tok + "." + videoExt), options: .atomic)
                 self.videoExts[tok] = videoExt
+            }
+            if let gif = gif, !gif.isEmpty {
+                try gif.write(to: self.dir.appendingPathComponent(tok + ".gif"), options: .atomic)
+                self.gifs.insert(tok)
             }
         } catch {
             done(nil)
@@ -134,10 +139,21 @@ final class ShareServer {
             if let ext = self.videoExts[old] {
                 try? FileManager.default.removeItem(at: self.dir.appendingPathComponent(old + "." + ext))
             }
+            if self.gifs.contains(old) {
+                try? FileManager.default.removeItem(at: self.dir.appendingPathComponent(old + ".gif"))
+            }
             self.titles[old] = nil
             self.videoExts[old] = nil
+            self.gifs.remove(old)
         }
         done(tok)
+    }
+
+    static func fileStamp() -> String {
+        let f = DateFormatter()
+        f.locale = Locale(identifier: "en_US_POSIX")
+        f.dateFormat = "yyyyMMdd_HHmmss"
+        return f.string(from: Date())
     }
 
     static func makeToken() -> String {
@@ -227,9 +243,14 @@ final class ShareServer {
         let parts = (lines.first ?? "").split(separator: " ")
         let method = parts.count > 0 ? String(parts[0]) : "GET"
         var path = parts.count > 1 ? String(parts[1]) : "/"
+        var query = ""
         if let q = path.firstIndex(of: "?") {
+            query = String(path[path.index(after: q)...])
             path = String(path[..<q])
         }
+        // ?dl=1 이면 '내려받기'로 보냄 (안드로이드·갤럭시는 이렇게 해야 파일로 저장됨)
+        let wantsDownload = query.split(separator: "&").contains("dl=1")
+        let stamp = ShareServer.fileStamp()
         var rangeHeader: String? = nil
         for line in lines.dropFirst() {
             let lower = line.lowercased()
@@ -238,7 +259,7 @@ final class ShareServer {
             }
         }
         let seg = path.split(separator: "/").map { String($0) }
-        // /p/<토큰>  ·  /p/<토큰>/photo.jpg  ·  /p/<토큰>/live.mp4
+        // /p/<토큰>  ·  /p/<토큰>/photo.jpg  ·  /p/<토큰>/live.gif  ·  /p/<토큰>/live.mp4
         if seg.count >= 2, seg[0] == "p", ShareServer.validToken(seg[1]), tokens.contains(seg[1]) {
             let tok = seg[1]
             if seg.count == 2 {
@@ -247,7 +268,15 @@ final class ShareServer {
             }
             if seg.count == 3 && seg[2] == "photo.jpg" {
                 if let data = try? Data(contentsOf: dir.appendingPathComponent(tok + ".jpg")) {
-                    send(connection, status: "200 OK", type: "image/jpeg", body: data, head: method == "HEAD", extra: "Content-Disposition: inline; filename=\"photobooth.jpg\"\r\n")
+                    let disp = wantsDownload ? "attachment" : "inline"
+                    send(connection, status: "200 OK", type: "image/jpeg", body: data, head: method == "HEAD", extra: "Content-Disposition: \(disp); filename=\"photobooth_\(stamp).jpg\"\r\n")
+                    return
+                }
+            }
+            if seg.count == 3 && seg[2] == "live.gif" && gifs.contains(tok) {
+                if let data = try? Data(contentsOf: dir.appendingPathComponent(tok + ".gif")) {
+                    let disp = wantsDownload ? "attachment" : "inline"
+                    send(connection, status: "200 OK", type: "image/gif", body: data, head: method == "HEAD", extra: "Content-Disposition: \(disp); filename=\"photobooth_\(stamp).gif\"\r\n")
                     return
                 }
             }
@@ -312,6 +341,7 @@ final class ShareServer {
     .photo{display:block;max-width:100%;max-height:70vh;margin:16px auto;border-radius:10px;box-shadow:0 10px 30px rgba(110,60,170,.25);-webkit-touch-callout:default}
     .btn{display:block;max-width:360px;margin:12px auto;padding:16px;border-radius:999px;background:#6b3da8;color:#fff;font-size:19px;font-weight:700;text-decoration:none}
     .btn.sub{background:#ffd133;color:#3a2a00}
+    .gif{display:block;max-width:80%;max-height:55vh;margin:22px auto 6px;border-radius:10px;box-shadow:0 8px 24px rgba(110,60,170,.2)}
     .tip{font-size:15px;color:#6a5a85}.small{font-size:13px;color:#8a7aa5;margin-top:22px}
     video{max-width:100%;max-height:60vh;border-radius:10px;margin-top:20px}
     </style>
@@ -320,8 +350,13 @@ final class ShareServer {
     private func page(_ tok: String) -> String {
         let title = escape(titles[tok] ?? "")
         var videoPart = ""
-        if let ext = videoExts[tok] {
-            videoPart = """
+        if gifs.contains(tok) {
+            videoPart += """
+            <img class="gif" src="/p/\(tok)/live.gif" alt="움직이는 사진">
+            <a class="btn sub" href="/p/\(tok)/live.gif?dl=1" download="photobooth.gif">움직이는 사진(GIF) 저장</a>
+            """
+        } else if let ext = videoExts[tok] {
+            videoPart += """
             <video src="/p/\(tok)/live.\(ext)" playsinline muted loop autoplay controls></video>
             <a class="btn sub" href="/p/\(tok)/live.\(ext)" download="photobooth_live.\(ext)">움직이는 사진 저장</a>
             """
@@ -331,8 +366,8 @@ final class ShareServer {
         <title>네컷 사진</title>\(style)</head><body>
         <h1>📸 사진이 도착했어요!</h1>\(title.isEmpty ? "" : "<p>\(title)</p>")
         <img class="photo" src="/p/\(tok)/photo.jpg" alt="네컷 사진">
-        <a class="btn" href="/p/\(tok)/photo.jpg" download="photobooth.jpg">사진 저장하기</a>
-        <p class="tip">아이폰: 사진을 <b>길게 눌러</b> ‘사진 앱에 저장’<br>안드로이드: 사진을 길게 눌러 ‘이미지 다운로드’</p>
+        <a class="btn" href="/p/\(tok)/photo.jpg?dl=1" download="photobooth.jpg">원본 사진 저장하기</a>
+        <p class="tip">아이폰: 사진을 <b>길게 눌러</b> ‘사진 앱에 저장’<br>갤럭시: 버튼을 누르면 <b>다운로드</b>에 저장돼요 (갤러리 앱에서 보여요).<br>‘안전하지 않은 다운로드’라고 나오면 <b>계속/다운로드</b>를 눌러 주세요.</p>
         \(videoPart)
         <p class="small">이 페이지는 행사 중에만 열려요. 지금 꼭 저장해 주세요.</p>
         </body></html>
@@ -346,5 +381,67 @@ final class ShareServer {
         <h1>사진을 찾을 수 없어요</h1><p>행사가 끝났거나 오래되어 지워졌어요.<br>포토부스 담당자에게 말씀해 주세요.</p>
         </body></html>
         """
+    }
+}
+
+/// 인터넷 임시 링크로 사진 보내기 (선택 기능).
+/// 같은 와이파이가 아니어도(LTE·5G) 휴대폰에서 받을 수 있게, 사진을 Litterbox(catbox.moe의 임시 파일 보관함)에 올림.
+/// - 정해 둔 시간(기본 72시간)이 지나면 그쪽에서 자동으로 지워짐
+/// - 주소를 아는 사람만 볼 수 있지만, 바깥 서비스에 올라간다는 점은 행사 안내에 적어 두는 게 좋음
+enum WebShare {
+    static let endpoint = URL(string: "https://litterbox.catbox.moe/resources/internals/api.php")!
+
+    private static let session: URLSession = {
+        let config = URLSessionConfiguration.ephemeral
+        config.timeoutIntervalForRequest = 30
+        config.timeoutIntervalForResource = 40   // 사진 + GIF 두 번 올려도 웹 화면의 기다림(100초) 안에 끝나게
+        config.waitsForConnectivity = false
+        return URLSession(configuration: config)
+    }()
+
+    /// 파일 하나를 올리고, 받은 주소의 파일 이름(예: "ab12cd.jpg")을 돌려줌
+    /// Litterbox가 실제로 지원하는 보관 시간(1·12·24·72시간)으로 맞춤
+    static func tier(_ hours: Int) -> Int {
+        return hours <= 1 ? 1 : hours <= 12 ? 12 : hours <= 24 ? 24 : 72
+    }
+
+    static func upload(_ data: Data, filename: String, mime: String, hours: Int, done: @escaping (String?, String?) -> Void) {
+        let time = "\(tier(hours))h"
+        let boundary = "----booth" + ShareServer.makeToken()
+        var body = Data()
+        func field(_ name: String, _ value: String) {
+            body.append(Data("--\(boundary)\r\nContent-Disposition: form-data; name=\"\(name)\"\r\n\r\n\(value)\r\n".utf8))
+        }
+        field("reqtype", "fileupload")
+        field("time", time)
+        body.append(Data("--\(boundary)\r\nContent-Disposition: form-data; name=\"fileToUpload\"; filename=\"\(filename)\"\r\nContent-Type: \(mime)\r\n\r\n".utf8))
+        body.append(data)
+        body.append(Data("\r\n--\(boundary)--\r\n".utf8))
+
+        var req = URLRequest(url: endpoint)
+        req.httpMethod = "POST"
+        req.setValue("multipart/form-data; boundary=\(boundary)", forHTTPHeaderField: "Content-Type")
+        req.setValue("PhotoBooth/1.10", forHTTPHeaderField: "User-Agent")
+        session.uploadTask(with: req, from: body) { respData, resp, err in
+            if let err = err as NSError? {
+                done(nil, err.code == NSURLErrorNotConnectedToInternet ? "no-internet" : (err.code == NSURLErrorTimedOut ? "timeout" : "net-\(err.code)"))
+                return
+            }
+            let code = (resp as? HTTPURLResponse)?.statusCode ?? 0
+            let text = String(decoding: respData ?? Data(), as: UTF8.self).trimmingCharacters(in: .whitespacesAndNewlines)
+            guard code == 200, text.hasPrefix("https://"), let url = URL(string: text) else {
+                done(nil, "upload-\(code)")
+                return
+            }
+            let name = url.lastPathComponent
+            let ok = !name.isEmpty && name.count <= 40 && name.allSatisfy { $0.isLetter || $0.isNumber || $0 == "." || $0 == "_" || $0 == "-" }
+            done(ok ? name : nil, ok ? nil : "bad-reply")
+        }.resume()
+    }
+
+    static func encode(_ s: String) -> String {
+        // 영문·숫자만 그대로 두고 한글 등은 모두 %로 바꿈 (QR 읽기 앱이 링크로 알아보게)
+        let allowed = CharacterSet(charactersIn: "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-._~")
+        return s.addingPercentEncoding(withAllowedCharacters: allowed) ?? ""
     }
 }

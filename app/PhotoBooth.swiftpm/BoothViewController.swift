@@ -252,9 +252,13 @@ final class BoothViewController: UIViewController, WKScriptMessageHandler, WKUID
             let ext = videoType.contains("webm") ? "webm" : "mp4"
             let title = body["title"] as? String ?? ""
             let token = body["token"] as? String
+            var gif: Data? = nil
+            if let g = body["gif"] as? String {
+                gif = Data(base64Encoded: g)
+            }
             let portNumber = sharePort
             shareServer.start()
-            shareServer.add(photo: data, video: video, videoExt: ext, title: title, token: token) { tok in
+            shareServer.add(photo: data, video: video, videoExt: ext, gif: gif, title: title, token: token) { tok in
                 // QR 그림은 다른 일꾼 줄에서 만들고, 대답은 화면 줄(main)에서
                 DispatchQueue.global(qos: .userInitiated).async {
                     var result: [String: Any] = ["ok": false, "error": "server-down"]
@@ -267,6 +271,62 @@ final class BoothViewController: UIViewController, WKScriptMessageHandler, WKUID
                         replyHandler(result, nil)
                     }
                 }
+            }
+
+        case "webShare":
+            // 인터넷 임시 링크: 사진(과 GIF)을 올리고, 받는 페이지 주소 + QR 그림을 돌려줌 (같은 와이파이가 아니어도 됨)
+            let hours = WebShare.tier((body["hours"] as? NSNumber)?.intValue ?? 72)
+            let knownExpiry = (body["x"] as? NSNumber)?.intValue ?? 0
+            let base = body["base"] as? String ?? "https://sehunyi.github.io/photobooth/get.html"
+            let title = body["title"] as? String ?? ""
+            let jpeg = (body["jpeg"] as? String).flatMap { Data(base64Encoded: $0) }
+            let gif = (body["gif"] as? String).flatMap { Data(base64Encoded: $0) }
+            let knownPhoto = body["p"] as? String
+            if jpeg == nil && (knownPhoto ?? "").isEmpty {
+                replyHandler(["ok": false, "error": "bad-image"] as [String: Any], nil)
+                return
+            }
+            let stamp = ShareServer.fileStamp()
+            let finish: (String, String?, String?) -> Void = { photoName, gifName, gifErr in
+                DispatchQueue.global(qos: .userInitiated).async {
+                    // 이미 올린 사진에 GIF만 더하는 경우: 사진이 지워지는 시각을 그대로 씀
+                    let expires = knownExpiry > 0 ? knownExpiry : Int(Date().timeIntervalSince1970) + hours * 3600
+                    var url = base + "#p=" + WebShare.encode(photoName)
+                    if let g = gifName { url += "&g=" + WebShare.encode(g) }
+                    url += "&x=\(expires)"
+                    if !title.isEmpty { url += "&t=" + WebShare.encode(String(title.prefix(14))) }
+                    let qr = ShareServer.qrPNG(url)?.base64EncodedString() ?? ""
+                    let result: [String: Any] = ["ok": !qr.isEmpty, "url": url, "qr": qr, "p": photoName, "x": expires, "hours": hours, "g": gifName ?? "", "gifError": gifErr ?? "", "error": qr.isEmpty ? "qr-failed" : ""]
+                    DispatchQueue.main.async { replyHandler(result, nil) }
+                }
+            }
+            let afterPhoto: (String) -> Void = { photoName in
+                guard let gif = gif, !gif.isEmpty else {
+                    finish(photoName, nil, nil)
+                    return
+                }
+                WebShare.upload(gif, filename: "photobooth_\(stamp).gif", mime: "image/gif", hours: hours) { gifName, err in
+                    finish(photoName, gifName, err)
+                }
+            }
+            if let jpeg = jpeg {
+                WebShare.upload(jpeg, filename: "photobooth_\(stamp).jpg", mime: "image/jpeg", hours: hours) { name, err in
+                    guard let name = name else {
+                        DispatchQueue.main.async { replyHandler(["ok": false, "error": err ?? "upload"] as [String: Any], nil) }
+                        return
+                    }
+                    afterPhoto(name)
+                }
+            } else {
+                afterPhoto(knownPhoto ?? "")
+            }
+
+        case "qr":
+            // 글자 → QR 그림 (와이파이 연결 QR 등)
+            let text = body["text"] as? String ?? ""
+            DispatchQueue.global(qos: .userInitiated).async {
+                let qr = text.isEmpty ? "" : (ShareServer.qrPNG(text)?.base64EncodedString() ?? "")
+                DispatchQueue.main.async { replyHandler(["ok": !qr.isEmpty, "qr": qr] as [String: Any], nil) }
             }
 
         case "share":

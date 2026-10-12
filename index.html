@@ -347,6 +347,13 @@ button:active:not(:disabled) { transform: scale(.96); }
 .qrBox b { display: block; font-family: var(--display); font-weight: 400; font-size: 22px; color: var(--purple-deep); margin-bottom: 4px; }
 .qrBox.small b { font-size: 19px; }
 .qrBox span { font-size: 15px; color: var(--muted); line-height: 1.45; }
+.qrBox.two { flex-wrap: wrap; justify-content: center; }
+.qrBox.two > div:last-child { flex: 1 1 200px; min-width: 0; }
+.qrStep { display: flex; flex-direction: column; align-items: center; gap: 4px; flex: none; }
+.qrStep i { font-style: normal; font-size: 14px; font-weight: 700; color: var(--purple-deep); }
+.qrBox.small .qrStep img { width: 100px; height: 100px; }
+.qrWait { width: 54px; height: 54px; flex: none; border-radius: 50%; border: 6px solid var(--line); border-top-color: var(--purple); animation: spin 1s linear infinite; }
+@keyframes spin { to { transform: rotate(360deg); } }
 .myfList { display: flex; flex-wrap: wrap; gap: 8px; margin: -2px 0 8px; flex: none; }
 .myfList:empty { display: none; }
 .myfList .chip { display: flex; align-items: center; gap: 6px; background: var(--paper); border-radius: 10px; padding: 4px 6px 4px 4px; font-size: 14px; }
@@ -646,8 +653,10 @@ details.guide p { margin: 4px 0; color: var(--muted); }
     <div class="field"><span>가장자리 보정 <small>(잘리는 만큼 테두리를 넓힘)</small></span><div class="seg" id="setBleed"></div></div>
     <div class="field"><span>가장자리 확인용 인쇄 <small>(보정값 찾기)</small></span><button class="mini" id="calibBtn">인쇄해 보기</button></div>
     <div class="field"><span>프린터 연결 안내 <small>(처음 인쇄할 때 한 번 나옴)</small></span><button class="mini" id="printerReset">다시 보이기</button></div>
-    <div class="field" id="qrRow" hidden><span>휴대폰 QR 받기 <small>(같은 와이파이의 휴대폰이 QR을 찍으면 사진 저장)</small></span><button class="toggle" id="setQr" aria-label="QR 받기"></button></div>
-    <div class="field" id="wifiRow" hidden><span>와이파이 이름 <small>(QR 아래 안내, 비워도 됨)</small></span><input type="text" id="setWifi" maxlength="32" placeholder="예: StrangeEnglish_5G"></div>
+    <div class="field" id="qrRow" hidden><span>휴대폰 QR 받기 <small>(QR을 찍으면 원본 사진 + GIF 저장)</small></span><button class="toggle" id="setQr" aria-label="QR 받기"></button></div>
+    <div class="field" id="qrModeRow" hidden><span>QR 받는 방법 <small id="qrModeNote"></small></span><div class="seg" id="setQrMode"></div></div>
+    <div class="field" id="wifiRow" hidden><span>와이파이 이름 <small>(같은 와이파이 방식 안내·연결 QR)</small></span><input type="text" id="setWifi" maxlength="32" placeholder="예: Booth_5G"></div>
+    <div class="field" id="wifiPassRow" hidden><span>와이파이 비밀번호 <small>(적으면 ‘와이파이 연결 QR’도 함께 보여요)</small></span><input type="text" id="setWifiPass" maxlength="63" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="비워 두면 안내만"></div>
     <div class="field"><span>앱 켤 때 시작 점검 <small>(카메라·프린터·소리 등 자동 확인)</small></span><button class="toggle" id="setStartCheck" aria-label="시작 점검"></button></div>
     <div class="field"><span>내 프레임 <small>(Canva 등에서 만든 그림 · 사진 자리는 흰 네모로)</small></span><span style="display:flex;gap:8px"><button class="mini" id="myfAddBtn">그림 추가</button><input type="file" id="myfFile" accept="image/png,image/jpeg,image/webp" multiple hidden></span></div>
     <div class="myfList" id="myfList"></div>
@@ -681,9 +690,11 @@ details.guide p { margin: 4px 0; color: var(--muted); }
 <div id="flash"></div>
 <div id="printArea"></div>
 
+<!-- gifenc 1.0.3 (MIT License, Copyright (c) 2017 Matt DesLauriers) · GIF 만들기용, 일꾼(Worker) 안에서만 실행 -->
+<script type="text/plain" id="gifencSrc">var X={signature:"GIF",version:"89a",trailer:59,extensionIntroducer:33,applicationExtensionLabel:255,graphicControlExtensionLabel:249,imageSeparator:44,signatureSize:3,versionSize:3,globalColorTableFlagMask:128,colorResolutionMask:112,sortFlagMask:8,globalColorTableSizeMask:7,applicationIdentifierSize:8,applicationAuthCodeSize:3,disposalMethodMask:28,userInputFlagMask:2,transparentColorFlagMask:1,localColorTableFlagMask:128,interlaceFlagMask:64,idSortFlagMask:32,localColorTableSizeMask:7};function F(t=256){let e=0,s=new Uint8Array(t);return{get buffer(){return s.buffer},reset(){e=0},bytesView(){return s.subarray(0,e)},bytes(){return s.slice(0,e)},writeByte(r){n(e+1),s[e]=r,e++},writeBytes(r,o=0,i=r.length){n(e+i);for(let c=0;c<i;c++)s[e++]=r[c+o]},writeBytesView(r,o=0,i=r.byteLength){n(e+i),s.set(r.subarray(o,o+i),e),e+=i}};function n(r){var o=s.length;if(o>=r)return;var i=1024*1024;r=Math.max(r,o*(o<i?2:1.125)>>>0),o!=0&&(r=Math.max(r,256));let c=s;s=new Uint8Array(r),e>0&&s.set(c.subarray(0,e),0)}}var O=12,J=5003,lt=[0,1,3,7,15,31,63,127,255,511,1023,2047,4095,8191,16383,32767,65535];function at(t,e,s,n,r=F(512),o=new Uint8Array(256),i=new Int32Array(J),c=new Int32Array(J)){let x=i.length,a=Math.max(2,n);o.fill(0),c.fill(0),i.fill(-1);let l=0,f=0,g=a+1,h=g,b=!1,w=h,_=(1<<w)-1,u=1<<g-1,k=u+1,B=u+2,p=0,A=s[0],z=0;for(let y=x;y<65536;y*=2)++z;z=8-z,r.writeByte(a),I(u);let d=s.length;for(let y=1;y<d;y++){t:{let m=s[y],v=(m<<O)+A,M=m<<z^A;if(i[M]===v){A=c[M];break t}let V=M===0?1:x-M;for(;i[M]>=0;)if(M-=V,M<0&&(M+=x),i[M]===v){A=c[M];break t}I(A),A=m,B<1<<O?(c[M]=B++,i[M]=v):(i.fill(-1),B=u+2,b=!0,I(u))}}return I(A),I(k),r.writeByte(0),r.bytesView();function I(y){for(l&=lt[f],f>0?l|=y<<f:l=y,f+=w;f>=8;)o[p++]=l&255,p>=254&&(r.writeByte(p),r.writeBytesView(o,0,p),p=0),l>>=8,f-=8;if((B>_||b)&&(b?(w=h,_=(1<<w)-1,b=!1):(++w,_=w===O?1<<w:(1<<w)-1)),y==k){for(;f>0;)o[p++]=l&255,p>=254&&(r.writeByte(p),r.writeBytesView(o,0,p),p=0),l>>=8,f-=8;p>0&&(r.writeByte(p),r.writeBytesView(o,0,p),p=0)}}}var $=at;function D(t,e,s){return t<<8&63488|e<<2&992|s>>3}function G(t,e,s,n){return t>>4|e&240|(s&240)<<4|(n&240)<<8}function j(t,e,s){return t>>4<<8|e&240|s>>4}function R(t,e,s){return t<e?e:t>s?s:t}function T(t){return t*t}function tt(t,e,s){var n=0,r=1e100;let o=t[e],i=o.cnt,c=o.ac,x=o.rc,a=o.gc,l=o.bc;for(var f=o.fw;f!=0;f=t[f].fw){let h=t[f],b=h.cnt,w=i*b/(i+b);if(!(w>=r)){var g=0;s&&(g+=w*T(h.ac-c),g>=r)||(g+=w*T(h.rc-x),!(g>=r)&&(g+=w*T(h.gc-a),!(g>=r)&&(g+=w*T(h.bc-l),!(g>=r)&&(r=g,n=f))))}}o.err=r,o.nn=n}function Q(){return{ac:0,rc:0,gc:0,bc:0,cnt:0,nn:0,fw:0,bk:0,tm:0,mtm:0,err:0}}function ut(t,e){let s=e==="rgb444"?4096:65536,n=new Array(s),r=t.length;if(e==="rgba4444")for(let o=0;o<r;++o){let i=t[o],c=i>>24&255,x=i>>16&255,a=i>>8&255,l=i&255,f=G(l,a,x,c),g=f in n?n[f]:n[f]=Q();g.rc+=l,g.gc+=a,g.bc+=x,g.ac+=c,g.cnt++}else if(e==="rgb444")for(let o=0;o<r;++o){let i=t[o],c=i>>16&255,x=i>>8&255,a=i&255,l=j(a,x,c),f=l in n?n[l]:n[l]=Q();f.rc+=a,f.gc+=x,f.bc+=c,f.cnt++}else for(let o=0;o<r;++o){let i=t[o],c=i>>16&255,x=i>>8&255,a=i&255,l=D(a,x,c),f=l in n?n[l]:n[l]=Q();f.rc+=a,f.gc+=x,f.bc+=c,f.cnt++}return n}function H(t,e,s={}){let{format:n="rgb565",clearAlpha:r=!0,clearAlphaColor:o=0,clearAlphaThreshold:i=0,oneBitAlpha:c=!1}=s;if(!t||!t.buffer)throw new Error("quantize() expected RGBA Uint8Array data");if(!(t instanceof Uint8Array)&&!(t instanceof Uint8ClampedArray))throw new Error("quantize() expected RGBA Uint8Array data");let x=new Uint32Array(t.buffer),a=s.useSqrt!==!1,l=n==="rgba4444",f=ut(x,n),g=f.length,h=g-1,b=new Uint32Array(g+1);for(var w=0,u=0;u<g;++u){let C=f[u];if(C!=null){var _=1/C.cnt;l&&(C.ac*=_),C.rc*=_,C.gc*=_,C.bc*=_,f[w++]=C}}T(e)/w<.022&&(a=!1);for(var u=0;u<w-1;++u)f[u].fw=u+1,f[u+1].bk=u,a&&(f[u].cnt=Math.sqrt(f[u].cnt));a&&(f[u].cnt=Math.sqrt(f[u].cnt));var k,B,p;for(u=0;u<w;++u){tt(f,u,!1);var A=f[u].err;for(B=++b[0];B>1&&(p=B>>1,!(f[k=b[p]].err<=A));B=p)b[B]=k;b[B]=u}var z=w-e;for(u=0;u<z;){for(var d;;){var I=b[1];if(d=f[I],d.tm>=d.mtm&&f[d.nn].mtm<=d.tm)break;d.mtm==h?I=b[1]=b[b[0]--]:(tt(f,I,!1),d.tm=u);var A=f[I].err;for(B=1;(p=B+B)<=b[0]&&(p<b[0]&&f[b[p]].err>f[b[p+1]].err&&p++,!(A<=f[k=b[p]].err));B=p)b[B]=k;b[B]=I}var y=f[d.nn],m=d.cnt,v=y.cnt,_=1/(m+v);l&&(d.ac=_*(m*d.ac+v*y.ac)),d.rc=_*(m*d.rc+v*y.rc),d.gc=_*(m*d.gc+v*y.gc),d.bc=_*(m*d.bc+v*y.bc),d.cnt+=y.cnt,d.mtm=++u,f[y.bk].fw=y.fw,f[y.fw].bk=y.bk,y.mtm=h}let M=[];var V=0;for(u=0;;++V){let L=R(Math.round(f[u].rc),0,255),C=R(Math.round(f[u].gc),0,255),Y=R(Math.round(f[u].bc),0,255),E=255;if(l){if(E=R(Math.round(f[u].ac),0,255),c){let st=typeof c=="number"?c:127;E=E<=st?0:255}r&&E<=i&&(L=C=Y=o,E=0)}let K=l?[L,C,Y,E]:[L,C,Y];if(xt(M,K)||M.push(K),(u=f[u].fw)==0)break}return M}function xt(t,e){for(let s=0;s<t.length;s++){let n=t[s],r=n[0]===e[0]&&n[1]===e[1]&&n[2]===e[2],o=n.length>=4&&e.length>=4?n[3]===e[3]:!0;if(r&&o)return!0}return!1}function U(t,e){var s=0,n;for(n=0;n<t.length;n++){let r=t[n]-e[n];s+=r*r}return s}function P(t,e){return e>1?Math.round(t/e)*e:t}function et(t,{roundRGB:e=5,roundAlpha:s=10,oneBitAlpha:n=null}={}){let r=new Uint32Array(t.buffer);for(let o=0;o<r.length;o++){let i=r[o],c=i>>24&255,x=i>>16&255,a=i>>8&255,l=i&255;if(c=P(c,s),n){let f=typeof n=="number"?n:127;c=c<=f?0:255}l=P(l,e),a=P(a,e),x=P(x,e),r[o]=c<<24|x<<16|a<<8|l<<0}}function nt(t,e,s="rgb565"){if(!t||!t.buffer)throw new Error("quantize() expected RGBA Uint8Array data");if(!(t instanceof Uint8Array)&&!(t instanceof Uint8ClampedArray))throw new Error("quantize() expected RGBA Uint8Array data");if(e.length>256)throw new Error("applyPalette() only works with 256 colors or less");let n=new Uint32Array(t.buffer),r=n.length,o=s==="rgb444"?4096:65536,i=new Uint8Array(r),c=new Array(o),x=s==="rgba4444";if(s==="rgba4444")for(let a=0;a<r;a++){let l=n[a],f=l>>24&255,g=l>>16&255,h=l>>8&255,b=l&255,w=G(b,h,g,f),_=w in c?c[w]:c[w]=gt(b,h,g,f,e);i[a]=_}else{let a=s==="rgb444"?j:D;for(let l=0;l<r;l++){let f=n[l],g=f>>16&255,h=f>>8&255,b=f&255,w=a(b,h,g),_=w in c?c[w]:c[w]=bt(b,h,g,e);i[l]=_}}return i}function gt(t,e,s,n,r){let o=0,i=1e100;for(let c=0;c<r.length;c++){let x=r[c],a=x[3],l=q(a-n);if(l>i)continue;let f=x[0];if(l+=q(f-t),l>i)continue;let g=x[1];if(l+=q(g-e),l>i)continue;let h=x[2];l+=q(h-s),!(l>i)&&(i=l,o=c)}return o}function bt(t,e,s,n){let r=0,o=1e100;for(let i=0;i<n.length;i++){let c=n[i],x=c[0],a=q(x-t);if(a>o)continue;let l=c[1];if(a+=q(l-e),a>o)continue;let f=c[2];a+=q(f-s),!(a>o)&&(o=a,r=i)}return r}function rt(t,e,s=5){if(!t.length||!e.length)return;let n=t.map(i=>i.slice(0,3)),r=s*s,o=t[0].length;for(let i=0;i<e.length;i++){let c=e[i];c.length<o?c=[c[0],c[1],c[2],255]:c.length>o?c=c.slice(0,3):c=c.slice();let x=N(n,c.slice(0,3),U),a=x[0],l=x[1];l>0&&l<=r&&(t[a]=c)}}function q(t){return t*t}function W(t,e,s=U){let n=Infinity,r=-1;for(let o=0;o<t.length;o++){let i=t[o],c=s(e,i);c<n&&(n=c,r=o)}return r}function N(t,e,s=U){let n=Infinity,r=-1;for(let o=0;o<t.length;o++){let i=t[o],c=s(e,i);c<n&&(n=c,r=o)}return[r,n]}function ot(t,e,s=U){return t[W(t,e,s)]}function ct(t={}){let{initialCapacity:e=4096,auto:s=!0}=t,n=F(e),r=5003,o=new Uint8Array(256),i=new Int32Array(r),c=new Int32Array(r),x=!1;return{reset(){n.reset(),x=!1},finish(){n.writeByte(X.trailer)},bytes(){return n.bytes()},bytesView(){return n.bytesView()},get buffer(){return n.buffer},get stream(){return n},writeHeader:a,writeFrame(l,f,g,h={}){let{transparent:b=!1,transparentIndex:w=0,delay:_=0,palette:u=null,repeat:k=0,colorDepth:B=8,dispose:p=-1}=h,A=!1;if(s?x||(A=!0,a(),x=!0):A=Boolean(h.first),f=Math.max(0,Math.floor(f)),g=Math.max(0,Math.floor(g)),A){if(!u)throw new Error("First frame must include a { palette } option");pt(n,f,g,u,B),it(n,u),k>=0&&dt(n,k)}let z=Math.round(_/10);wt(n,p,z,b,w);let d=Boolean(u)&&!A;ht(n,f,g,d?u:null),d&&it(n,u),yt(n,l,f,g,B,o,i,c)}};function a(){ft(n,"GIF89a")}}function wt(t,e,s,n,r){t.writeByte(33),t.writeByte(249),t.writeByte(4),r<0&&(r=0,n=!1);var o,i;n?(o=1,i=2):(o=0,i=0),e>=0&&(i=e&7),i<<=2;let c=0;t.writeByte(0|i|c|o),S(t,s),t.writeByte(r||0),t.writeByte(0)}function pt(t,e,s,n,r=8){let o=1,i=0,c=Z(n.length)-1,x=o<<7|r-1<<4|i<<3|c,a=0,l=0;S(t,e),S(t,s),t.writeBytes([x,a,l])}function dt(t,e){t.writeByte(33),t.writeByte(255),t.writeByte(11),ft(t,"NETSCAPE2.0"),t.writeByte(3),t.writeByte(1),S(t,e),t.writeByte(0)}function it(t,e){let s=1<<Z(e.length);for(let n=0;n<s;n++){let r=[0,0,0];n<e.length&&(r=e[n]),t.writeByte(r[0]),t.writeByte(r[1]),t.writeByte(r[2])}}function ht(t,e,s,n){if(t.writeByte(44),S(t,0),S(t,0),S(t,e),S(t,s),n){let r=0,o=0,i=Z(n.length)-1;t.writeByte(128|r|o|0|i)}else t.writeByte(0)}function yt(t,e,s,n,r=8,o,i,c){$(s,n,e,r,t,o,i,c)}function S(t,e){t.writeByte(e&255),t.writeByte(e>>8&255)}function ft(t,e){for(var s=0;s<e.length;s++)t.writeByte(e.charCodeAt(s))}function Z(t){return Math.max(Math.ceil(Math.log2(t)),1)}var Bt=ct;self.GIFENC={GIFEncoder:ct,applyPalette:nt,quantize:H};</script>
 <script>
 "use strict";
-const APP_VERSION = "1.9";
+const APP_VERSION = "1.10";
 /* 손님이 쓰는 중에 생긴 오류를 기록 → 시작 점검·관리자 '오류 보고서'에서 보여 줌 (관리자가 그대로 알려 주면 고칠 수 있게) */
 function errLog(msg) {
   try {
@@ -1011,7 +1022,7 @@ function loadFont(id) {
   return fontLoaded[f.id];
 }
 
-const DEFAULTS = { paper: "postcard", extra: 2, countdown: 7, zoom: 1, attractTitle: "PHOTO BOOTH", title: "PHOTO BOOTH", showDate: true, timers: true, cassette: true, printerReady: false, printVia: "canon", printMode: "selphy", printModeV: 2, selphyIP: "", selphyName: "", bleed: 2, retouch: "natural", faceFx: true, poses: true, font: "jua", sharpen: true, voice: true, voiceName: "", sound: true, pin: "0000", qr: true, wifiName: "", poseVoice: "m", posePack: "b", startCheck: true };
+const DEFAULTS = { paper: "postcard", extra: 2, countdown: 7, zoom: 1, attractTitle: "PHOTO BOOTH", title: "PHOTO BOOTH", showDate: true, timers: true, cassette: true, printerReady: false, printVia: "canon", printMode: "selphy", printModeV: 2, selphyIP: "", selphyName: "", bleed: 2, retouch: "natural", faceFx: true, poses: true, font: "jua", sharpen: true, voice: true, voiceName: "", sound: true, pin: "0000", qr: true, qrMode: "lan", webHours: 72, webBase: "https://sehunyi.github.io/photobooth/get.html", wifiName: "", wifiPass: "", poseVoice: "m", posePack: "b", startCheck: true };
 let S = loadSettings();
 /* v1.8: 기본 인쇄 방법을 '셀피 바로 인쇄'로 한 번 바꿈 (관리자 설정에서 다시 바꿀 수 있음) */
 if ((S.printModeV || 0) < 2) { S.printMode = "selphy"; S.printModeV = 2; try { localStorage.setItem("booth.settings", JSON.stringify(S)); } catch (e) {} }
@@ -1024,7 +1035,7 @@ function saveSettings() { try { localStorage.setItem("booth.settings", JSON.stri
 /* ───────── 한 팀의 촬영 데이터 ───────── */
 const session = {
   copies: 1, layout: "strip4", frame: 0, font: "jua", shots: [], slots: [null, null, null, null], active: 0,
-  filter: "original", retouch: "natural", stickers: [], finalCanvas: null, finalBlob: null, liveBlob: null, filtered: {}
+  filter: "original", retouch: "natural", stickers: [], finalCanvas: null, finalBlob: null, liveBlob: null, gifBlob: null, gifFailed: false, webFail: false, webTimer: null, filtered: {}
 };
 /* ── 메모리 관리 ──
    아이패드 Safari는 캔버스 메모리 한도를 넘으면 그림이 '빈 화면'으로 만들어짐 → 백지 인쇄의 원인.
@@ -1070,7 +1081,7 @@ function resetSession() {
   releaseSession();
   hintShown = false;
   Object.assign(session, { copies: 1, layout: "strip4", frame: 0, font: (FONT_BY[S.font] ? S.font : "jua"), shots: [], slots: [null, null, null, null], active: 0,
-    filter: "original", retouch: (RETOUCH[S.retouch] ? S.retouch : "natural"), stickers: [], finalCanvas: null, finalBlob: null, liveBlob: null, filtered: {} });
+    filter: "original", retouch: (RETOUCH[S.retouch] ? S.retouch : "natural"), stickers: [], finalCanvas: null, finalBlob: null, liveBlob: null, gifBlob: null, gifFailed: false, webFail: false, webTimer: null, filtered: {} });
 }
 
 /* ───────── 도구 ───────── */
@@ -3021,7 +3032,7 @@ ENTER.deco = () => {
   G.pts.clear(); G.start = null; G.drag = false;
   selectedSticker = null; say("deco"); buildFonts(); buildStickerPane();
   /* 꾸미기를 다시 하면 인쇄용 사진도 새로 만들어야 함 */
-  printTok++; freeCanvas(session.finalCanvas); session.finalCanvas = null; session.finalBlob = null; session.printFile = null; session.liveBlob = null; session.share = null;
+  printTok++; freeCanvas(session.finalCanvas); session.finalCanvas = null; session.finalBlob = null; session.printFile = null; session.liveBlob = null; session.gifBlob = null; session.gifFailed = false; clearTimeout(session.webTimer); session.webTimer = null; session.webFail = false; session.share = null; session.shareErr = null;
   buildRetouch(); buildFilters(); buildSwatches($("frameList2"), drawDeco, session.layout);
   requestAnimationFrame(drawDeco);
 };
@@ -3042,7 +3053,7 @@ ENTER.print = async () => {
   if (tok !== printTok || current !== "print") return;
   $("printBtn").disabled = true; $("printAlt").disabled = true; $("saveBtn2").disabled = true; $("printAltBtn").disabled = true; $("printMsg").textContent = "사진을 만들고 있어요…"; $("printPreview").removeAttribute("src");
   printTexts();
-  if (session.finalBlob) { readyToPrint(); lanShare(false); return; }   /* '인쇄가 안 됐어요'로 돌아온 경우 */
+  if (session.finalBlob) { readyToPrint(); qrShare(false); return; }   /* '인쇄가 안 됐어요'로 돌아온 경우 */
   await sleep(50);
   let ok = false;
   try { ok = await buildPrintImage(tok); } catch (e) { console.warn("build", e); ok = false; }
@@ -3055,44 +3066,129 @@ ENTER.print = async () => {
     return;
   }
   readyToPrint();
-  lanShare(false);
-  setTimeout(() => { if (tok === printTok) makeLiveVideo(baseSpec({ stickers: session.stickers }), tok).catch(() => {}); }, 1500);
+  qrShare(false);
+  setTimeout(() => {
+    if (tok !== printTok) return;
+    makeLiveVideo(baseSpec({ stickers: session.stickers }), tok).catch((e) => { console.warn("live", e); }).then(() => {
+      if (tok !== printTok) return;
+      if (!session.gifBlob) { session.gifFailed = true; qrShare(true); }   /* GIF를 못 만들었으면 사진만이라도 바로 올림 */
+    });
+  }, 1500);
 };
-/* ── 휴대폰 QR 받기 (앱 전용): 아이패드 안 작은 서버에 사진을 올리고 QR을 보여 줌 ──
+/* ── 휴대폰 QR 받기 (앱 전용) ──
+   두 가지 방법:
+   · "lan" 같은 와이파이: 아이패드 안 작은 서버에 올림 (인터넷 필요 없음, 휴대폰이 같은 와이파이여야 함)
+   · "web" 인터넷 임시 링크: 사진·GIF를 임시 보관함(72시간 뒤 자동 삭제)에 올림 → LTE/5G 휴대폰도 받음
+     인터넷이 안 되면 자동으로 같은 와이파이 방식으로 바꿈
    차례대로 처리(사진 → 움직이는 사진 추가)해서 주소가 하나로 유지됨 */
 let shareChain = Promise.resolve();
+let webDownUntil = 0;   /* 인터넷 링크가 실패하면 5분 동안은 바로 같은 와이파이 방식으로 (손님마다 20초씩 기다리지 않게) */
+function webOn() { return S.qrMode === "web" && !session.webFail && Date.now() > webDownUntil; }
+function qrShare(extra) {
+  if (!NATIVE || !S.qr || !session.finalBlob) return shareChain;
+  if (webOn()) return webShare(extra);
+  return lanShare(extra);
+}
 function lanShare(withVideo) {
   if (!NATIVE || !S.qr || !session.finalBlob) return shareChain;
   const sid = sessionId, blob = session.finalBlob;
   shareChain = shareChain.then(async () => {
     if (sid !== sessionId || session.finalBlob !== blob) return;
-    if (withVideo && (!session.liveBlob || (session.share && session.share.video))) return;
+    if (session.share && session.share.web) return;
+    if (withVideo && ((!session.liveBlob && !session.gifBlob) || (session.share && session.share.video))) return;
     if (!withVideo && session.share && session.share.token) return;
     try {
       const msg = { cmd: "lanShare", jpeg: await blobToB64(blob), title: S.title || "" };
       if (session.share && session.share.token) msg.token = session.share.token;
-      if (withVideo) { msg.video = await blobToB64(session.liveBlob); msg.videoType = session.liveBlob.type; }
+      if (withVideo) {
+        if (session.gifBlob) msg.gif = await blobToB64(session.gifBlob);   /* GIF가 있으면 GIF만 (갤럭시도 바로 열림, 전송도 가벼움) */
+        else if (session.liveBlob) { msg.video = await blobToB64(session.liveBlob); msg.videoType = session.liveBlob.type; }
+      }
       const r = await native(msg, 20000);
       if (sid !== sessionId || session.finalBlob !== blob) return;
-      if (r && r.ok && r.qr) { if (!session.share) statBump("qr", sessionId); session.share = { token: r.token, url: r.url, qr: r.qr, video: !!msg.video }; session.shareErr = null; }
+      if (r && r.ok && r.qr) { if (!session.share) statBump("qr", sessionId); session.share = { token: r.token, url: r.url, qr: r.qr, video: !!(msg.video || msg.gif) || !!(session.share && session.share.video), gif: !!msg.gif || !!(session.share && session.share.gif) }; session.shareErr = null; }
       else { session.share = session.share || null; printLog("QR 받기 실패: " + ((r && r.error) || "?")); if (r && r.error === "no-wifi") session.shareErr = "no-wifi"; }
     } catch (e) { printLog("QR 받기 오류: " + (e && e.message)); }
     renderQR();
   }).catch(() => {});
   return shareChain;
 }
+/* 인터넷 임시 링크: GIF까지 다 만들어지면 한 번에 올림 (QR이 바뀌지 않게). GIF가 늦으면 20초 뒤 사진만 먼저 */
+function webShare(extra) {
+  const sid = sessionId;
+  if (!extra && !session.gifBlob && !session.gifFailed) {
+    if (!session.webTimer) session.webTimer = setTimeout(() => { if (sid === sessionId) { session.webTimer = null; webUpload(); } }, 20000);
+    renderQR(); return shareChain;
+  }
+  clearTimeout(session.webTimer); session.webTimer = null;
+  return webUpload();
+}
+function webUpload() {
+  const sid = sessionId, blob = session.finalBlob;
+  shareChain = shareChain.then(async () => {
+    if (sid !== sessionId || session.finalBlob !== blob || !blob) return;
+    const gif = session.gifBlob, sh = session.share;
+    if (sh && sh.web && (sh.gif || !gif)) return;   /* 이미 다 올림 */
+    try {
+      const msg = { cmd: "webShare", title: S.title || "", hours: S.webHours || 72, base: S.webBase || DEFAULTS.webBase };
+      if (sh && sh.web && sh.p) { msg.p = sh.p; msg.x = sh.x; } else msg.jpeg = await blobToB64(blob);
+      if (gif) msg.gif = await blobToB64(gif);
+      const r = await native(msg, 100000);
+      if (sid !== sessionId || session.finalBlob !== blob) return;
+      if (r && r.ok && r.qr) {
+        if (!session.share) statBump("qr", sessionId);
+        session.share = { web: true, token: r.url, url: r.url, qr: r.qr, p: r.p, x: r.x, hours: r.hours, gif: !!r.g, video: true }; session.shareErr = null;
+        if (gif && !r.g) printLog("GIF 올리기 실패: " + (r.gifError || "?"));
+      } else if (!(sh && sh.web)) {
+        /* 인터넷이 안 됨 → 같은 와이파이 방식으로 */
+        printLog("인터넷 QR 실패 → 같은 와이파이 QR로 바꿈: " + ((r && r.error) || "?")); errLog("인터넷 QR 실패: " + ((r && r.error) || "?"));
+        session.webFail = true; webDownUntil = Date.now() + 5 * 60000;
+      }
+    } catch (e) { printLog("인터넷 QR 오류: " + (e && e.message)); if (!(sh && sh.web)) { session.webFail = true; webDownUntil = Date.now() + 5 * 60000; } }
+    if (session.webFail && !(session.share && session.share.web)) { lanShare(false); lanShare(true); }
+    renderQR();
+  }).catch(() => {});
+  return shareChain;
+}
+/* 와이파이 연결 QR (같은 와이파이 방식일 때, 비밀번호를 적어 두면 휴대폰이 찍기만 해도 연결) */
+const WIFIQR = { key: "", qr: "" };
+function wifiQRText() {
+  if (!S.wifiName) return "";
+  const e = (x) => String(x).replace(/([\\;,:"])/g, "\\$1");
+  return "WIFI:T:" + (S.wifiPass ? "WPA" : "nopass") + ";S:" + e(S.wifiName) + ";" + (S.wifiPass ? "P:" + e(S.wifiPass) + ";" : "") + ";";
+}
+async function ensureWifiQR() {
+  const t = wifiQRText();
+  if (!NATIVE || !t) { WIFIQR.key = ""; WIFIQR.qr = ""; return ""; }
+  if (WIFIQR.key === t) return WIFIQR.qr;
+  WIFIQR.key = t; WIFIQR.qr = "";   /* 실패해도 같은 내용으로 계속 다시 묻지 않음 */
+  try { const r = await native({ cmd: "qr", text: t }, 8000); if (r && r.ok && r.qr && WIFIQR.key === t) WIFIQR.qr = r.qr; } catch (e) {}
+  return WIFIQR.qr;
+}
 function renderQR() {
   const sh = session.share, on = !!(sh && sh.qr) && (current === "printing" || current === "done");
   const noWifi = !on && session.shareErr === "no-wifi" && current === "done";
+  const waiting = !on && NATIVE && S.qr && webOn() && session.finalBlob && (current === "printing" || current === "done");
   document.querySelectorAll("[data-qr]").forEach((box) => {
     if (noWifi && box.closest("#s-done")) { box.dataset.tok = ""; box.innerHTML = "<span>📶 아이패드가 와이파이에 연결되어 있지 않아 QR 받기를 쓸 수 없어요. 아래 ‘사진 보내기’를 이용해 주세요.</span>"; box.hidden = false; return; }
+    if (waiting) { if (box.dataset.tok !== "wait") { box.dataset.tok = "wait"; box.innerHTML = "<div class='qrWait'></div><div><b>📱 QR 만드는 중…</b><span>사진과 움직이는 사진(GIF)을 준비하고 있어요</span></div>"; } box.hidden = false; return; }
     if (!on) { box.hidden = true; box.innerHTML = ""; box.dataset.tok = ""; return; }
-    if (box.dataset.tok === sh.token && !box.hidden) return;
-    box.dataset.tok = sh.token; box.innerHTML = "";
-    const im = new Image(); im.src = "data:image/png;base64," + sh.qr; im.alt = "사진 받기 QR 코드";
+    if (!sh.web && wifiQRText() && WIFIQR.key !== wifiQRText() && !WIFIQR.busy) { WIFIQR.busy = true; ensureWifiQR().then(() => { WIFIQR.busy = false; if (WIFIQR.qr) renderQR(); }); }
+    const wifi = !sh.web && WIFIQR.qr && WIFIQR.key === wifiQRText() ? WIFIQR.qr : "";
+    const key = sh.token + "|" + (wifi ? 1 : 0) + (sh.video ? "v" : "") + (sh.gif ? "g" : "");
+    if (box.dataset.tok === key && !box.hidden) return;
+    box.dataset.tok = key; box.innerHTML = "";
+    box.classList.toggle("two", !!wifi);
+    if (wifi) {
+      const w = el("div", "qrStep"); const wi = new Image(); wi.src = "data:image/png;base64," + wifi; wi.alt = "와이파이 연결 QR 코드";
+      w.appendChild(wi); w.appendChild(el("i", null, "① 와이파이 연결")); box.appendChild(w);
+    }
+    const ph = el("div", "qrStep"); const im = new Image(); im.src = "data:image/png;base64," + sh.qr; im.alt = "사진 받기 QR 코드";
+    ph.appendChild(im); if (wifi) ph.appendChild(el("i", null, "② 사진 받기")); box.appendChild(ph);
     const t = el("div"); t.appendChild(el("b", null, "📱 QR 찍고 사진 받기"));
-    t.appendChild(el("span", null, "휴대폰 카메라로 찍으면 사진을 저장할 수 있어요" + (S.wifiName ? "<br>와이파이 <b style='display:inline;font-family:inherit;font-size:inherit;color:var(--purple)'>" + escapeHtml(S.wifiName) + "</b>에 연결" : "<br>(포토부스와 같은 와이파이)")));
-    box.appendChild(im); box.appendChild(t); box.hidden = false;
+    if (sh.web) t.appendChild(el("span", null, "휴대폰 카메라로 찍으면 원본 사진" + (sh.gif ? "과 GIF" : "") + "를 저장할 수 있어요<br>와이파이 없어도 돼요 · " + (sh.hours || S.webHours || 72) + "시간 뒤 자동 삭제"));
+    else t.appendChild(el("span", null, "휴대폰 카메라로 찍으면 원본 사진" + (sh.gif ? "과 GIF" : sh.video ? "과 움직이는 영상" : "") + "를 저장할 수 있어요" + (S.wifiName ? "<br>" + (wifi ? "먼저 ①로 " : "") + "와이파이 <b style='display:inline;font-family:inherit;font-size:inherit;color:var(--purple)'>" + escapeHtml(S.wifiName) + "</b>에 연결" : "<br>(포토부스와 같은 와이파이)")));
+    box.appendChild(t); box.hidden = false;
   });
 }
 /* 사진을 칸 크기에 맞게 가운데 기준으로 잘라 한 번에 줄임 */
@@ -3468,10 +3564,44 @@ $("pgDone").addEventListener("click", () => go("done"));
 $("pgSkip").addEventListener("click", () => go("done"));
 $("pgRetry").addEventListener("click", () => { cancelAnimationFrame(PG.raf); clearTimeout(PG.autoTimer); go("print"); });
 
-/* 움직이는 사진: 셔터 직전 장면을 이어 붙인 짧은 영상 */
+/* GIF 만들기 (일꾼 안에서, 화면 안 멈춤) — 갤럭시 등 어떤 휴대폰에서도 움직이는 사진으로 보임 */
+const GW = { w: null, broken: false, seq: 0, wait: {} };
+function gifWorker() {
+  if (GW.w || GW.broken) return GW.w;
+  try {
+    const lib = $("gifencSrc").textContent;
+    const src = lib + "\nonmessage=function(e){var m=e.data;try{var G=self.GIFENC,w=m.w,h=m.h,fr=m.frames.map(function(b){return new Uint8Array(b)});" +
+      "var step=Math.max(1,Math.floor(fr.length/4)),parts=[];for(var i=0;i<fr.length;i+=step)parts.push(fr[i]);" +
+      "var all=new Uint8Array(parts.length*w*h*4);parts.forEach(function(p,k){all.set(p,k*w*h*4)});" +
+      "var pal=G.quantize(all,256,{format:'rgb565'}),idx=fr.map(function(f){return G.applyPalette(f,pal,'rgb565')}),enc=G.GIFEncoder();" +
+      "for(var j=0;j<m.order.length;j++){enc.writeFrame(idx[m.order[j]],w,h,j===0?{palette:pal,delay:m.delay,repeat:0}:{delay:m.delay});}" +
+      "enc.finish();var out=enc.bytes().slice();postMessage({id:m.id,buf:out.buffer},[out.buffer]);}catch(err){postMessage({id:m.id,err:String(err)})}};";
+    GW.w = new Worker(URL.createObjectURL(new Blob([src], { type: "text/javascript" })));
+    GW.w.onmessage = (e) => { const cb = GW.wait[e.data.id]; delete GW.wait[e.data.id]; if (cb) cb(e.data); };
+    GW.w.onerror = () => { GW.broken = true; const all = GW.wait; GW.wait = {}; Object.values(all).forEach((cb) => cb({ err: "worker" })); try { GW.w.terminate(); } catch (e) {} GW.w = null; };
+  } catch (e) { GW.broken = true; GW.w = null; }
+  return GW.w;
+}
+/* frames: 캔버스 목록, order: 보여 줄 차례(번호), delay: 한 장면 시간(ms). 가로 최대 480px */
+function makeGif(frames, order, delay) {
+  const w0 = frames[0].width, h0 = frames[0].height, sc = Math.min(1, 480 / w0);
+  const w = Math.max(1, Math.round(w0 * sc)), h = Math.max(1, Math.round(h0 * sc));
+  const c = makeCanvas(w, h), ctx = c.getContext("2d", { willReadFrequently: true });
+  ctx.imageSmoothingEnabled = true; ctx.imageSmoothingQuality = "high";
+  const bufs = frames.map((f) => { ctx.clearRect(0, 0, w, h); ctx.fillStyle = "#fff"; ctx.fillRect(0, 0, w, h); ctx.drawImage(f, 0, 0, w, h); return ctx.getImageData(0, 0, w, h).data.buffer; });
+  freeCanvas(c);
+  const wk = gifWorker(); if (!wk) return Promise.reject(new Error("no gif worker"));
+  return new Promise((res, rej) => {
+    const id = ++GW.seq;
+    const t = setTimeout(() => { if (GW.wait[id]) { delete GW.wait[id]; rej(new Error("gif timeout")); } }, 30000);
+    GW.wait[id] = (r) => { clearTimeout(t); if (r.err) rej(new Error(r.err)); else res(new Blob([r.buf], { type: "image/gif" })); };
+    wk.postMessage({ id, frames: bufs, order, delay, w, h }, bufs);
+  });
+}
+
+/* 움직이는 사진: 셔터 직전 장면을 이어 붙인 짧은 영상 + GIF */
 async function makeLiveVideo(spec, tok) {
-  session.liveBlob = null;
-  if (typeof MediaRecorder === "undefined" || !HTMLCanvasElement.prototype.captureStream) return;
+  session.liveBlob = null; session.gifBlob = null;
   const fresh = [], lives = [];
   for (const s of session.slots) {
     if (s == null || !session.shots[s]) { lives.push([]); continue; }
@@ -3488,22 +3618,33 @@ async function makeLiveVideo(spec, tok) {
     frames.push(render(Object.assign({}, spec, { photos }), LAYOUTS[spec.layout].strip ? 0.6 : 0.45, true));
     await sleep(0);
   }
-  const loop = frames.concat(frames.slice(1, -1).reverse());
-  const out = makeCanvas(frames[0].width, frames[0].height), octx = out.getContext("2d");
-  octx.drawImage(loop[0], 0, 0);
-  const type = ["video/mp4", "video/webm;codecs=vp9", "video/webm"].find((t) => MediaRecorder.isTypeSupported && MediaRecorder.isTypeSupported(t));
-  if (!type) return;
-  const rec = new MediaRecorder(out.captureStream(15), { mimeType: type, videoBitsPerSecond: 4000000 });
-  const chunks = []; rec.ondataavailable = (e) => { if (e.data && e.data.size) chunks.push(e.data); };
-  const done = new Promise((res) => { rec.onstop = res; });
-  rec.start();
-  for (let rep = 0; rep < 3; rep++) for (const f of loop) { octx.drawImage(f, 0, 0); await sleep(100); }
-  rec.stop(); await done;
-  frames.forEach(freeCanvas); freeCanvas(out); fresh.forEach(freeCanvas);   /* 새로 만든 것만 지움 (저장해 둔 사진은 그대로) */
+  const order = frames.map((_, i) => i).concat(frames.map((_, i) => i).slice(1, -1).reverse());
+  const loop = order.map((i) => frames[i]);
+  /* GIF는 일꾼에서 동시에 만듦 (그림은 여기서 바로 복사해 감) */
+  let gifBlob = null;
+  const gifP = makeGif(frames, order, 100).then((b) => { gifBlob = b; }).catch((e) => { console.warn("gif", e); errLog("GIF 만들기 실패: " + (e && e.message)); });
+  const type = typeof MediaRecorder !== "undefined" && HTMLCanvasElement.prototype.captureStream ? ["video/mp4", "video/webm;codecs=vp9", "video/webm"].find((t) => MediaRecorder.isTypeSupported && MediaRecorder.isTypeSupported(t)) : null;
+  let videoBlob = null;
+  if (type) {
+    const out = makeCanvas(frames[0].width, frames[0].height), octx = out.getContext("2d");
+    octx.drawImage(loop[0], 0, 0);
+    try {
+      const rec = new MediaRecorder(out.captureStream(15), { mimeType: type, videoBitsPerSecond: 4000000 });
+      const chunks = []; rec.ondataavailable = (e) => { if (e.data && e.data.size) chunks.push(e.data); };
+      const done = new Promise((res) => { rec.onstop = res; });
+      rec.start();
+      for (let rep = 0; rep < 3; rep++) for (const f of loop) { octx.drawImage(f, 0, 0); await sleep(100); }
+      rec.stop(); await done;
+      if (chunks.length) videoBlob = new Blob(chunks, { type: type.split(";")[0] });
+    } catch (e) { console.warn("rec", e); }
+    freeCanvas(out);
+  }
+  await gifP;
+  frames.forEach(freeCanvas); fresh.forEach(freeCanvas);   /* 새로 만든 것만 지움 (저장해 둔 사진은 그대로) */
   if (tok !== printTok) return;
-  session.liveBlob = new Blob(chunks, { type: type.split(";")[0] });
+  session.liveBlob = videoBlob; session.gifBlob = gifBlob;
   if (current === "done") showLive();
-  lanShare(true);   /* QR 페이지에 움직이는 사진도 추가 (사진 올리기가 끝난 뒤 차례로) */
+  qrShare(true);   /* QR 페이지에 움직이는 사진(GIF)도 추가 (사진 올리기가 끝난 뒤 차례로) */
 }
 
 /* ───────── 8. 완료 ───────── */
@@ -3524,6 +3665,7 @@ function confetti() {
 function showLive() {
   const v = $("liveVideo");
   if (session.liveBlob) { v.src = trackURL(URL.createObjectURL(session.liveBlob)); v.hidden = false; $("doneImg").hidden = true; v.play().catch(() => {}); }
+  else if (session.gifBlob) { $("doneImg").src = trackURL(URL.createObjectURL(session.gifBlob)); }
 }
 ENTER.done = () => {
   clearTimeout(PG.autoTimer); cancelAnimationFrame(PG.raf);
@@ -3532,7 +3674,7 @@ ENTER.done = () => {
   $("doneImg").hidden = false; $("liveVideo").hidden = true;
   if (session.finalBlob) $("doneImg").src = trackURL(URL.createObjectURL(session.finalBlob)); else $("doneImg").removeAttribute("src");
   showLive(); confetti(); renderQR(); statBump("teams", sessionId);
-  lanShare(false); lanShare(true);   /* 앞에서 실패했으면 다시 시도 (이미 올렸으면 아무 일 안 함) */
+  qrShare(false); if (session.gifBlob || session.liveBlob || session.gifFailed) qrShare(true);   /* 앞에서 실패했으면 다시 시도 (이미 올렸으면 아무 일 안 함) */
 };
 $("shareBtn").addEventListener("click", () => shareSave($("shareErr")));
 /* 사진 저장·보내기: 공유 창(사진 앱 저장, AirDrop, 메시지 등)으로 사진 + 움직이는 영상 */
@@ -3542,12 +3684,14 @@ async function shareSave(errEl) {
   if (NATIVE) {
     try {
       const files = [{ name: "photobooth.jpg", mime: "image/jpeg", b64: await blobToB64(session.finalBlob) }];
+      if (session.gifBlob) files.push({ name: "photobooth.gif", mime: "image/gif", b64: await blobToB64(session.gifBlob) });
       if (session.liveBlob) files.push({ name: "photobooth-live." + (session.liveBlob.type.includes("mp4") ? "mp4" : "webm"), mime: session.liveBlob.type, b64: await blobToB64(session.liveBlob) });
       await native({ cmd: "share", files });
     } catch (e) { errEl.textContent = "보내지 못했어요."; }
     return;
   }
   const files = [new File([session.finalBlob], "photobooth.jpg", { type: "image/jpeg" })];
+  if (session.gifBlob) files.push(new File([session.gifBlob], "photobooth.gif", { type: "image/gif" }));
   if (session.liveBlob) { const ext = session.liveBlob.type.includes("mp4") ? "mp4" : "webm"; files.push(new File([session.liveBlob], "photobooth-live." + ext, { type: session.liveBlob.type })); }
   try {
     if (navigator.canShare && navigator.canShare({ files })) await navigator.share({ files, title: "네컷 사진" });
@@ -3595,7 +3739,10 @@ function openAdmin() {
   toggle($("setSharpen"), "sharpen"); toggle($("setFaceFx"), "faceFx"); toggle($("setPoses"), "poses"); toggle($("setQr"), "qr");
   { const t = statToday(); $("statLine").textContent = "(" + t.teams + "팀 · 인쇄 " + t.prints + "번 · QR " + t.qr + "번)"; }
   drawMyfList();
-  $("qrRow").hidden = !NATIVE; $("wifiRow").hidden = !NATIVE; $("setWifi").value = S.wifiName || "";
+  $("qrRow").hidden = !NATIVE; $("qrModeRow").hidden = !NATIVE; $("wifiRow").hidden = !NATIVE; $("wifiPassRow").hidden = !NATIVE; $("setWifi").value = S.wifiName || ""; $("setWifiPass").value = S.wifiPass || "";
+  const qrNote = () => { $("qrModeNote").textContent = S.qrMode === "web" ? "(휴대폰 데이터로도 받음 · 사진을 임시 보관함에 올리고 " + (S.webHours || 72) + "시간 뒤 자동 삭제 · 인터넷이 안 되면 자동으로 같은 와이파이 방식)" : "(인터넷 필요 없음 · 휴대폰이 아이패드와 같은 와이파이에 연결되어 있어야 함)"; };
+  seg($("setQrMode"), ["lan", "web"], () => S.qrMode === "web" ? "web" : "lan", (v) => { S.qrMode = v; session.webFail = false; webDownUntil = 0; qrNote(); }, (v) => v === "web" ? "인터넷 링크" : "같은 와이파이");
+  qrNote();
   { const sf = $("setFont"); sf.innerHTML = ""; FONTS.forEach((f) => { const o = el("option"); o.value = f.id; o.textContent = f.name; if ((S.font || "jua") === f.id) o.selected = true; sf.appendChild(o); }); sf.onchange = () => { S.font = sf.value; session.font = sf.value; }; } toggle($("setVoice"), "voice"); toggle($("setSound"), "sound");
   if (!openAdmin.bound) { $("setDate").addEventListener("click", drawCaptionPreview); openAdmin.bound = true; }
   if (!RETOUCH[S.retouch]) S.retouch = "natural";
@@ -3682,7 +3829,8 @@ $("voiceTest").addEventListener("click", async () => {
   playSfx("shutter"); S.voice = was;
 });
 $("adminClose").addEventListener("click", () => {
-  S.wifiName = $("setWifi").value.trim();
+  S.wifiName = $("setWifi").value.trim(); S.wifiPass = $("setWifiPass").value;
+  ensureWifiQR();
   { const ipv = $("setSelphyIP").value.trim(); if (!ipv) S.selphyIP = ""; else if (/^\d{1,3}(\.\d{1,3}){3}$/.test(ipv)) S.selphyIP = ipv; }
   S.title = $("setTitle").value.trim(); S.attractTitle = $("setAttract").value.trim() || "PHOTO BOOTH";
   const np = $("setPin").value.trim(); if (/^\d{4}$/.test(np)) S.pin = np;
@@ -3710,7 +3858,7 @@ const CK = { rows: {}, order: [], running: false, done: false, stream: null, fra
 const CK_ITEMS = [
   ["storage", "설정 저장"], ["camera", "카메라"], ["beauty", "뽀샤시 보정 (GPU)"], ["fonts", "글꼴 " + FONTS.length + "개"],
   ["images", "프레임 배경 · 3D 스티커 그림"], ["voice", "안내 · 포즈 목소리 파일"], ["worker", "필터 계산 (백그라운드)"], ["compose", "인쇄용 사진 만들기"],
-  ["live", "움직이는 사진"], ["facefx", "얼굴 따라다니는 효과"], ["app", "아이패드 앱 연결"], ["printer", "프린터"], ["qr", "휴대폰 QR 받기"],
+  ["live", "움직이는 사진 (영상 · GIF)"], ["facefx", "얼굴 따라다니는 효과"], ["app", "아이패드 앱 연결"], ["printer", "프린터"], ["qr", "휴대폰 QR 받기"],
   ["errlog", "지난번 사용 중 오류 기록"], ["sound", "소리 (직접 확인)"], ["print", "테스트 인쇄 (직접 확인)"]
 ];
 const CK_ICON = { wait: "⏳", run: "🔄", ok: "✅", warn: "⚠️", fail: "❌", skip: "➖" };
@@ -3811,7 +3959,19 @@ async function runChecks() {
     const sec = (performance.now() - t0) / 1000;
     return [sec > 6 ? "warn" : "ok", W + "×" + H + " · " + Math.round(blob.size / 1024) + "KB · " + sec.toFixed(1) + "초" + (sec > 6 ? " (느려요)" : "")];
   });
-  await step("live", async () => (typeof MediaRecorder !== "undefined" && HTMLCanvasElement.prototype.captureStream) ? ["ok", "움직이는 사진을 만들 수 있어요"] : ["warn", "이 기기에서는 움직이는 사진 없이 진행돼요"]);
+  await step("live", async () => {
+    const vid = typeof MediaRecorder !== "undefined" && HTMLCanvasElement.prototype.captureStream;
+    let gifOk = false, gifKB = 0;
+    try {
+      const fr = [0, 1, 2].map((k) => { const c = makeCanvas(120, 160), x = c.getContext("2d"); x.fillStyle = ["#ff78a0", "#ffd133", "#6b3da8"][k]; x.fillRect(0, 0, 120, 160); x.fillStyle = "#fff"; x.fillRect(20 + k * 25, 40, 30, 30); return c; });
+      const b = await ckTimeout(makeGif(fr, [0, 1, 2, 1], 100), 15000, "GIF 시간 초과"); fr.forEach(freeCanvas);
+      const head = new Uint8Array(await b.slice(0, 6).arrayBuffer());
+      gifOk = String.fromCharCode.apply(null, head) === "GIF89a"; gifKB = Math.round(b.size / 1024);
+    } catch (e) { errLog("시작 점검 GIF: " + (e && e.message)); }
+    if (vid && gifOk) return ["ok", "영상 + GIF 만들 수 있어요"];
+    if (gifOk) return ["warn", "GIF만 만들 수 있어요 (영상 녹화 안 됨)"];
+    return vid ? ["warn", "GIF를 못 만들어요 → 영상만 (갤럭시는 영상이 안 열릴 수 있어요)"] : ["warn", "움직이는 사진 없이 진행돼요"];
+  });
   await step("facefx", async () => {
     if (!S.faceFx) return ["skip", "관리자 설정에서 꺼 둠"];
     await ckTimeout((async () => { await FX.load(); })(), 25000, "불러오는 데 너무 오래 걸려요").catch(() => {});
@@ -3843,14 +4003,21 @@ async function runChecks() {
     if (!NATIVE) return ["skip", "앱에서만 쓸 수 있어요"];
     if (!S.qr) return ["skip", "관리자 설정에서 꺼 둠"];
     if (!CK.testBlob) return ["warn", "시험 사진이 없어 확인 못 함"];
-    const r = await ckTimeout(native({ cmd: "lanShare", jpeg: await blobToB64(CK.testBlob), title: "시작 점검" }), 15000, "응답 없음");
-    if (r && r.ok && r.qr) {
-      const box = $("checkQr"); box.innerHTML = ""; const im = new Image(); im.src = "data:image/png;base64," + r.qr; box.appendChild(im);
-      const t = el("div"); t.appendChild(el("b", null, "휴대폰으로 찍어 보세요")); t.appendChild(el("span", null, "시험 사진이 열리면 QR 받기 정상이에요")); box.appendChild(t); box.hidden = false;
-      return ["ok", r.url];
+    const showQR = (qr, title, sub) => { const box = $("checkQr"); box.innerHTML = ""; const im = new Image(); im.src = "data:image/png;base64," + qr; box.appendChild(im); const t = el("div"); t.appendChild(el("b", null, title)); t.appendChild(el("span", null, sub)); box.appendChild(t); box.hidden = false; };
+    let webNote = "";
+    if (S.qrMode === "web") {
+      const r = await ckTimeout(native({ cmd: "webShare", jpeg: await blobToB64(CK.testBlob), title: "시작 점검", hours: 1, base: S.webBase || DEFAULTS.webBase }, 60000), 60000, "응답 없음").catch((e) => ({ ok: false, error: e.message }));
+      if (r && r.ok && r.qr) { showQR(r.qr, "휴대폰으로 찍어 보세요", "데이터(LTE/5G)로 시험 사진이 열리면 정상 · 1시간 뒤 자동 삭제"); return ["ok", "인터넷 링크 방식 정상"]; }
+      webNote = "인터넷 링크 실패 [" + ((r && r.error) || "?") + "] → 같은 와이파이 방식으로 대신 받게 돼요. ";
     }
-    if (r && r.error === "no-wifi") return ["warn", "아이패드가 와이파이에 연결되어 있지 않아 QR 받기를 못 써요"];
-    return ["fail", "QR 서버 오류 [" + ((r && r.error) || "?") + "]"];
+    const r = await ckTimeout(native({ cmd: "lanShare", jpeg: await blobToB64(CK.testBlob), title: "시작 점검" }), 15000, "응답 없음").catch((e) => ({ ok: false, error: e.message }));
+    if (r && r.ok && r.qr) {
+      showQR(r.qr, "휴대폰으로 찍어 보세요", "휴대폰을 아이패드와 같은 와이파이에 연결한 뒤 찍어 보세요");
+      const tip = S.qrMode === "web" ? "" : " · 손님 휴대폰이 같은 와이파이가 아니면 안 열려요 (관리자 설정 ‘QR 받는 방법 → 인터넷 링크’ 추천)";
+      return [webNote ? "warn" : "ok", webNote + r.url + tip];
+    }
+    if (r && r.error === "no-wifi") return ["warn", webNote + "아이패드가 와이파이에 연결되어 있지 않아 QR 받기를 못 써요"];
+    return ["fail", webNote + "QR 서버 오류 [" + ((r && r.error) || "?") + "]"];
   });
   await step("errlog", async () => {
     let L = []; try { L = JSON.parse(localStorage.getItem("booth.errlog") || "[]"); } catch (e) {}
@@ -3876,7 +4043,7 @@ function buildReport() {
   const lines = ["[네컷 포토부스 점검 보고서] v" + APP_VERSION,
     "날짜: " + d.getFullYear() + "-" + pad2(d.getMonth() + 1) + "-" + pad2(d.getDate()) + " " + pad2(d.getHours()) + ":" + pad2(d.getMinutes()),
     "실행: " + (NATIVE ? "아이패드 앱" : "브라우저") + " · 화면 " + innerWidth + "×" + innerHeight + " · " + navigator.userAgent.replace(/^Mozilla\/5\.0 /, "").slice(0, 120),
-    "설정: 인쇄방법=" + (NATIVE ? printMode() : S.printVia) + ", 용지=" + S.paper + ", 여유컷=" + S.extra + ", 카운트다운=" + S.countdown + ", 보정=" + S.retouch + ", 포즈목소리=" + S.poseVoice + ", 포즈묶음=" + posePack().name + ", QR=" + (S.qr ? "켬" : "끔") + ", 가장자리=" + S.bleed + "mm, 셀피=" + (S.selphyIP ? (S.selphyName || "SELPHY") + " " + S.selphyIP : "없음")];
+    "설정: 인쇄방법=" + (NATIVE ? printMode() : S.printVia) + ", 용지=" + S.paper + ", 여유컷=" + S.extra + ", 카운트다운=" + S.countdown + ", 보정=" + S.retouch + ", 포즈목소리=" + S.poseVoice + ", 포즈묶음=" + posePack().name + ", QR=" + (S.qr ? (S.qrMode === "web" ? "켬(인터넷 링크)" : "켬(같은 와이파이)") : "끔") + ", 가장자리=" + S.bleed + "mm, 셀피=" + (S.selphyIP ? (S.selphyName || "SELPHY") + " " + S.selphyIP : "없음")];
   if (Object.keys(CK.rows).length) {
     lines.push("", "결과: 문제 " + c.fail + " · 주의 " + c.warn + " · 정상 " + c.ok);
     ["fail", "warn", "ok", "skip", "wait"].forEach((stt) => Object.values(CK.rows).filter((r) => r.status === stt).forEach((r) => lines.push(CK_ICON[stt] + " " + r.name + (r.detail ? " — " + r.detail : ""))));
@@ -3951,7 +4118,7 @@ $("errLogBtn").addEventListener("click", () => { showReport("오류 보고서");
 /* 시작 */
 /* 앱 안에서 카메라를 쓸 수 없는 주소로 열렸으면 인터넷 주소로 바꿔 달라고 앱에 요청 */
 if (NATIVE && !window.isSecureContext) native({ cmd: "useRemote" }).catch(() => {});
-go(S.startCheck !== false ? "check" : "attract");
+go(S.startCheck !== false ? "check" : "attract"); ensureWifiQR();
 myfLoad();
 if (document.fonts && document.fonts.load) { document.fonts.load('40px "Jua"').catch(() => {}); }
 </script>

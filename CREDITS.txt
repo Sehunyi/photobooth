@@ -34,3 +34,6 @@ Jua, Gowun Dodum, Gaegu, Gasoek One, Bagel Fat One, Gugi, Nanum Brush Script, Ea
 ※ 앱 용량을 줄이려고 자주 쓰는 한글 2,350자 + 영문·숫자·기호만 남겼어요 (드문 글자는 기본 글꼴로 보임)
 
 디자인 프레임 (art 폴더) — 이 앱을 위해 직접 그린 그림 (3D 스티커·CC0 사진 일부 사용). '나이트 파티 (Canva)'는 사용자 Canva 계정에서 AI로 만든 디자인.
+
+GIF 만들기 — gifenc 1.0.3 / MIT License / https://github.com/mattdesl/gifenc
+  Copyright (c) 2017 Matt DesLauriers. index.html 안에 그대로 넣어 씀 (이 저작권 표시를 함께 둠)
