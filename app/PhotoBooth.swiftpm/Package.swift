@@ -17,7 +17,7 @@ let package = Package(
             targets: ["AppModule"],
             bundleIdentifier: "com.strangeenglish.photobooth",
             teamIdentifier: "",
-            displayVersion: "1.0",
+            displayVersion: "1.11",
             bundleVersion: "1",
             appIcon: .placeholder(icon: .camera),
             accentColor: .presetColor(.purple),
@@ -31,7 +31,8 @@ let package = Package(
                 .portraitUpsideDown(.when(deviceFamilies: [.pad]))
             ],
             capabilities: [
-                .camera(purposeString: "포토부스 사진을 찍기 위해 카메라를 사용합니다.")
+                .camera(purposeString: "포토부스 사진을 찍기 위해 카메라를 사용합니다."),
+                .localNetwork(purposeString: "같은 Wi-Fi의 셀피 프린터를 찾아 사진을 보내고, 휴대폰이 QR로 사진을 받을 수 있게 하기 위해 사용합니다.", bonjourServiceTypes: [])
             ]
         )
     ],
