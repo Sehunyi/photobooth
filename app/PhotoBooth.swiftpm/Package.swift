@@ -17,7 +17,7 @@ let package = Package(
             targets: ["AppModule"],
             bundleIdentifier: "com.strangeenglish.photobooth",
             teamIdentifier: "",
-            displayVersion: "1.11",
+            displayVersion: "1.12",
             bundleVersion: "1",
             appIcon: .placeholder(icon: .camera),
             accentColor: .presetColor(.purple),
